@@ -1,0 +1,17 @@
+# Ignora a pasta do ambiente virtual
+venv/
+.venv/
+
+# Ignora arquivos de cache e gerados pelo Python
+__pycache__/
+*.pyc
+
+# Arquivos de log e bancos de dados
+*.log
+db.sqlite3
+
+# Arquivos de configurações sensíveis
+.env
+
+# Outros
+soParaVisu/
