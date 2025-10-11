@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formulário de Login</title>
+</head>
+<body>
+
+    <h1>Login</h1>
+    <form action="/login" method="post">
+        
+        <label>Tipo de Usuário:</label>
+        <br>
+        <input type="radio" id="admin" name="user_type" value="admin" required>
+        <label for="admin">Admin</label>
+        
+        <input type="radio" id="user" name="user_type" value="user" required>
+        <label for="user">Usuário</label>
+        
+        <br><br>
+        
+        <label for="email">E-mail:</label>
+        <input type="email" id="email" name="email" required>
+        
+        <br><br>
+        
+        <label for="password">Senha:</label>
+        <input type="password" id="password" name="password" required>
+        
+        <br><br>
+        
+        <button type="submit">Entrar</button>
+        
+    </form>
+
+</body>
+</html>

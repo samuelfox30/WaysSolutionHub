@@ -1,7 +1,7 @@
-from flask import Flask, Blueprint, url_for
+from flask import Flask, Blueprint
 
 # Import Páginas
-from pages.public.index.index import app_index
+from pages.public.index import app_index
 
 app = Flask(__name__)
 app.secret_key = 'minhasecretkeyemuitodificil'
