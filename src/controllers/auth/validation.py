@@ -91,3 +91,51 @@ def validar_nome_empresa(nome_empresa):
         return False
 
     return re.match(regex, nome_empresa) is not None
+
+
+def validar_telefone(telefone):
+    """
+    Valida o formato de um número de telefone brasileiro.
+
+    Args:
+        telefone (str): O número de telefone a ser validado.
+
+    Returns:
+        bool: True se o telefone for válido, False caso contrário.
+    """
+    if not isinstance(telefone, str) or not telefone.strip():
+        return False
+        
+    # Regex que permite telefones com ou sem DDD, com 8 ou 9 dígitos e com ou sem formatação.
+    # Ex: (99) 99999-9999, 99 999999999, 99999999999
+    # Garante que o número tenha de 10 a 11 dígitos, após remover caracteres não numéricos.
+    telefone_limpo = re.sub(r'\D', '', telefone)
+    
+    if not (10 <= len(telefone_limpo) <= 11):
+        return False
+        
+    return True
+
+def validar_seguimento(seguimento):
+    """
+    Valida o nome do seguimento da empresa.
+
+    Args:
+        seguimento (str): O nome do seguimento.
+
+    Returns:
+        bool: True se o seguimento for válido, False caso contrário.
+    """
+    # Verifica se a entrada é uma string e se não está vazia (apenas espaços em branco)
+    if not isinstance(seguimento, str) or not seguimento.strip():
+        return False
+        
+    # Limita o tamanho para evitar strings muito longas.
+    if len(seguimento) > 50:
+        return False
+
+    # Regex que permite letras, números, espaços e hífens.
+    regex = r"^[a-zA-Z0-9\s-]+$"
+    
+    # Retorna True se o segmento corresponder à regex, False caso contrário.
+    return re.match(regex, seguimento) is not None

@@ -1,0 +1,27 @@
+
+/* Estilos para o alerta de erro de entrada (vermelho) */
+.alerta-erro-de-entrada {
+    background-color: #fef2f2; /* Vermelho mais claro para contraste */
+    color: #b91c1c; /* Vermelho escuro para o texto */
+    border-color: #ef4444;
+    border-radius: 0.75rem; /* Borda arredondada */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Sombra sutil */
+}
+
+/* Estilos para o alerta de erro de autenticação (amarelo/laranja) */
+.alerta-erro-de-banco-de-dados {
+    background-color: #fffbeb; /* Amarelo mais claro para contraste */
+    color: #b45309; /* Laranja/marrom escuro para o texto */
+    border-color: #fb923c;
+    border-radius: 0.75rem; /* Borda arredondada */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* Sombra sutil */
+}
+
+/* Estilos para o alerta de sucesso (verde) */
+.alerta-sucesso {
+    background-color: #f0fdf4; /* Verde bem claro */
+    color: #166534; /* Verde escuro para o texto */
+    border-color: #22c55e;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}

@@ -31,14 +31,16 @@ class UserManager:
                 self.cursor = None
 
 
-    def register_user(self, name, email, company, password, role):
+    def register_user(self, name, email, telefone, company, seguimento, password, role):
         """
         Registers a new user in the database.
 
         Args:
             name (str): User's full name.
             email (str): User's email address.
+            telefone (str): User's phone number.
             company (str): User's company name.
+            seguimento (str): User's business segment.
             password (str): User's plain-text password.
             role (str): User's role (e.g., 'admin', 'client').
 
@@ -51,23 +53,24 @@ class UserManager:
 
         try:
             # Reopen cursor if it was closed
-            if not self.cursor or not self.cursor.is_connected():
+            if not self.cursor:
                 self.cursor = self.db_connection.cursor(dictionary=True)
 
             # Hash the password before storing it in the database
-            hashed_password = generate_password_hash(password, method='scrypt')
+            from controllers.auth.hash import hash_senha_sha256
+            hashed_password = hash_senha_sha256(password)
 
             query = """
-                INSERT INTO users (name, email, company, password, role)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO users (nome, email, telefone, empresa, seguimento, password, role)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
             """
-            self.cursor.execute(query, (name, email, company, hashed_password, role))
+            self.cursor.execute(query, (name, email, telefone, company, seguimento, hashed_password, role))
             self.db_connection.commit()
             return True
 
         except mysql.connector.Error as err:
             print(f"Erro ao cadastrar usuário: {err}")
-            self.db_connection.rollback() # Rollback changes in case of error
+            self.db_connection.rollback()
             return False
         finally:
             # It's better to keep the cursor open
