@@ -76,5 +76,21 @@ class UserManager:
             # It's better to keep the cursor open
             pass
 
+
+    def get_all_users(self):
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = "SELECT id, nome, email, empresa, role FROM users"
+            self.cursor.execute(query)
+            users = self.cursor.fetchall()
+            return users
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao buscar todos os usuários: {err}")
+            return []
+
+
     def close(self):
         self.db_connector.close_connection()

@@ -1,0 +1,113 @@
+/* Variáveis de cores personalizadas */
+:root {
+    --bs-orange: #fd7e14;
+    --bs-orange-light: #ffc107;
+    --bs-orange-dark: #cc6510;
+}
+
+/* Estilos gerais da página */
+body {
+    background-color: #f8f9fa;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Sidebar e botões */
+.sidebar {
+    min-height: 100vh;
+    transition: all 0.3s ease;
+}
+
+.bg-orange {
+    background-color: var(--bs-orange) !important;
+}
+
+.btn-orange {
+    background-color: var(--bs-orange);
+    color: white;
+    border-color: var(--bs-orange);
+    transition: all 0.3s ease;
+}
+
+.btn-orange:hover {
+    background-color: var(--bs-orange-dark);
+    border-color: var(--bs-orange-dark);
+    box-shadow: 0 4px 6px rgba(253, 126, 20, 0.3);
+    transform: translateY(-2px);
+}
+
+.btn-outline-orange {
+    color: var(--bs-orange);
+    border-color: var(--bs-orange);
+}
+
+.btn-outline-orange:hover {
+    background-color: var(--bs-orange);
+    color: white;
+}
+
+/* Links de navegação da sidebar */
+.nav-link.active {
+    background-image: linear-gradient(90deg, var(--bs-orange) 0%, var(--bs-orange-light) 100%);
+    color: white !important;
+}
+
+.nav-link.active i, .nav-link.active span {
+    color: white !important;
+}
+
+.nav-link {
+    transition: all 0.2s;
+}
+
+.text-orange {
+    color: var(--bs-orange) !important;
+}
+
+/* Estilos para o formulário de login */
+.login-card {
+    max-width: 450px;
+    margin: auto;
+    border-radius: 1.5rem;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+}
+
+.login-title {
+    background: linear-gradient(90deg, var(--bs-orange), var(--bs-orange-light));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.form-check-input:checked {
+    background-color: var(--bs-orange);
+    border-color: var(--bs-orange);
+}
+
+.form-control:focus {
+    border-color: var(--bs-orange-light);
+    box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.25);
+}
+
+/* Estilos para as mensagens de alerta */
+.alerta-sucesso {
+    background-color: #f0fdf4;
+    color: #166534;
+    border-color: #22c55e;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.alerta-erro-de-entrada {
+    background-color: #fef2f2;
+    color: #b91c1c;
+    border-color: #ef4444;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.alerta-erro-de-banco-de-dados {
+    background-color: #fffbeb;
+    color: #b45309;
+    border-color: #fb923c;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
