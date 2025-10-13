@@ -49,10 +49,10 @@
                             </span>
                         </td>
                         <td>
-                            <button class="btn btn-sm text-primary">
+                            <button class="btn btn-sm text-primary" onclick="showEditModal('{{ user.id }}', '{{ user.nome }}', '{{ user.email }}', '{{ user.empresa }}', '{{ user.perfil }}')">
                                 <i class="bi bi-pencil-square"></i>
                             </button>
-                            <button class="btn btn-sm text-danger">
+                            <button class="btn btn-sm text-danger" onclick="showDeleteModal('{{ user.id }}', '{{ user.nome }}')">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -98,7 +98,7 @@
                 <label for="profile" class="form-label">Perfil</label>
                 <select id="profile" class="form-select" name="perfil" required>
                     <option selected disabled value="">Selecione...</option>
-                    <option value="client">Cliente</option>
+                    <option value="user">Cliente</option>
                     <option value="admin">Administrador</option>
                 </select>
             </div>
@@ -109,4 +109,103 @@
             </div>
         </form>
     </div>
+
+<!-------------------------------------------- CONFIRMAÇÃO DE EXCLUSÃO -------------------------------------------->
+<div class="modal fade" id="deleteUserModal" tabindex="-1" aria-labelledby="deleteUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger" id="deleteUserModalLabel">Confirmar Exclusão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza de que deseja excluir o usuário <strong id="userNameToDelete"></strong>? Esta ação é irreversível.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a id="confirmDeleteButton" href="#" class="btn btn-danger">Excluir</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-------------------------------------------- EDIÇÃO DE USUÁRIO -------------------------------------------->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" method="post" action="/admin/edit">
+            <div class="modal-header">
+                <h5 class="modal-title text-primary" id="editUserModalLabel">Editar Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId" name="id">
+                <div class="mb-3">
+                    <label for="editUserName" class="form-label">Nome</label>
+                    <input type="text" class="form-control" id="editUserName" name="nome" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editUserEmail" class="form-label">Email</label>
+                    <input type="email" class="form-control" id="editUserEmail" name="email" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editUserEmpresa" class="form-label">Empresa</label>
+                    <input type="text" class="form-control" id="editUserEmpresa" name="empresa" required>
+                </div>
+                <div class="mb-3">
+                    <label for="editUserPerfil" class="form-label">Perfil</label>
+                    <select class="form-select" id="editUserPerfil" name="perfil" required>
+                        <option value="user">Cliente</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+    // A função é ativada quando o usuário clica no botão "excluir"
+    function showDeleteModal(userId, userName) {
+        // Encontra o modal na página
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+        
+        // Pega os elementos dentro do modal que precisam ser atualizados
+        const userNameElement = document.getElementById('userNameToDelete');
+        const confirmButton = document.getElementById('confirmDeleteButton');
+
+        // Atualiza o texto do modal com o nome do usuário
+        userNameElement.textContent = userName;
+
+        // Atualiza o link do botão de exclusão com o ID correto
+        confirmButton.href = `/admin/delete/${userId}`;
+
+        // Exibe o modal
+        deleteModal.show();
+    }
+</script>
+
+<!-- Script para preencher e mostrar o modal de edição -->
+<script>
+    function showEditModal(id, nome, email, empresa, perfil) {
+        const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+
+        document.getElementById('editUserId').value = id;
+        document.getElementById('editUserName').value = nome;
+        document.getElementById('editUserEmail').value = email;
+        document.getElementById('editUserEmpresa').value = empresa;
+        document.getElementById('editUserPerfil').value = perfil;
+
+        editModal.show();
+    }
+</script>
+{% endblock %}
+
+
+
+
 {% endblock %}

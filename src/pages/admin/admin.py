@@ -27,7 +27,7 @@ def logout():
     return redirect(url_for('index.login'))
 
 
-@admin_bp.route('/cadastrar', methods=['GET', 'POST'])
+@admin_bp.route('/admin/cadastrar', methods=['GET', 'POST'])
 def cadastrar_usuario():
     # Se a requisição não for POST, redireciona para a dashboard
     if request.method != 'POST':
@@ -47,14 +47,7 @@ def cadastrar_usuario():
     perfil = request.form.get('perfil')
 
     # ----------------------------- Validações de dados -----------------------------
-    from controllers.auth.validation import (
-        validar_email, 
-        validar_senha_cadastro, 
-        validar_tipo_usuario, 
-        validar_nome_empresa, 
-        validar_telefone, 
-        validar_seguimento
-    )
+    from controllers.auth.validation import validar_email, validar_senha_cadastro, validar_tipo_usuario, validar_nome_empresa, validar_telefone, validar_seguimento
 
     # Verificações sequenciais com flash e redirect
     if not validar_email(email):
@@ -86,7 +79,7 @@ def cadastrar_usuario():
     user_manager = UserManager()
     
     # A função register_user agora retorna uma tupla (True/False, mensagem)
-    success, message = user_manager.register_user(
+    success = user_manager.register_user(
         nome, 
         email, 
         telefone, 
@@ -96,12 +89,10 @@ def cadastrar_usuario():
         perfil
     )
 
-    # Verifica o resultado e define a mensagem flash
     if success:
-        flash(message, "success")
+        flash("Usuário cadastrado com sucesso!", "success")
     else:
-        # A mensagem já vem formatada para o usuário (e-mail já em uso, etc.)
-        flash(message, "danger") 
+        flash("Ocorreu um erro ao cadastrar o usuário. Por favor, verifique os dados e tente novamente.", "danger")
 
     # Fecha a conexão do banco de dados (boa prática)
     user_manager.close()
@@ -109,3 +100,66 @@ def cadastrar_usuario():
     # Redireciona para a página principal, onde a mensagem será exibida
     return redirect(url_for('admin.admin_dashboard'))
 
+
+@admin_bp.route('/admin/delete/<int:user_id>', methods=['GET', 'POST'])
+def delete_user_route(user_id):
+    # Verificação de segurança: apenas admins podem excluir usuários
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.user_manager import UserManager
+    user_manager = UserManager()
+    success = user_manager.delete_user(user_id)
+    user_manager.close()
+
+    if success:
+        flash("Usuário excluído com sucesso!", "success")
+    else:
+        flash("Erro ao excluir usuário.", "danger")
+
+    return redirect(url_for('admin.admin_dashboard'))
+
+
+
+@admin_bp.route('/admin/edit', methods=['POST'])
+def editar_usuario():
+    # Verificação de autenticação de administrador
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    # Coleta dos dados do formulário
+    user_id = request.form.get('id')
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+    empresa = request.form.get('empresa')
+    perfil = request.form.get('perfil')
+
+    # ----------------------------- Validações -----------------------------
+    from controllers.auth.validation import validar_email, validar_tipo_usuario, validar_nome_empresa
+
+    if not validar_email(email):
+        flash('Email inválido. Por favor, verifique o formato.', 'danger')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    if not validar_tipo_usuario(perfil):
+        flash('Tipo de usuário inválido.', 'danger')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    if not validar_nome_empresa(empresa):
+        flash('Nome de empresa inválido.', 'danger')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    # ----------------------------- Atualização no banco de dados -----------------------------
+    from models.user_manager import UserManager
+    user_manager = UserManager()
+    success = user_manager.update_user(user_id, nome, email, empresa, perfil)
+    user_manager.close()
+
+    if success:
+        flash("Usuário atualizado com sucesso!", "success")
+    else:
+        flash("Erro ao atualizar usuário. Verifique os dados e tente novamente.", "danger")
+
+    return redirect(url_for('admin.admin_dashboard'))

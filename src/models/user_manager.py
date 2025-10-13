@@ -92,5 +92,87 @@ class UserManager:
             return []
 
 
+    def delete_user(self, user_id):
+        """
+        Exclui um usuário do banco de dados com base no ID.
+
+        Args:
+            user_id (int): O ID do usuário a ser excluído.
+
+        Returns:
+            bool: True em caso de sucesso, False em caso de falha.
+        """
+        if not self.db_connection or not self.db_connection.is_connected():
+            print("Erro: Conexão com o banco de dados não está ativa.")
+            return False
+        
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = "DELETE FROM users WHERE id = %s"
+            self.cursor.execute(query, (user_id,))
+            
+            # Confirma a operação de exclusão no banco de dados
+            self.db_connection.commit()
+            print(f"Usuário com ID {user_id} excluído com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao tentar excluir usuário: {err}")
+            # Desfaz a operação em caso de erro
+            self.db_connection.rollback()
+            return False
+        finally:
+            # Nota: O ideal é que a conexão seja fechada na classe principal,
+            # ou após várias operações para evitar abrir e fechar a todo momento.
+            # Por isso, o 'pass' aqui.
+            pass
+
+
+
+
+    def update_user(self, user_id, nome, email, empresa, perfil):
+        """
+        Atualiza os dados de um usuário existente no banco de dados.
+
+        Args:
+            user_id (int): ID do usuário a ser atualizado.
+            nome (str): Novo nome do usuário.
+            email (str): Novo email do usuário.
+            empresa (str): Nova empresa do usuário.
+            perfil (str): Novo perfil do usuário.
+
+        Returns:
+            bool: True em caso de sucesso, False em caso de falha.
+        """
+        if not self.db_connection or not self.db_connection.is_connected():
+            print("Erro: Conexão com o banco de dados não está ativa.")
+            return False
+
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = """
+                UPDATE users
+                SET nome = %s, email = %s, empresa = %s, role = %s
+                WHERE id = %s
+            """
+            self.cursor.execute(query, (nome, email, empresa, perfil, user_id))
+            self.db_connection.commit()
+            print(f"Usuário com ID {user_id} atualizado com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao atualizar usuário: {err}")
+            self.db_connection.rollback()
+            return False
+
+        finally:
+            # Mantém a conexão ativa para outras operações
+            pass
+
+
     def close(self):
         self.db_connector.close_connection()
