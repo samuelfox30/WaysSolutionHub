@@ -10,6 +10,7 @@ def admin_dashboard():
         from models.user_manager import UserManager
         user_manager = UserManager()
         users = user_manager.get_all_users()
+        user_manager.close()
         return render_template('admin/admin.html', users=users)
 
     else:
@@ -163,3 +164,43 @@ def editar_usuario():
         flash("Erro ao atualizar usuário. Verifique os dados e tente novamente.", "danger")
 
     return redirect(url_for('admin.admin_dashboard'))
+
+
+# ----------------------------------------------------------- CONTROLE DE EMPRESAS -----------------------------------------------------------
+
+@admin_bp.route('/admin/empresas')
+def dados_empresas():
+
+    if 'user_email' in session and session.get('user_role') == 'admin':
+        from models.user_manager import UserManager
+        user_manager = UserManager()
+        users = user_manager.get_all_users()
+        user_manager.close()
+        return render_template('admin/empresas.html', users=users)
+
+    else:
+
+        return redirect(url_for('index.login'))
+
+
+@admin_bp.route('/admin/upload', methods=['GET', 'POST'])
+def upload_dados():
+    if request.method != 'POST':
+        return redirect(url_for('admin.admin_dashboard'))
+
+    empresa = request.form.get('empresa')
+    mes = request.form.get('mes')
+    ano = request.form.get('ano')
+    arquivo = request.files.get('arquivo')
+
+    # ✅ Prints de verificação
+    print(f"Empresa selecionada: {empresa}")
+    print(f"Mês selecionado: {mes}")
+    print(f"Ano selecionado: {ano}")
+    print(f"Nome do arquivo recebido: {arquivo.filename if arquivo else 'Nenhum arquivo'}")
+    from controllers.data_processing.file_processing import process_uploaded_file
+
+    # ...continuação do processamento
+
+    return redirect(url_for('admin.dados_empresas'))
+    

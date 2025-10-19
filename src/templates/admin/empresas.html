@@ -1,0 +1,101 @@
+{% extends "admin/base.html" %}
+
+{% block header_title %}Upload de Dados Mensais{% endblock %}
+{% block header_subtitle %}Envie os dados mensais vinculados às empresas cadastradas{% endblock %}
+
+{% block content %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert-container mb-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alerta-{{ category }} mt-4" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="bg-white rounded-3 shadow p-4 mb-4">
+        <h2 class="h5 fw-semibold text-dark mb-4">Importar Dados Mensais</h2>
+        <form action="{{ url_for('admin.upload_dados') }}" method="post" enctype="multipart/form-data" class="row g-3">
+            <div class="col-md-6">
+                <label for="empresaSelect" class="form-label">Empresa</label>
+                <select class="form-select" id="empresaSelect" name="empresa" required>
+                    <option selected disabled value="">Selecione a empresa...</option>
+                    {% for user in users %}
+                        <option value="{{ user.empresa }}">{{ user.empresa }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="mesSelect" class="form-label">Mês</label>
+                <select class="form-select" id="mesSelect" name="mes" required>
+                    <option selected disabled value="">Selecione o mês...</option>
+                    <option value="01">Janeiro</option>
+                    <option value="02">Fevereiro</option>
+                    <option value="03">Março</option>
+                    <option value="04">Abril</option>
+                    <option value="05">Maio</option>
+                    <option value="06">Junho</option>
+                    <option value="07">Julho</option>
+                    <option value="08">Agosto</option>
+                    <option value="09">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="anoInput" class="form-label">Ano</label>
+                <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="2025" required>
+            </div>
+            <div class="col-md-12">
+                <label for="arquivoEmpresas" class="form-label">Arquivo (.csv ou .xlsx)</label>
+                <input class="form-control" type="file" id="arquivoEmpresas" name="arquivo" accept=".csv,.xlsx" required>
+            </div>
+            <div class="col-12 mt-4">
+                <button type="submit" class="btn btn-orange">
+                    <i class="bi bi-upload me-2"></i> Enviar Dados
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="bg-white rounded-3 shadow p-4">
+        <h2 class="h5 fw-semibold text-dark mb-4">Empresas Cadastradas</h2>
+        <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
+            <table class="table table-hover">
+                <thead>
+                    <tr class="table-light">
+                        <th scope="col">Empresa</th>
+                        <th scope="col">Segmento</th>
+                        <th scope="col">Telefone</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Perfil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>{{ user.empresa }}</td>
+                        <td>{{ user.seguimento }}</td>
+                        <td>{{ user.telefone }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            <span class="badge {% if user.perfil == 'admin' %}text-bg-warning{% else %}text-bg-success{% endif %}">
+                                {{ user.perfil }}
+                            </span>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center">Nenhuma empresa cadastrada.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% endblock %}

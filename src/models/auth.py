@@ -28,6 +28,7 @@ class DatabaseConnection:
             self.create_database_if_not_exists()
             self.connection.database = self.database_name
             self.create_user_table_if_not_exists()
+            self.create_empresa_tables_if_not_exists()
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -64,6 +65,51 @@ class DatabaseConnection:
             print("Tabela 'users' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
             print(f"Erro ao criar a tabela de usuários: {err}")
+
+    def create_empresa_tables_if_not_exists(self):
+        try:
+            # Tabela de Grupos
+            grupo_schema = (
+                "CREATE TABLE IF NOT EXISTS TbGrupo ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  nome VARCHAR(255) NOT NULL"
+                ")"
+            )
+            self.cursor.execute(grupo_schema)
+
+            # Tabela de SubGrupos
+            subgrupo_schema = (
+                "CREATE TABLE IF NOT EXISTS TbSubGrupo ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  nome VARCHAR(255) NOT NULL,"
+                "  grupo_id INT NOT NULL,"
+                "  FOREIGN KEY (grupo_id) REFERENCES TbGrupo(id) ON DELETE CASCADE"
+                ")"
+            )
+            self.cursor.execute(subgrupo_schema)
+
+            # Tabela de Itens
+            itens_schema = (
+                "CREATE TABLE IF NOT EXISTS TbItens ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  descricao VARCHAR(255) NOT NULL,"
+                "  porcentagem DECIMAL(10,2),"
+                "  valor DECIMAL(15,2) NOT NULL,"
+                "  mes INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  subgrupo_id INT NOT NULL,"
+                "  usuario_id INT NOT NULL,"
+                "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
+                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            self.cursor.execute(itens_schema)
+
+            self.connection.commit()
+            print("Tabelas 'TbGrupo', 'TbSubGrupo' e 'TbItens' verificadas/criadas com sucesso.")
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao criar as tabelas de empresas: {err}")
 
     def get_connection(self):
         return self.connection
