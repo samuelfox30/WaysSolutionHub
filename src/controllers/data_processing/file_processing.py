@@ -28,9 +28,15 @@ def process_uploaded_file(file):
         "PESSOAL"
     ]
 
-    blocos = {}
+    # Colunas de cada cenário
+    cenarios = [
+        {"nome": ws["A1"].value, "cols": ("A", "B", "C")},
+        {"nome": ws["E1"].value, "cols": ("E", "F", "G")},
+        {"nome": ws["I1"].value, "cols": ("I", "J", "K")},
+    ]
 
-    # Detectar blocos
+    # Detectar blocos nomeados (usando col A)
+    blocos = {}
     for row in range(1, ws.max_row + 1):
         valor = ws[f"A{row}"].value
         if valor in subgrupos and is_merged(ws[f"A{row}"]):
@@ -40,28 +46,44 @@ def process_uploaded_file(file):
                 fim += 1
             blocos[valor] = (inicio, fim - 1)
 
-    # Agora extrair os dados em dicionários
-    dados = {}
-    for nome, (ini, fim) in blocos.items():
-        lista_itens = []
-        for r in range(ini + 1, fim + 1):  # começa 1 linha abaixo do início
-            desc = ws[f"A{r}"].value
-            perc = ws[f"B{r}"].value
-            valr = ws[f"C{r}"].value
-            if desc not in (None, "", " "):  # ignora linhas vazias
-                item = {
-                    "subgrupo": nome,
-                    "descricao": str(desc).strip(),
-                    "percentual": perc,
-                    "valor": valr
-                }
-                lista_itens.append(item)
-        dados[nome] = lista_itens
+    # Adicionar o bloco GERAL antes do primeiro subgrupo
+    if blocos:
+        primeiro_inicio = min(v[0] for v in blocos.values())
+        blocos = {"GERAL": (3, primeiro_inicio - 2), **blocos}
+
+    # Extrair dados para cada cenário
+    lista_cenarios = []
+    for cenario in cenarios:
+        nome_cenario = cenario["nome"]
+        col_desc, col_perc, col_val = cenario["cols"]
+
+        dados = {}
+        for nome, (ini, fim) in blocos.items():
+            lista_itens = []
+            for r in range(ini, fim + 1):
+                desc = ws[f"{col_desc}{r}"].value
+                perc = ws[f"{col_perc}{r}"].value
+                valr = ws[f"{col_val}{r}"].value
+                if desc not in (None, "", " ", "RESULTADO REAL"):
+                    item = {
+                        "cenario": nome_cenario,
+                        "subgrupo": nome,
+                        "descricao": str(desc).strip(),
+                        "percentual": perc,
+                        "valor": valr
+                    }
+                    lista_itens.append(item)
+            dados[nome] = lista_itens
+
+        lista_cenarios.append(dados)
 
     # Printar para conferência
-    for sub, itens in dados.items():
-        print(f"\n--- {sub} ---")
-        for i in itens:
-            print(i)
+    for dic in lista_cenarios:
+        print("\n============================")
+        print(f"CENÁRIO: {list(dic.values())[0][0]['cenario'] if list(dic.values())[0] else 'SEM NOME'}")
+        for sub, itens in dic.items():
+            print(f"\n--- {sub} ---")
+            for i in itens:
+                print(i)
 
-    return dados
+    return lista_cenarios
