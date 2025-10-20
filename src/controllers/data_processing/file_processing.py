@@ -3,25 +3,21 @@ from openpyxl import load_workbook
 def process_uploaded_file(file):
     print("\n\nINICIANDO ANÁLISE DO ARQUIVO UPLOAD... \n\n")
 
-    # Carregar o arquivo Excel
     wb = load_workbook(file, data_only=True)
-    ws = wb.active  # ou ws["NomeDaAba"]
+    ws = wb.active
 
-    # Função auxiliar para checar se uma célula está mesclada
     def is_merged(cell):
         for merged_range in ws.merged_cells.ranges:
             if cell.coordinate in merged_range:
                 return True
         return False
 
-    # Função auxiliar para checar se uma linha está totalmente em branco
     def is_blank_row(row_number):
         for cell in ws[row_number]:
             if cell.value not in (None, "", " "):
                 return False
         return True
 
-    # Subgrupos que você quer rastrear (na ordem correta)
     subgrupos = [
         "RECEITA",
         "CONTROLE DESPESAS POR NATURESAS SINTETICAS",
@@ -34,22 +30,38 @@ def process_uploaded_file(file):
 
     blocos = {}
 
-    # Percorrer todas as linhas da coluna A
+    # Detectar blocos
     for row in range(1, ws.max_row + 1):
         valor = ws[f"A{row}"].value
         if valor in subgrupos and is_merged(ws[f"A{row}"]):
-            inicio = row + 1  # dados começam logo abaixo do título
+            inicio = row + 1
             fim = inicio
-
-            # Avança até achar uma linha em branco
             while fim <= ws.max_row and not is_blank_row(fim):
                 fim += 1
-
             blocos[valor] = (inicio, fim - 1)
 
-    # Log amigável
-    print("Blocos detectados (linhas do Excel):")
-    for k, (ini, fim) in blocos.items():
-        print(f"- {k}: linhas {ini} até {fim}")
+    # Agora extrair os dados em dicionários
+    dados = {}
+    for nome, (ini, fim) in blocos.items():
+        lista_itens = []
+        for r in range(ini + 1, fim + 1):  # começa 1 linha abaixo do início
+            desc = ws[f"A{r}"].value
+            perc = ws[f"B{r}"].value
+            valr = ws[f"C{r}"].value
+            if desc not in (None, "", " "):  # ignora linhas vazias
+                item = {
+                    "subgrupo": nome,
+                    "descricao": str(desc).strip(),
+                    "percentual": perc,
+                    "valor": valr
+                }
+                lista_itens.append(item)
+        dados[nome] = lista_itens
 
-    return blocos
+    # Printar para conferência
+    for sub, itens in dados.items():
+        print(f"\n--- {sub} ---")
+        for i in itens:
+            print(i)
+
+    return dados
