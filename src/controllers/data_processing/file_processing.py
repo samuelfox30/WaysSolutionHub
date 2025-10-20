@@ -51,6 +51,14 @@ def process_uploaded_file(file):
         primeiro_inicio = min(v[0] for v in blocos.values())
         blocos = {"GERAL": (3, primeiro_inicio - 2), **blocos}
 
+    # Palavras-chave a ignorar (em maiúsculas para padronizar)
+    ignorar_descricoes = {
+        "RESULTADO REAL",
+        "RESULTADO IDEAL",
+        "PONTO DE EQUILIBRIO",
+        "0"
+    }
+
     # Extrair dados para cada cenário
     lista_cenarios = []
     for cenario in cenarios:
@@ -64,15 +72,24 @@ def process_uploaded_file(file):
                 desc = ws[f"{col_desc}{r}"].value
                 perc = ws[f"{col_perc}{r}"].value
                 valr = ws[f"{col_val}{r}"].value
-                if desc not in (None, "", " ", "RESULTADO REAL"):
-                    item = {
-                        "cenario": nome_cenario,
-                        "subgrupo": nome,
-                        "descricao": str(desc).strip(),
-                        "percentual": perc,
-                        "valor": valr
-                    }
-                    lista_itens.append(item)
+
+                if desc is None:
+                    continue
+
+                desc_str = str(desc).strip().upper()
+
+                # Ignorar linhas padrão
+                if desc_str in ignorar_descricoes:
+                    continue
+
+                item = {
+                    "cenario": nome_cenario,
+                    "subgrupo": nome,
+                    "descricao": str(desc).strip(),
+                    "percentual": perc,
+                    "valor": valr
+                }
+                lista_itens.append(item)
             dados[nome] = lista_itens
 
         lista_cenarios.append(dados)
