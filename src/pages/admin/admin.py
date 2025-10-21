@@ -20,6 +20,11 @@ def admin_dashboard():
 
 @admin_bp.route('/logout')
 def logout():
+    # Verificação de autenticação de administrador
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+        
     # Remove as informações do usuário da sessão
     session.pop('user_email', None)
     session.pop('user_role', None)
@@ -180,14 +185,20 @@ def dados_empresas():
         return render_template('admin/empresas.html', users=users)
 
     else:
-
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
 
 
 @admin_bp.route('/admin/upload', methods=['GET', 'POST'])
 def upload_dados():
+
+    # Verificação de autenticação de administrador
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
     if request.method != 'POST':
-        return redirect(url_for('admin.admin_dashboard'))
+        return redirect(url_for('admin.dados_empresas'))
 
     empresa = request.form.get('empresa')
     mes = request.form.get('mes')
@@ -213,3 +224,11 @@ def upload_dados():
 
     return redirect(url_for('admin.dados_empresas'))
     
+
+
+@admin_bp.route('/admin/consultar', methods=['GET', 'POST'])
+def consultar_dados():
+    if request.method != 'POST':
+        return redirect(url_for('admin.dados_empresas'))
+
+    return redirect(url_for('admin.dados_empresas'))
