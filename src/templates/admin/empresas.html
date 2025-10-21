@@ -4,6 +4,12 @@
 {% block header_subtitle %}Envie os dados mensais vinculados às empresas cadastradas{% endblock %}
 
 {% block content %}
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner-border text-orange" role="status">
+            <span class="visually-hidden">Processando...</span>
+        </div>
+        <p class="text-light mt-3 fw-semibold">Processando dados, por favor, aguarde...</p>
+    </div>
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="alert-container mb-4">
@@ -19,7 +25,7 @@
 
     <div class="bg-white rounded-3 shadow p-4 mb-4">
         <h2 class="h5 fw-semibold text-dark mb-4">Importar Dados Mensais</h2>
-        <form action="{{ url_for('admin.upload_dados') }}" method="post" enctype="multipart/form-data" class="row g-3">
+        <form id="upload-form" action="{{ url_for('admin.upload_dados') }}" method="post" enctype="multipart/form-data" class="row g-3">
             <div class="col-md-6">
                 <label for="empresaSelect" class="form-label">Empresa</label>
                 <select class="form-select" id="empresaSelect" name="empresa" required>
@@ -56,7 +62,7 @@
                 <input class="form-control" type="file" id="arquivoEmpresas" name="arquivo" accept=".csv,.xlsx" required>
             </div>
             <div class="col-12 mt-4">
-                <button type="submit" class="btn btn-orange">
+                <button type="submit" id="submit-button" class="btn btn-orange">
                     <i class="bi bi-upload me-2"></i> Enviar Dados
                 </button>
             </div>
@@ -98,4 +104,69 @@
             </table>
         </div>
     </div>
+    
+    <style>
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999; 
+            
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.4s ease;
+        }
+
+        .loading-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .spinner-border {
+            width: 3.5rem; 
+            height: 3.5rem;
+            color: #ff9900 !important; /* Exemplo de cor laranja */
+        }
+        
+        /* Garante que o spinner não atrapalhe o layout do Bootstrap se estiver usando classes globais */
+        .text-orange {
+            color: #ff9900 !important; 
+        }
+    </style>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('upload-form');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const submitButton = document.getElementById('submit-button');
+            const fileInput = document.getElementById('arquivoEmpresas');
+
+            if (form && loadingOverlay && submitButton) {
+                // Adiciona um listener para o evento de envio do formulário
+                form.addEventListener('submit', function(event) {
+                    
+                    // Validação de que um arquivo foi selecionado (se o HTML falhar)
+                    if (fileInput.files.length === 0) {
+                        return;
+                    }
+
+                    // 1. Ativa o overlay de carregamento
+                    loadingOverlay.classList.add('active');
+                    
+                    // 2. Desabilita o botão e muda o texto
+                    submitButton.disabled = true; 
+                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processando...';
+                    
+                    // A submissão continua, e o Python faz o trabalho
+                });
+            }
+        });
+    </script>
 {% endblock %}

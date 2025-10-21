@@ -199,8 +199,7 @@ def upload_dados():
     print(f"Ano selecionado: {ano}")
     print(f"Nome do arquivo recebido: {arquivo.filename if arquivo else 'Nenhum arquivo'}")
     from controllers.data_processing.file_processing import process_uploaded_file
-    process_uploaded_file(arquivo)
-
+    dados = process_uploaded_file(arquivo)
     # ...continuação do processamento
 
     return redirect(url_for('admin.dados_empresas'))

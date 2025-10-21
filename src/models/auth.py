@@ -29,6 +29,7 @@ class DatabaseConnection:
             self.connection.database = self.database_name
             self.create_user_table_if_not_exists()
             self.create_empresa_tables_if_not_exists()
+            self.insert_default_grupos_subgrupos()
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
@@ -68,7 +69,9 @@ class DatabaseConnection:
 
     def create_empresa_tables_if_not_exists(self):
         try:
+            # =========================
             # Tabela de Grupos
+            # =========================
             grupo_schema = (
                 "CREATE TABLE IF NOT EXISTS TbGrupo ("
                 "  id INT AUTO_INCREMENT PRIMARY KEY,"
@@ -77,7 +80,9 @@ class DatabaseConnection:
             )
             self.cursor.execute(grupo_schema)
 
+            # =========================
             # Tabela de SubGrupos
+            # =========================
             subgrupo_schema = (
                 "CREATE TABLE IF NOT EXISTS TbSubGrupo ("
                 "  id INT AUTO_INCREMENT PRIMARY KEY,"
@@ -88,7 +93,9 @@ class DatabaseConnection:
             )
             self.cursor.execute(subgrupo_schema)
 
-            # Tabela de Itens
+            # =========================
+            # Tabela de Itens (cenários normais)
+            # =========================
             itens_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItens ("
                 "  id INT AUTO_INCREMENT PRIMARY KEY,"
@@ -105,11 +112,143 @@ class DatabaseConnection:
             )
             self.cursor.execute(itens_schema)
 
+            # =========================
+            # Tabela de Itens Investimentos
+            # =========================
+            investimentos_schema = (
+                "CREATE TABLE IF NOT EXISTS TbItensInvestimentos ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  descricao VARCHAR(255) NOT NULL,"
+                "  valor_parc DECIMAL(15,2),"
+                "  valor_juros DECIMAL(15,2),"
+                "  valor_total_parc DECIMAL(15,2),"
+                "  mes INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  subgrupo_id INT NOT NULL,"
+                "  usuario_id INT NOT NULL,"
+                "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
+                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            self.cursor.execute(investimentos_schema)
+
+            # =========================
+            # Tabela de Itens Dívidas
+            # =========================
+            dividas_schema = (
+                "CREATE TABLE IF NOT EXISTS TbItensDividas ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  descricao VARCHAR(255) NOT NULL,"
+                "  valor_parc DECIMAL(15,2),"
+                "  valor_juros DECIMAL(15,2),"
+                "  valor_total_parc DECIMAL(15,2),"
+                "  mes INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  subgrupo_id INT NOT NULL,"
+                "  usuario_id INT NOT NULL,"
+                "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
+                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            self.cursor.execute(dividas_schema)
+
+            # =========================
+            # Tabela de Investimento Geral
+            # =========================
+            investimento_geral_schema = (
+                "CREATE TABLE IF NOT EXISTS TbItensInvestimentoGeral ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  descricao VARCHAR(255) NOT NULL,"
+                "  valor DECIMAL(15,2),"
+                "  mes INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  subgrupo_id INT NOT NULL,"
+                "  usuario_id INT NOT NULL,"
+                "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
+                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            self.cursor.execute(investimento_geral_schema)
+
+            # =========================
+            # Tabela de Gastos Operacionais
+            # =========================
+            gastos_operacionais_schema = (
+                "CREATE TABLE IF NOT EXISTS TbItensGastosOperacionais ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  descricao VARCHAR(255) NOT NULL,"
+                "  valor_custo_km DECIMAL(15,2),"
+                "  valor_mensal DECIMAL(15,2),"
+                "  mes INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  subgrupo_id INT NOT NULL,"
+                "  usuario_id INT NOT NULL,"
+                "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
+                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                ")"
+            )
+            self.cursor.execute(gastos_operacionais_schema)
+
+            # Commit final
             self.connection.commit()
-            print("Tabelas 'TbGrupo', 'TbSubGrupo' e 'TbItens' verificadas/criadas com sucesso.")
+            print("Todas as tabelas verificadas/criadas com sucesso.")
 
         except mysql.connector.Error as err:
             print(f"Erro ao criar as tabelas de empresas: {err}")
+
+    def insert_default_grupos_subgrupos(self):
+        try:
+            # Grupos padrão
+            grupos = ["Viabilidade Real", "Viabilidade PE", "Viabilidade Ideal"]
+
+            # Subgrupos padrão
+            subgrupos = [
+                "Geral",
+                "Receita",
+                "Controle",
+                "Obrigacoes",
+                "GastosAdm",
+                "MateriaPrima",
+                "GastosOperacionais",
+                "Pessoal",
+                "Dividas",
+                "Investimentos",
+                "InvestimentosGeral",
+                "GastosOperacionais"  # aparece duas vezes na sua lista
+            ]
+
+            # Inserir grupos se não existirem
+            grupo_ids = {}
+            for g in grupos:
+                self.cursor.execute("SELECT id FROM TbGrupo WHERE nome = %s", (g,))
+                row = self.cursor.fetchone()
+                if row:
+                    grupo_id = row[0]
+                else:
+                    self.cursor.execute("INSERT INTO TbGrupo (nome) VALUES (%s)", (g,))
+                    self.connection.commit()
+                    grupo_id = self.cursor.lastrowid
+                grupo_ids[g] = grupo_id
+
+            # Inserir subgrupos para cada grupo
+            for g, grupo_id in grupo_ids.items():
+                for s in subgrupos:
+                    # Verifica se já existe
+                    self.cursor.execute(
+                        "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
+                        (s, grupo_id)
+                    )
+                    row = self.cursor.fetchone()
+                    if not row:
+                        self.cursor.execute(
+                            "INSERT INTO TbSubGrupo (nome, grupo_id) VALUES (%s, %s)",
+                            (s, grupo_id)
+                        )
+            self.connection.commit()
+            print("Grupos e subgrupos padrão inseridos/verificados com sucesso.")
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao inserir grupos/subgrupos padrão: {err}")
 
     def get_connection(self):
         return self.connection
