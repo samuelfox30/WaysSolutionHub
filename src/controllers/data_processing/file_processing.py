@@ -51,7 +51,7 @@ def process_uploaded_file(file):
         primeiro_inicio = min(v[0] for v in blocos.values())
         blocos = {"GERAL": (3, primeiro_inicio - 2), **blocos}
 
-    # Palavras-chave a ignorar (em maiúsculas para padronizar)
+    # Palavras-chave a ignorar
     ignorar_descricoes = {
         "RESULTADO REAL",
         "RESULTADO IDEAL",
@@ -59,7 +59,7 @@ def process_uploaded_file(file):
         "0"
     }
 
-    # Extrair dados para cada cenário
+    # Extrair dados para cada cenário (os blocos normais)
     lista_cenarios = []
     for cenario in cenarios:
         nome_cenario = cenario["nome"]
@@ -77,8 +77,6 @@ def process_uploaded_file(file):
                     continue
 
                 desc_str = str(desc).strip().upper()
-
-                # Ignorar linhas padrão
                 if desc_str in ignorar_descricoes:
                     continue
 
@@ -94,7 +92,91 @@ def process_uploaded_file(file):
 
         lista_cenarios.append(dados)
 
-    # Printar para conferência
+    # ============================
+    # Captura dos SUBGRUPOS ESPECIAIS
+    # ============================
+
+    especiais = {}
+
+    # Procurar onde começa cada um
+    especiais_nomes = [
+        "DIVIDAS",
+        "INVESTIMENTOS",
+        "INVESTIMENTOS GERAL NO NEGOCIO",
+        "GASTOS OPERACIONAIS"
+    ]
+
+    for row in range(1, ws.max_row + 1):
+        valor = ws[f"A{row}"].value
+        if valor in especiais_nomes:
+            inicio = row + 2  # pula uma linha após o título
+            fim = inicio
+            while fim <= ws.max_row and not is_blank_row(fim):
+                fim += 1
+            especiais[valor] = (inicio, fim - 1)
+
+    # Extrair dados dos especiais
+    dados_especiais = {}
+    for nome, (ini, fim) in especiais.items():
+        lista_itens = []
+        for r in range(ini, fim + 1):
+            desc = ws[f"A{r}"].value
+            if desc is None:
+                continue
+
+            desc_str = str(desc).strip()
+            if desc_str == "" or desc_str == "0":
+                continue
+
+            if nome in ("DIVIDAS", "INVESTIMENTOS"):
+                parc = ws[f"B{r}"].value
+                juros = ws[f"E{r}"].value
+                total = ws[f"F{r}"].value
+
+                # Ignorar se todos os valores forem 0 ou None
+                if all(v in (None, 0, 0.0) for v in (parc, juros, total)):
+                    continue
+
+                item = {
+                    "subgrupo": nome,
+                    "descricao": desc_str,
+                    "valor_parc": parc,
+                    "valor_juros": juros,
+                    "valor_total_parcela": total
+                }
+
+            elif nome == "INVESTIMENTOS GERAL NO NEGOCIO":
+                val = ws[f"B{r}"].value
+                if val in (None, 0, 0.0):
+                    continue
+                item = {
+                    "subgrupo": nome,
+                    "descricao": desc_str,
+                    "valor": val
+                }
+
+            elif nome == "GASTOS OPERACIONAIS":
+                custo_km = ws[f"B{r}"].value
+                custo_mensal = ws[f"C{r}"].value
+
+                # Ignorar se ambos forem 0 ou None
+                if all(v in (None, 0, 0.0) for v in (custo_km, custo_mensal)):
+                    continue
+
+                item = {
+                    "subgrupo": nome,
+                    "descricao": desc_str,
+                    "custo_km": custo_km,
+                    "custo_mensal": custo_mensal
+                }
+
+            lista_itens.append(item)
+        dados_especiais[nome] = lista_itens
+
+    # ============================
+    # PRINTS PARA CONFERÊNCIA
+    # ============================
+
     for dic in lista_cenarios:
         print("\n============================")
         print(f"CENÁRIO: {list(dic.values())[0][0]['cenario'] if list(dic.values())[0] else 'SEM NOME'}")
@@ -103,4 +185,11 @@ def process_uploaded_file(file):
             for i in itens:
                 print(i)
 
-    return lista_cenarios
+    print("\n============================")
+    print("SUBGRUPOS ESPECIAIS (únicos, replicar depois para os 3 cenários):")
+    for sub, itens in dados_especiais.items():
+        print(f"\n--- {sub} ---")
+        for i in itens:
+            print(i)
+
+    return lista_cenarios, dados_especiais
