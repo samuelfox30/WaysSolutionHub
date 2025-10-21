@@ -82,7 +82,7 @@ class UserManager:
             if not self.cursor:
                 self.cursor = self.db_connection.cursor(dictionary=True)
 
-            query = "SELECT id, nome, email, empresa, role FROM users"
+            query = "SELECT id, nome, email, empresa, seguimento, role FROM users"
             self.cursor.execute(query)
             users = self.cursor.fetchall()
             return users

@@ -23,7 +23,7 @@ class DatabaseConnection:
                 user=self.user,
                 password=self.password
             )
-            self.cursor = self.connection.cursor()
+            self.cursor = self.connection.cursor(buffered=True)
             
             self.create_database_if_not_exists()
             self.connection.database = self.database_name
@@ -53,7 +53,7 @@ class DatabaseConnection:
             "  nome VARCHAR(255) NOT NULL,"
             "  email VARCHAR(255) NOT NULL UNIQUE,"
             "  telefone VARCHAR(20) NOT NULL,"
-            "  empresa VARCHAR(255),"
+            "  empresa VARCHAR(255) NOT NULL UNIQUE,"
             "  seguimento VARCHAR(255),"
             "  password VARCHAR(255) NOT NULL,"
             "  role ENUM('admin', 'user') NOT NULL,"

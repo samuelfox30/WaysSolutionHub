@@ -177,7 +177,7 @@ def process_uploaded_file(file):
     # PRINTS PARA CONFERÊNCIA
     # ============================
 
-    """ for dic in lista_cenarios:
+    for dic in lista_cenarios:
         print("\n============================")
         print(f"CENÁRIO: {list(dic.values())[0][0]['cenario'] if list(dic.values())[0] else 'SEM NOME'}")
         for sub, itens in dic.items():
@@ -190,6 +190,6 @@ def process_uploaded_file(file):
     for sub, itens in dados_especiais.items():
         print(f"\n--- {sub} ---")
         for i in itens:
-            print(i) """
+            print(i)
 
     return lista_cenarios, dados_especiais

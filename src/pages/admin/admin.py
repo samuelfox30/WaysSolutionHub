@@ -175,6 +175,7 @@ def dados_empresas():
         from models.user_manager import UserManager
         user_manager = UserManager()
         users = user_manager.get_all_users()
+        print(f"\n\n\n\n\n\n\n\n\n\n {users} \n\n\n\n\n\n\n\n\n\n\n")
         user_manager.close()
         return render_template('admin/empresas.html', users=users)
 
@@ -200,6 +201,14 @@ def upload_dados():
     print(f"Nome do arquivo recebido: {arquivo.filename if arquivo else 'Nenhum arquivo'}")
     from controllers.data_processing.file_processing import process_uploaded_file
     dados = process_uploaded_file(arquivo)
+    d1 = dados[0]
+    d2 = dados[1]
+    from models.company_manager import CompanyManager
+    company_manager_variable = CompanyManager()
+    company_manager_variable.salvar_itens_empresa(empresa, mes, ano, d1, d2)
+    company_manager_variable.close()
+
+
     # ...continuação do processamento
 
     return redirect(url_for('admin.dados_empresas'))
