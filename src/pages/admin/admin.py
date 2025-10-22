@@ -282,3 +282,31 @@ def consultar_dados_page():
         mes_selecionado=mes_selecionado,
         ano_selecionado=ano_selecionado
     )
+
+
+@admin_bp.route('/admin/deletar_dados', methods=['POST'])
+def deletar_dados_empresa():
+    if 'user_email' in session and session.get('user_role') == 'admin':
+        empresa = request.form.get('empresa')
+        mes = request.form.get('mes', type=int)
+        ano = request.form.get('ano', type=int)
+
+        if not empresa or not mes or not ano:
+            flash("Parâmetros inválidos para exclusão.", "danger")
+            return redirect(url_for('admin.dados_empresas'))
+
+        from models.company_manager import CompanyManager
+        company_manager = CompanyManager()
+        ok = company_manager.excluir_dados_empresa(empresa, mes, ano)
+        company_manager.close()
+
+        if ok:
+            flash(f"Dados da empresa '{empresa}' para {mes}/{ano} foram excluídos com sucesso.", "success")
+        else:
+            flash(f"Erro ao excluir dados da empresa '{empresa}' para {mes}/{ano}.", "danger")
+
+        return redirect(url_for('admin.dados_empresas'))
+
+    else:
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))

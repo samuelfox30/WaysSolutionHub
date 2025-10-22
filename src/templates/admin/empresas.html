@@ -1,6 +1,7 @@
 {% extends "admin/base.html" %}
 
 {% block header_title %}Upload de Dados Mensais e Consulta{% endblock %}
+
 {% block header_subtitle %}Envie e visualize os dados mensais vinculados às empresas cadastradas{% endblock %}
 
 {% block content %}
@@ -10,6 +11,7 @@
         </div>
         <p class="text-light mt-3 fw-semibold">Processando dados, por favor, aguarde...</p>
     </div>
+    
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="alert-container mb-4">
@@ -85,23 +87,22 @@
                 <tbody>
                     {% for user in users %}
                     <tr>
-                        <!-- Nome da empresa -->
                         <td class="fw-semibold text-start">{{ user.empresa }}</td>
-
-                        <!-- 12 bolinhas (meses) -->
+                        
                         {% for mes in range(1, 13) %}
                             {% set tem_dados = uploads.get(user.empresa, {}).get(mes, False) %}
                             <td>
-                                <span class="d-inline-block rounded-circle"
-                                    style="width: 15px; height: 15px; background-color: {{ 'green' if tem_dados else 'gold' }};">
-                                </span>
+                                <button type="button" 
+                                        class="btn-bolinha {{ 'com-dados' if tem_dados else 'sem-dados' }}" 
+                                        onclick="abrirPopup('{{ user.empresa }}', {{ mes }}, {{ tem_dados|tojson }})"
+                                        {{ 'disabled' if not tem_dados else '' }}>
+                                </button>
                             </td>
                         {% endfor %}
 
-                        <!-- Seletor de ano -->
                         <!-- <td>
                             <form method="GET" action="{{ url_for('admin.dados_empresas') }}">
-                                <input type="number" name="ano" value="{{ request.args.get('ano', current_year) }}" 
+                                <input type="number" name="ano" value="{{ request.args.get('ano', current_year) }}"
                                     class="form-control form-control-sm" style="width: 90px;">
                             </form>
                         </td> -->
@@ -115,7 +116,49 @@
             </table>
         </div>
     </div>
-    
+
+    <!-- Modal/Popup -->
+    <div class="modal fade" id="popupDados" tabindex="-1" aria-labelledby="popupDadosLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title fw-semibold" id="popupDadosLabel">Gerenciar Dados</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        <strong>Empresa:</strong> <span id="popup-empresa"></span><br>
+                        <strong>Mês:</strong> <span id="popup-mes"></span><br>
+                        <strong>Ano:</strong> 2025
+                    </p>
+                    
+                    <div class="d-grid gap-2">
+                        <!-- Form para Ver Dados -->
+                        <form method="POST" action="{{ url_for('admin.consultar_dados_page') }}" class="mb-2">
+                            <input type="hidden" name="empresa" id="form-ver-empresa">
+                            <input type="hidden" name="mes" id="form-ver-mes">
+                            <input type="hidden" name="ano" value="2025">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="bi bi-eye me-2"></i> Ver Dados
+                            </button>
+                        </form>
+
+                        <!-- Form para Excluir Dados -->
+                        <form method="POST" action="{{ url_for('admin.deletar_dados_empresa') }}" 
+                              onsubmit="return confirm('Tem certeza que deseja excluir estes dados? Esta ação não pode ser desfeita.');">
+                            <input type="hidden" name="empresa" id="form-excluir-empresa">
+                            <input type="hidden" name="mes" id="form-excluir-mes">
+                            <input type="hidden" name="ano" value="2025">
+                            <button type="submit" class="btn btn-danger w-100">
+                                <i class="bi bi-trash me-2"></i> Excluir Dados
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+   
     <style>
         .loading-overlay {
             position: fixed;
@@ -128,7 +171,7 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            z-index: 9999; 
+            z-index: 9999;
             visibility: hidden;
             opacity: 0;
             transition: opacity 0.4s ease;
@@ -138,41 +181,104 @@
             visibility: visible;
             opacity: 1;
         }
-        
+       
         .spinner-border {
-            width: 3.5rem; 
+            width: 3.5rem;
             height: 3.5rem;
             color: #ff9900 !important;
         }
-        
+       
         .text-orange {
-            color: #ff9900 !important; 
+            color: #ff9900 !important;
+        }
+
+        /* Estilos para as bolinhas como botões */
+        .btn-bolinha {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            border: none;
+            padding: 0;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-bolinha.com-dados {
+            background-color: green;
+        }
+
+        .btn-bolinha.com-dados:hover {
+            background-color: #006400;
+            transform: scale(1.3);
+            box-shadow: 0 0 8px rgba(0, 128, 0, 0.6);
+        }
+
+        .btn-bolinha.sem-dados {
+            background-color: gold;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .btn-bolinha:disabled {
+            cursor: not-allowed;
+        }
+
+        /* Ajustes no modal */
+        .modal-content {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal-header {
+            padding: 1.5rem;
+        }
+
+        .modal-body {
+            padding: 1.5rem;
         }
     </style>
-    
+   
     <script>
-        // Função para setar o valor do grupo antes de submeter o formulário de consulta
-        function setGroup(groupName) {
-            document.getElementById('dataGroupInput').value = groupName;
-            // O formulário de consulta será submetido logo em seguida pelo 'type="submit"' do botão.
+        const mesesNomes = [
+            '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+        ];
+
+        function abrirPopup(empresa, mes, temDados) {
+            if (!temDados) return;
+
+            const mesFormatado = mes.toString().padStart(2, '0');
+            const mesNome = mesesNomes[mes];
+
+            document.getElementById('popup-empresa').textContent = empresa;
+            document.getElementById('popup-mes').textContent = mesNome;
+
+            document.getElementById('form-ver-empresa').value = empresa;
+            document.getElementById('form-ver-mes').value = mesFormatado;
+            
+            document.getElementById('form-excluir-empresa').value = empresa;
+            document.getElementById('form-excluir-mes').value = mesFormatado;
+
+            const modal = new bootstrap.Modal(document.getElementById('popupDados'));
+            modal.show();
         }
-        
+
         document.addEventListener('DOMContentLoaded', function() {
             const uploadForm = document.getElementById('upload-form');
             const loadingOverlay = document.getElementById('loading-overlay');
             const submitButton = document.getElementById('submit-button');
             const fileInput = document.getElementById('arquivoEmpresas');
-            
-            // Lógica do Spinner no Upload
+           
             if (uploadForm && loadingOverlay && submitButton) {
                 uploadForm.addEventListener('submit', function(event) {
-                    
                     if (fileInput.files.length === 0) {
                         return;
                     }
 
                     loadingOverlay.classList.add('active');
-                    submitButton.disabled = true; 
+                    submitButton.disabled = true;
                     submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processando...';
                 });
             }
