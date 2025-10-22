@@ -261,7 +261,27 @@ class CompanyManager(DatabaseConnection):
             return None
 
 
+    def get_meses_com_dados(self, usuario_id, ano):
+        """
+        Retorna uma lista com os meses (1..12) em que já existem dados
+        para o usuário e ano especificados.
+        """
+        try:
+            sql = """
+                SELECT DISTINCT mes
+                FROM TbItens
+                WHERE usuario_id = %s AND ano = %s
+            """
+            self.cursor.execute(sql, (usuario_id, ano))
+            rows = self.cursor.fetchall()
 
+            # rows vem como lista de tuplas [(1,), (3,), (7,)...]
+            meses = [r[0] for r in rows]
+            return meses
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] get_meses_com_dados: {err}")
+            return []
 
 
 

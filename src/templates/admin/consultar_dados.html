@@ -1,139 +1,186 @@
 {% extends "admin/base.html" %}
+
 {% block content %}
-<h2>Consulta de Dados</h2>
 
-<form method="POST">
-    <label for="empresa">Empresa:</label>
-    <select name="empresa" required>
-        <option value="">-- Selecione --</option>
-        {% for user in users %}
-            <option value="{{ user['empresa'] }}" {% if empresa_selecionada == user['empresa'] %}selected{% endif %}>
-                {{ user['empresa'] }}
-            </option>
-        {% endfor %}
-    </select>
+    <style>
+        :root {
+            --orange: #fd7e14;
+            --orange-light: #ffc107;
+            --orange-dark: #cc6510;
+        }
 
-    <label for="mes">Mês:</label>
-    <input type="number" name="mes" min="1" max="12" value="{{ mes_selecionado or '' }}" required>
+        .btn-primary, .btn-primary:focus, .btn-primary:active {
+            background-color: var(--orange) !important;
+            border-color: var(--orange-dark) !important;
+        }
+        .btn-primary:hover {
+            background-color: var(--orange-dark) !important;
+            border-color: var(--orange-dark) !important;
+        }
+        .text-primary, .text-orange {
+            color: var(--orange) !important;
+        }
+        
+        /* Estilização para o botão de filtro ativo */
+        .btn-filter.active {
+            background-color: var(--orange-dark) !important;
+            border-color: var(--orange-dark) !important;
+            color: white !important;
+            box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.5) !important; /* Estilo de foco/ativo */
+        }
 
-    <label for="ano">Ano:</label>
-    <input type="number" name="ano" value="{{ ano_selecionado or '' }}" required>
+        /* Estilos de cabeçalho de tabela para consistência */
+        .table-custom-header th { 
+            background-color: var(--orange-light) !important;
+            color: var(--orange-dark) !important;
+            border-color: var(--orange-dark) !important;
+        }
+        .table-sm th, .table-sm td {
+            padding: 0.5rem;
+        }
 
-    <button type="submit">Consultar</button>
-</form>
+        /* Cores das linhas conforme o grupo */
+        .viabilidade-real { background-color: #e6f7e6; } /* Verde Claro */
+        .viabilidade-pe { background-color: #fff9e6; } /* Amarelo Claro */
+        .viabilidade-ideal { background-color: #e6f2ff; } /* Azul Claro */
+    </style>
 
-<hr>
+    <div class="bg-white rounded-3 shadow p-4 mb-5">
+        <h2 class="h5 fw-bold text-dark mb-4 border-bottom pb-2">
+            <i class="bi bi-search me-2 text-primary"></i> Consulta de Dados
+        </h2>
 
-{% if data_results %}
-    <!-- Botões de filtro -->
-    <div>
-        <button type="button" onclick="filtrarGrupo('Viabilidade Real')">Viabilidade Real</button>
-        <button type="button" onclick="filtrarGrupo('Viabilidade PE')">Viabilidade PE</button>
-        <button type="button" onclick="filtrarGrupo('Viabilidade Ideal')">Viabilidade Ideal</button>
-        <button type="button" onclick="filtrarGrupo('todos')">Mostrar Todos</button>
+        <form method="POST" class="row g-3 align-items-end">
+            <div class="col-md-5 col-lg-4">
+                <label for="empresa" class="form-label fw-semibold">Empresa:</label>
+                <select name="empresa" id="empresa" class="form-select" required>
+                    <option value="">-- Selecione --</option>
+                    {% for user in users %}
+                        <option value="{{ user['empresa'] }}" {% if empresa_selecionada == user['empresa'] %}selected{% endif %}>
+                            {{ user['empresa'] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="col-md-3 col-lg-2">
+                <label for="mes" class="form-label fw-semibold">Mês:</label>
+                <input type="number" name="mes" id="mes" min="1" max="12" class="form-control" value="{{ mes_selecionado or '' }}" required>
+            </div>
+
+            <div class="col-md-3 col-lg-2">
+                <label for="ano" class="form-label fw-semibold">Ano:</label>
+                <input type="number" name="ano" id="ano" class="form-control" value="{{ ano_selecionado or '' }}" required>
+            </div>
+
+            <div class="col-md-1 col-lg-4 d-grid">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-search me-2"></i> Consultar
+                </button>
+            </div>
+        </form>
     </div>
 
-    <!-- Itens Normais -->
-    <h3>Itens Normais</h3>
-    <table border="1">
-        <tr>
-            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>%</th><th>Valor</th>
-        </tr>
-        {% for row in data_results['TbItens'] %}
-        <tr class="grupo-row" data-grupo="{{ row[0] }}">
-            <td>{{ row[0] }}</td> <!-- grupo -->
-            <td>{{ row[1] }}</td> <!-- subgrupo -->
-            <td>{{ row[2] }}</td> <!-- descricao -->
-            <td>{{ row[3] }}</td> <!-- porcentagem -->
-            <td>{{ row[4] }}</td> <!-- valor -->
-        </tr>
-        {% endfor %}
-    </table>
+    <hr class="my-5">
 
-    <!-- Investimentos -->
-    <h3>Investimentos</h3>
-    <table border="1">
-        <tr>
-            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Parcela</th><th>Juros</th><th>Total Parcela</th>
-        </tr>
-        {% for row in data_results['TbItensInvestimentos'] %}
-        <tr class="grupo-row" data-grupo="{{ row[0] }}">
-            <td>{{ row[0] }}</td> <!-- grupo -->
-            <td>{{ row[1] }}</td> <!-- subgrupo -->
-            <td>{{ row[2] }}</td> <!-- descricao -->
-            <td>{{ row[3] }}</td> <!-- valor_parc -->
-            <td>{{ row[4] }}</td> <!-- valor_juros -->
-            <td>{{ row[5] }}</td> <!-- valor_total_parc -->
-        </tr>
-        {% endfor %}
-    </table>
+    {% if data_results %}
+        <div class="result-area">
+            <h2 class="h4 mb-4 text-dark border-bottom pb-2">
+                <i class="bi bi-bar-chart-fill me-2 text-primary"></i> Resultados de Análise
+                <small class="text-muted ms-3 fs-6">({{ empresa_selecionada }} - {{ mes_selecionado }}/{{ ano_selecionado }})</small>
+            </h2>
 
-    <!-- Dívidas -->
-    <h3>Dívidas</h3>
-    <table border="1">
-        <tr>
-            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Parcela</th><th>Juros</th><th>Total Parcela</th>
-        </tr>
-        {% for row in data_results['TbItensDividas'] %}
-        <tr class="grupo-row" data-grupo="{{ row[0] }}">
-            <td>{{ row[0] }}</td> <!-- grupo -->
-            <td>{{ row[1] }}</td> <!-- subgrupo -->
-            <td>{{ row[2] }}</td> <!-- descricao -->
-            <td>{{ row[3] }}</td> <!-- valor_parc -->
-            <td>{{ row[4] }}</td> <!-- valor_juros -->
-            <td>{{ row[5] }}</td> <!-- valor_total_parc -->
-        </tr>
-        {% endfor %}
-    </table>
+            <div class="mb-4 d-flex gap-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter active" onclick="filtrarGrupo('todos', this)">Mostrar Todos</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter" onclick="filtrarGrupo('Viabilidade Real', this)">Viabilidade Real</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter" onclick="filtrarGrupo('Viabilidade PE', this)">Viabilidade PE</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter" onclick="filtrarGrupo('Viabilidade Ideal', this)">Viabilidade Ideal</button>
+            </div>
+            
+            {% set tables_config = [
+                ('Itens Normais', 'TbItens', ['Grupo', 'Subgrupo', 'Descrição', '%', 'Valor'], 'bi-list-ul'),
+                ('Investimentos', 'TbItensInvestimentos', ['Grupo', 'Subgrupo', 'Descrição', 'Parcela', 'Juros', 'Total Parcela'], 'bi-currency-exchange'),
+                ('Dívidas', 'TbItensDividas', ['Grupo', 'Subgrupo', 'Descrição', 'Parcela', 'Juros', 'Total Parcela'], 'bi-cash-coin'),
+                ('Investimento Geral', 'TbItensInvestimentoGeral', ['Grupo', 'Subgrupo', 'Descrição', 'Valor'], 'bi-graph-up-arrow'),
+                ('Gastos Operacionais', 'TbItensGastosOperacionais', ['Grupo', 'Subgrupo', 'Descrição', 'Custo KM', 'Custo Mensal'], 'bi-fuel-pump')
+            ] %}
 
-    <!-- Investimento Geral -->
-    <h3>Investimento Geral</h3>
-    <table border="1">
-        <tr>
-            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Valor</th>
-        </tr>
-        {% for row in data_results['TbItensInvestimentoGeral'] %}
-        <tr class="grupo-row" data-grupo="{{ row[0] }}">
-            <td>{{ row[0] }}</td> <!-- grupo -->
-            <td>{{ row[1] }}</td> <!-- subgrupo -->
-            <td>{{ row[2] }}</td> <!-- descricao -->
-            <td>{{ row[3] }}</td> <!-- valor -->
-        </tr>
-        {% endfor %}
-    </table>
+            {% for title, key, headers, icon in tables_config %}
+                {% if data_results[key] %}
+                    <div class="bg-white rounded-3 shadow p-4 mb-4">
+                        <h3 class="h6 fw-bold mb-3 border-bottom pb-1">
+                            <i class="{{ icon }} me-2 text-orange"></i> {{ title }}
+                        </h3>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover table-sm">
+                                <thead>
+                                    <tr class="table-custom-header">
+                                        {% for header in headers %}
+                                            <th scope="col">{{ header }}</th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for row in data_results[key] %}
+                                        {# Aplica a classe CSS baseada no nome do grupo (row[0]) #}
+                                        {% set css_class = row[0]|lower|replace(' ', '-') %}
+                                        <tr class="grupo-row {{ css_class }}" data-grupo="{{ row[0] }}">
+                                            {% for item in row %}
+                                                <td>{{ item }}</td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+            
+        </div>
+    {% else %}
+        <p class="alert alert-info mt-5">Selecione uma empresa, mês e ano para iniciar a consulta.</p>
+    {% endif %}
 
-    <!-- Gastos Operacionais -->
-    <h3>Gastos Operacionais</h3>
-    <table border="1">
-        <tr>
-            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Custo KM</th><th>Custo Mensal</th>
-        </tr>
-        {% for row in data_results['TbItensGastosOperacionais'] %}
-        <tr class="grupo-row" data-grupo="{{ row[0] }}">
-            <td>{{ row[0] }}</td> <!-- grupo -->
-            <td>{{ row[1] }}</td> <!-- subgrupo -->
-            <td>{{ row[2] }}</td> <!-- descricao -->
-            <td>{{ row[3] }}</td> <!-- custo_km -->
-            <td>{{ row[4] }}</td> <!-- custo_mensal -->
-        </tr>
-        {% endfor %}
-    </table>
-{% endif %}
+    <script>
+    function filtrarGrupo(grupo, clickedButton) {
+        const rows = document.querySelectorAll(".grupo-row");
+        const filterButtons = document.querySelectorAll(".btn-filter");
+        
+        // 1. Atualiza o estado visual dos botões
+        filterButtons.forEach(btn => btn.classList.remove('active'));
+        if (clickedButton) {
+            clickedButton.classList.add('active');
+        }
 
-<script>
-function filtrarGrupo(grupo) {
-    const rows = document.querySelectorAll(".grupo-row");
-    rows.forEach(row => {
-        if (grupo === "todos") {
-            row.style.display = "";
-        } else {
-            if (row.dataset.grupo === grupo) {
-                row.style.display = "";
+        // 2. Filtra as linhas da tabela
+        rows.forEach(row => {
+            const rowGroup = row.dataset.grupo;
+            
+            if (grupo === "todos") {
+                row.style.display = ""; // Mostra
             } else {
-                row.style.display = "none";
+                if (rowGroup === grupo) {
+                    row.style.display = ""; // Mostra
+                } else {
+                    row.style.display = "none"; // Esconde
+                }
             }
+        });
+    }
+
+    // Inicializa o filtro para "Mostrar Todos" ao carregar a página se houver resultados
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.querySelector('.grupo-row')) {
+            // Garante que o botão 'Mostrar Todos' esteja ativo visualmente no início
+            const defaultButton = document.querySelector(".btn-filter[onclick*='todos']");
+            if (defaultButton) {
+                defaultButton.classList.add('active');
+            }
+            // Chama o filtro para garantir que tudo esteja visível por padrão
+            filtrarGrupo('todos'); 
         }
     });
-}
-</script>
+    </script>
 {% endblock %}

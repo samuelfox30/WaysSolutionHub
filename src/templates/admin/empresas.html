@@ -72,32 +72,43 @@
     <div class="bg-white rounded-3 shadow p-4">
         <h2 class="h5 fw-semibold text-dark mb-4">Empresas Cadastradas</h2>
         <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle text-center">
                 <thead>
                     <tr class="table-light">
                         <th scope="col">Empresa</th>
-                        <th scope="col">Segmento</th>
-                        <th scope="col">Responsável</th>
-                        <th scope="col">Email</th>
-                        <th scope="col">Perfil</th>
+                        {% for mes in range(1, 13) %}
+                            <th scope="col">{{ mes }}</th>
+                        {% endfor %}
+                        <th scope="col">Ano</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in users %}
                     <tr>
-                        <td>{{ user.empresa }}</td>
-                        <td>{{ user.seguimento }}</td>
-                        <td>{{ user.nome }}</td>
-                        <td>{{ user.email }}</td>
+                        <!-- Nome da empresa -->
+                        <td class="fw-semibold text-start">{{ user.empresa }}</td>
+
+                        <!-- 12 bolinhas (meses) -->
+                        {% for mes in range(1, 13) %}
+                            {% set tem_dados = uploads.get(user.empresa, {}).get(mes, False) %}
+                            <td>
+                                <span class="d-inline-block rounded-circle"
+                                    style="width: 15px; height: 15px; background-color: {{ 'green' if tem_dados else 'gold' }};">
+                                </span>
+                            </td>
+                        {% endfor %}
+
+                        <!-- Seletor de ano -->
                         <td>
-                            <span class="badge {% if user.role == 'admin' %}text-bg-warning{% else %}text-bg-success{% endif %}">
-                                {{ user.role }}
-                            </span>
+                            <form method="GET" action="{{ url_for('admin.dados_empresas') }}">
+                                <input type="number" name="ano" value="{{ request.args.get('ano', current_year) }}" 
+                                    class="form-control form-control-sm" style="width: 90px;">
+                            </form>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="text-center">Nenhuma empresa cadastrada.</td>
+                        <td colspan="14" class="text-center">Nenhuma empresa cadastrada.</td>
                     </tr>
                     {% endfor %}
                 </tbody>

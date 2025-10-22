@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+from datetime import datetime
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -171,22 +172,37 @@ def editar_usuario():
     return redirect(url_for('admin.admin_dashboard'))
 
 
-# ----------------------------------------------------------- CONTROLE DE EMPRESAS -----------------------------------------------------------
+# ----------------------------------------------------------------------------- CONTROLE DE EMPRESAS --------------------------------------------------------------------------------------------
 
 @admin_bp.route('/admin/empresas')
 def dados_empresas():
-
     if 'user_email' in session and session.get('user_role') == 'admin':
         from models.user_manager import UserManager
+        from models.company_manager import CompanyManager
+
+        ano = request.args.get('ano', datetime.now().year, type=int)
+
         user_manager = UserManager()
         users = user_manager.get_all_users()
-        print(f"\n\n\n\n\n\n\n\n\n\n {users} \n\n\n\n\n\n\n\n\n\n\n")
         user_manager.close()
-        return render_template('admin/empresas.html', users=users)
 
+        company_manager = CompanyManager()
+        uploads = {}
+        for user in users:
+            meses_com_dados = company_manager.get_meses_com_dados(user["id"], ano)
+            uploads[user["empresa"]] = {m: (m in meses_com_dados) for m in range(1, 13)}
+        company_manager.close()
+
+        return render_template(
+            'admin/empresas.html',
+            users=users,
+            uploads=uploads,
+            current_year=ano
+        )
     else:
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
+
 
 
 @admin_bp.route('/admin/upload', methods=['GET', 'POST'])
