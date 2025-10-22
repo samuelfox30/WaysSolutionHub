@@ -70,7 +70,7 @@
     </div>
 
     <div class="bg-white rounded-3 shadow p-4">
-        <h2 class="h5 fw-semibold text-dark mb-4">Empresas Cadastradas</h2>
+        <h2 class="h5 fw-semibold text-dark mb-4">Uploads Realizados</h2>
         <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
             <table class="table table-hover align-middle text-center">
                 <thead>
@@ -79,7 +79,7 @@
                         {% for mes in range(1, 13) %}
                             <th scope="col">{{ mes }}</th>
                         {% endfor %}
-                        <th scope="col">Ano</th>
+                        <!-- <th scope="col">Ano</th> -->
                     </tr>
                 </thead>
                 <tbody>
@@ -99,12 +99,12 @@
                         {% endfor %}
 
                         <!-- Seletor de ano -->
-                        <td>
+                        <!-- <td>
                             <form method="GET" action="{{ url_for('admin.dados_empresas') }}">
                                 <input type="number" name="ano" value="{{ request.args.get('ano', current_year) }}" 
                                     class="form-control form-control-sm" style="width: 90px;">
                             </form>
-                        </td>
+                        </td> -->
                     </tr>
                     {% else %}
                     <tr>

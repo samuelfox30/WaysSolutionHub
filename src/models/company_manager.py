@@ -11,9 +11,27 @@ class CompanyManager(DatabaseConnection):
             if not row:
                 raise Exception(f"Empresa '{empresa_selecionada}' não encontrada na tabela users.")
             usuario_id = row[0]
-            print(f"[DEBUG] Usuário encontrado: id={usuario_id} para empresa={empresa_selecionada}")
 
-            # 2. Mapeamento de nomes do Excel -> nomes no banco
+            # ============================
+            # 2. Limpar dados existentes (para evitar duplicação)
+            # ============================
+            tabelas = [
+                "TbItens",
+                "TbItensDividas",
+                "TbItensInvestimentos",
+                "TbItensInvestimentoGeral",
+                "TbItensGastosOperacionais"
+            ]
+            for tabela in tabelas:
+                self.cursor.execute(
+                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND mes = %s AND ano = %s",
+                    (usuario_id, mes_selecionado, ano_selecionado)
+                )
+            print(f"[DEBUG] Dados antigos removidos para empresa={empresa_selecionada}, mes={mes_selecionado}, ano={ano_selecionado}")
+
+            # ============================
+            # 3. Mapeamento de nomes do Excel -> nomes no banco
+            # ============================
             subgrupo_map = {
                 "GERAL": "Geral",
                 "RECEITA": "Receita",
@@ -28,55 +46,45 @@ class CompanyManager(DatabaseConnection):
                 "INVESTIMENTOS GERAL NO NEGOCIO": "InvestimentosGeral"
             }
 
-            # 3. Mapeamento de cenários -> grupo_id
             grupo_map = {
                 "VIABILIADE FINANCEIRA REAL": 1,
                 "VIABILIADE FINANCEIRA PONTO DE EQUILIBRIO": 2,
                 "VIABILIADE FINANCEIRA IDEAL": 3
             }
 
+            # ============================
             # 4. Inserir Itens Normais (TbItens)
+            # ============================
             for cenario in lista_cenarios:
                 # Descobrir o nome do cenário olhando o primeiro item de qualquer subgrupo
                 nome_cenario = None
                 for itens in cenario.values():
-                    if itens:  # se a lista não estiver vazia
+                    if itens:
                         nome_cenario = itens[0].get("cenario", "").strip().upper()
                         break
 
                 if not nome_cenario:
-                    print("[WARN] Cenário sem nome, pulando...")
                     continue
 
                 grupo_id = grupo_map.get(nome_cenario)
-                print(f"\n[DEBUG] Processando cenário: {nome_cenario} -> grupo_id={grupo_id}")
-
                 if not grupo_id:
-                    print(f"[WARN] Cenário '{nome_cenario}' não mapeado, pulando...")
                     continue
 
                 for subgrupo_nome, itens in cenario.items():
                     nome_subgrupo_excel = subgrupo_nome.strip().upper()
                     nome_subgrupo_banco = subgrupo_map.get(nome_subgrupo_excel, nome_subgrupo_excel)
 
-                    print(f"[DEBUG] Tentando salvar subgrupo: {nome_subgrupo_excel} (mapeado para '{nome_subgrupo_banco}')")
-
-                    # Buscar o id do subgrupo pelo nome + grupo_id
                     self.cursor.execute(
                         "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
                         (nome_subgrupo_banco, grupo_id)
                     )
                     subgrupo_row = self.cursor.fetchone()
                     if not subgrupo_row:
-                        print(f"[WARN] Subgrupo '{nome_subgrupo_excel}' não encontrado no grupo {grupo_id}, pulando...")
                         continue
                     subgrupo_id = subgrupo_row[0]
-                    print(f"[DEBUG] Subgrupo encontrado: id={subgrupo_id}")
 
                     for item in itens:
                         valor = item.get("valor") if item.get("valor") is not None else 0.00
-                        print(f"    [INSERT] {item['descricao']} | %={item.get('percentual')} | valor={valor}")
-
                         sql = """
                             INSERT INTO TbItens (descricao, porcentagem, valor, mes, ano, subgrupo_id, usuario_id)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -92,7 +100,9 @@ class CompanyManager(DatabaseConnection):
                         )
                         self.cursor.execute(sql, values)
 
-            # 5. Inserir Itens Especiais (replicando para os 3 grupos)
+            # ============================
+            # 5. Inserir Itens Especiais
+            # ============================
             for grupo_id in [1, 2, 3]:
                 # DIVIDAS
                 for it in dados_especiais.get("DIVIDAS", []):
@@ -162,14 +172,15 @@ class CompanyManager(DatabaseConnection):
                     )
                     self.cursor.execute(sql, values)
 
+            # ============================
             # 6. Commit final
+            # ============================
             self.connection.commit()
-            print("\n[DEBUG] Itens salvos com sucesso no banco de dados.")
+            print("Itens salvos com sucesso no banco de dados (dados antigos sobrescritos).")
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao salvar itens: {err}")
+            print(f"Erro ao salvar itens: {err}")
             self.connection.rollback()
-
 
 
     def buscar_dados_empresa(self, empresa_selecionada, mes_selecionado, ano_selecionado):
@@ -259,6 +270,46 @@ class CompanyManager(DatabaseConnection):
         except mysql.connector.Error as err:
             print(f"Erro ao buscar dados: {err}")
             return None
+
+
+    def excluir_dados_empresa(self, empresa_selecionada, mes_selecionado, ano_selecionado):
+        """
+        Exclui todos os registros de uma empresa em um determinado mês e ano
+        em todas as tabelas de itens.
+        """
+        try:
+            # 1. Buscar o ID do usuário pela empresa
+            self.cursor.execute("SELECT id FROM users WHERE empresa = %s", (empresa_selecionada,))
+            row = self.cursor.fetchone()
+            if not row:
+                raise Exception(f"Empresa '{empresa_selecionada}' não encontrada na tabela users.")
+            usuario_id = row[0]
+
+            # 2. Listar as tabelas que precisam ser limpas
+            tabelas = [
+                "TbItens",
+                "TbItensDividas",
+                "TbItensInvestimentos",
+                "TbItensInvestimentoGeral",
+                "TbItensGastosOperacionais"
+            ]
+
+            # 3. Executar exclusão em cada tabela
+            for tabela in tabelas:
+                self.cursor.execute(
+                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND mes = %s AND ano = %s",
+                    (usuario_id, mes_selecionado, ano_selecionado)
+                )
+
+            # 4. Commit final
+            self.connection.commit()
+            print(f"[DEBUG] Dados excluídos para empresa={empresa_selecionada}, mes={mes_selecionado}, ano={ano_selecionado}")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao excluir dados: {err}")
+            self.connection.rollback()
+            return False
 
 
     def get_meses_com_dados(self, usuario_id, ano):
