@@ -9,19 +9,19 @@
         <li class="nav-item">
             <a href="{{ url_for('admin.admin_dashboard') }}" class="nav-link {% if request.path == url_for('admin.admin_dashboard') %}active{% endif %}">
                 <i class="bi bi-people-fill me-2"></i>
-                <span>Cadastro de Usuários</span>
+                <span>Gerenciar de Usuários</span>
             </a>
         </li>
         <li>
             <a href="{{ url_for('admin.dados_empresas') }}" class="nav-link link-dark">
-                <i class="bi bi-person-check-fill me-2"></i>
-                <span>Empresas</span>
+                <i class="bi bi-upload me-2"></i>
+                <span>Upload de Dados</span>
             </a>
         </li>
         <li>
-            <a href="#" class="nav-link link-dark">
-                <i class="bi bi-hdd-stack-fill me-2"></i>
-                <span>Controle de Banco</span>
+            <a href="{{ url_for('admin.consultar_dados_page') }}" class="nav-link link-dark">
+                <i class="bi bi-table me-2"></i>
+                <span>Visualizar Dados</span>
             </a>
         </li>
         <li>

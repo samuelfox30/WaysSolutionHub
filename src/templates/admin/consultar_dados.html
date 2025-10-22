@@ -1,0 +1,139 @@
+{% extends "admin/base.html" %}
+{% block content %}
+<h2>Consulta de Dados</h2>
+
+<form method="POST">
+    <label for="empresa">Empresa:</label>
+    <select name="empresa" required>
+        <option value="">-- Selecione --</option>
+        {% for user in users %}
+            <option value="{{ user['empresa'] }}" {% if empresa_selecionada == user['empresa'] %}selected{% endif %}>
+                {{ user['empresa'] }}
+            </option>
+        {% endfor %}
+    </select>
+
+    <label for="mes">Mês:</label>
+    <input type="number" name="mes" min="1" max="12" value="{{ mes_selecionado or '' }}" required>
+
+    <label for="ano">Ano:</label>
+    <input type="number" name="ano" value="{{ ano_selecionado or '' }}" required>
+
+    <button type="submit">Consultar</button>
+</form>
+
+<hr>
+
+{% if data_results %}
+    <!-- Botões de filtro -->
+    <div>
+        <button type="button" onclick="filtrarGrupo('Viabilidade Real')">Viabilidade Real</button>
+        <button type="button" onclick="filtrarGrupo('Viabilidade PE')">Viabilidade PE</button>
+        <button type="button" onclick="filtrarGrupo('Viabilidade Ideal')">Viabilidade Ideal</button>
+        <button type="button" onclick="filtrarGrupo('todos')">Mostrar Todos</button>
+    </div>
+
+    <!-- Itens Normais -->
+    <h3>Itens Normais</h3>
+    <table border="1">
+        <tr>
+            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>%</th><th>Valor</th>
+        </tr>
+        {% for row in data_results['TbItens'] %}
+        <tr class="grupo-row" data-grupo="{{ row[0] }}">
+            <td>{{ row[0] }}</td> <!-- grupo -->
+            <td>{{ row[1] }}</td> <!-- subgrupo -->
+            <td>{{ row[2] }}</td> <!-- descricao -->
+            <td>{{ row[3] }}</td> <!-- porcentagem -->
+            <td>{{ row[4] }}</td> <!-- valor -->
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Investimentos -->
+    <h3>Investimentos</h3>
+    <table border="1">
+        <tr>
+            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Parcela</th><th>Juros</th><th>Total Parcela</th>
+        </tr>
+        {% for row in data_results['TbItensInvestimentos'] %}
+        <tr class="grupo-row" data-grupo="{{ row[0] }}">
+            <td>{{ row[0] }}</td> <!-- grupo -->
+            <td>{{ row[1] }}</td> <!-- subgrupo -->
+            <td>{{ row[2] }}</td> <!-- descricao -->
+            <td>{{ row[3] }}</td> <!-- valor_parc -->
+            <td>{{ row[4] }}</td> <!-- valor_juros -->
+            <td>{{ row[5] }}</td> <!-- valor_total_parc -->
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Dívidas -->
+    <h3>Dívidas</h3>
+    <table border="1">
+        <tr>
+            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Parcela</th><th>Juros</th><th>Total Parcela</th>
+        </tr>
+        {% for row in data_results['TbItensDividas'] %}
+        <tr class="grupo-row" data-grupo="{{ row[0] }}">
+            <td>{{ row[0] }}</td> <!-- grupo -->
+            <td>{{ row[1] }}</td> <!-- subgrupo -->
+            <td>{{ row[2] }}</td> <!-- descricao -->
+            <td>{{ row[3] }}</td> <!-- valor_parc -->
+            <td>{{ row[4] }}</td> <!-- valor_juros -->
+            <td>{{ row[5] }}</td> <!-- valor_total_parc -->
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Investimento Geral -->
+    <h3>Investimento Geral</h3>
+    <table border="1">
+        <tr>
+            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Valor</th>
+        </tr>
+        {% for row in data_results['TbItensInvestimentoGeral'] %}
+        <tr class="grupo-row" data-grupo="{{ row[0] }}">
+            <td>{{ row[0] }}</td> <!-- grupo -->
+            <td>{{ row[1] }}</td> <!-- subgrupo -->
+            <td>{{ row[2] }}</td> <!-- descricao -->
+            <td>{{ row[3] }}</td> <!-- valor -->
+        </tr>
+        {% endfor %}
+    </table>
+
+    <!-- Gastos Operacionais -->
+    <h3>Gastos Operacionais</h3>
+    <table border="1">
+        <tr>
+            <th>Grupo</th><th>Subgrupo</th><th>Descrição</th><th>Custo KM</th><th>Custo Mensal</th>
+        </tr>
+        {% for row in data_results['TbItensGastosOperacionais'] %}
+        <tr class="grupo-row" data-grupo="{{ row[0] }}">
+            <td>{{ row[0] }}</td> <!-- grupo -->
+            <td>{{ row[1] }}</td> <!-- subgrupo -->
+            <td>{{ row[2] }}</td> <!-- descricao -->
+            <td>{{ row[3] }}</td> <!-- custo_km -->
+            <td>{{ row[4] }}</td> <!-- custo_mensal -->
+        </tr>
+        {% endfor %}
+    </table>
+{% endif %}
+
+<script>
+function filtrarGrupo(grupo) {
+    const rows = document.querySelectorAll(".grupo-row");
+    rows.forEach(row => {
+        if (grupo === "todos") {
+            row.style.display = "";
+        } else {
+            if (row.dataset.grupo === grupo) {
+                row.style.display = "";
+            } else {
+                row.style.display = "none";
+            }
+        }
+    });
+}
+</script>
+{% endblock %}

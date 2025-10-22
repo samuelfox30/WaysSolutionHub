@@ -227,8 +227,42 @@ def upload_dados():
 
 
 @admin_bp.route('/admin/consultar', methods=['GET', 'POST'])
-def consultar_dados():
-    if request.method != 'POST':
-        return redirect(url_for('admin.dados_empresas'))
+def consultar_dados_page():
+    # Verificação de autenticação de administrador
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))  # Use o nome correto do seu Blueprint de login
 
-    return redirect(url_for('admin.dados_empresas'))
+    from models.user_manager import UserManager
+    from models.company_manager import CompanyManager
+
+    user_manager = UserManager()
+    users = user_manager.get_all_users()  # Lista de empresas para o select
+
+    data_results = None
+    empresa_selecionada = None
+    mes_selecionado = None
+    ano_selecionado = None
+
+    if request.method == 'POST':
+        empresa_selecionada = request.form.get('empresa')
+        mes_selecionado = request.form.get('mes')
+        ano_selecionado = request.form.get('ano')
+
+        if empresa_selecionada and mes_selecionado and ano_selecionado:
+            company_manager = CompanyManager()
+            data_results = company_manager.buscar_dados_empresa(
+                empresa_selecionada,
+                int(mes_selecionado),
+                int(ano_selecionado)
+            )
+            company_manager.close()
+
+    return render_template(
+        'admin/consultar_dados.html',
+        users=users,
+        data_results=data_results,
+        empresa_selecionada=empresa_selecionada,
+        mes_selecionado=mes_selecionado,
+        ano_selecionado=ano_selecionado
+    )
