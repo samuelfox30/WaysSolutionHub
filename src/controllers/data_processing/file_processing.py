@@ -18,6 +18,23 @@ def process_uploaded_file(file):
                 return False
         return True
 
+    def normalizar_percentual(valor):
+        """
+        Normaliza valores de porcentagem para o formato correto.
+        Se o valor absoluto for < 1, assume que está em formato decimal (ex: 0.8 = 80%)
+        e mantém como está. Se for muito pequeno (< 0.01), multiplica por 100.
+        """
+        if valor is None or valor == 0:
+            return valor
+        
+        # Se o valor absoluto for muito pequeno (< 0.01), provavelmente
+        # não está no formato de porcentagem do Excel, então multiplica por 100
+        if abs(valor) < 0.01:
+            return valor * 100
+        
+        # Caso contrário, mantém o valor original (já está correto)
+        return valor
+
     subgrupos = [
         "RECEITA",
         "CONTROLE DESPESAS POR NATURESAS SINTETICAS",
@@ -80,11 +97,14 @@ def process_uploaded_file(file):
                 if desc_str in ignorar_descricoes:
                     continue
 
+                # Normalizar o percentual
+                perc_normalizado = normalizar_percentual(perc)
+
                 item = {
                     "cenario": nome_cenario,
                     "subgrupo": nome,
                     "descricao": str(desc).strip(),
-                    "percentual": perc,
+                    "percentual": perc_normalizado,
                     "valor": valr
                 }
                 lista_itens.append(item)
