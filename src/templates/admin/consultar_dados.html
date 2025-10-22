@@ -4,13 +4,14 @@
 
     <style>
         :root {
-            --orange: #fd7e14;
-            --orange-light: #ffc107;
-            --orange-dark: #cc6510;
+            --orange-primary: #ff9900;
+            --orange-light: #ffb347;
+            --orange-dark: #cc7a00;
+            --orange-bg: #fff5e6;
         }
 
         .btn-primary, .btn-primary:focus, .btn-primary:active {
-            background-color: var(--orange) !important;
+            background-color: var(--orange-primary) !important;
             border-color: var(--orange-dark) !important;
         }
         .btn-primary:hover {
@@ -18,34 +19,247 @@
             border-color: var(--orange-dark) !important;
         }
         .text-primary, .text-orange {
-            color: var(--orange) !important;
+            color: var(--orange-primary) !important;
         }
         
-        /* Estilização para o botão de filtro ativo */
+        /* Botões de filtro */
+        .btn-filter {
+            transition: all 0.3s ease;
+            border: 2px solid #dee2e6;
+            font-weight: 500;
+        }
+        
+        .btn-filter:hover {
+            border-color: var(--orange-primary);
+            color: var(--orange-primary);
+        }
+        
         .btn-filter.active {
-            background-color: var(--orange-dark) !important;
-            border-color: var(--orange-dark) !important;
+            background-color: var(--orange-primary) !important;
+            border-color: var(--orange-primary) !important;
             color: white !important;
-            box-shadow: 0 0 0 0.25rem rgba(253, 126, 20, 0.5) !important; /* Estilo de foco/ativo */
+            box-shadow: 0 0 0 0.25rem rgba(255, 153, 0, 0.25) !important;
         }
 
-        /* Estilos de cabeçalho de tabela para consistência */
-        .table-custom-header th { 
-            background-color: var(--orange-light) !important;
-            color: var(--orange-dark) !important;
-            border-color: var(--orange-dark) !important;
-        }
-        .table-sm th, .table-sm td {
-            padding: 0.5rem;
+        /* Headers de seção */
+        .section-header {
+            background: linear-gradient(135deg, var(--orange-primary) 0%, var(--orange-light) 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 10px 10px 0 0;
+            margin: 0;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        /* Cores das linhas conforme o grupo */
-        .viabilidade-real { background-color: #e6f7e6; } /* Verde Claro */
-        .viabilidade-pe { background-color: #fff9e6; } /* Amarelo Claro */
-        .viabilidade-ideal { background-color: #e6f2ff; } /* Azul Claro */
+        .section-header i {
+            font-size: 1.2em;
+        }
+
+        /* Cards das tabelas */
+        .table-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+            margin-bottom: 2rem;
+            overflow: hidden;
+            border: 1px solid #e9ecef;
+        }
+
+        .table-card-body {
+            padding: 1.5rem;
+        }
+
+        /* Grupo principal (tipo título de seção) */
+        .grupo-principal {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            padding: 1rem 1.5rem;
+            margin: 0 -1.5rem 1rem -1.5rem;
+            border-left: 5px solid var(--orange-primary);
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #495057;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* Badge para o grupo */
+        .badge-grupo {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.65rem;
+            border-radius: 20px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-real {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .badge-pe {
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        .badge-ideal {
+            background-color: #007bff;
+            color: white;
+        }
+
+        /* Subgrupo (como um mini-header dentro do grupo) */
+        .subgrupo-header {
+            background-color: #f1f3f5;
+            padding: 0.75rem 1rem;
+            margin: 1rem -1.5rem 0.5rem -1.5rem;
+            border-left: 3px solid var(--orange-dark);
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #495057;
+            display: flex;
+            align-items: center;
+        }
+
+        .subgrupo-header i {
+            color: var(--orange-primary);
+            margin-right: 0.5rem;
+        }
+
+        /* Tabela de itens */
+        .tabela-itens {
+            width: 100%;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .tabela-itens thead th {
+            background-color: #ffffff;
+            color: #6c757d;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #dee2e6;
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+        }
+        
+        .tabela-itens thead th:not(:first-child) {
+            text-align: right;
+        }
+
+        .tabela-itens tbody tr {
+            transition: all 0.2s ease;
+            border-bottom: 1px solid #f1f3f5;
+        }
+
+        .tabela-itens tbody tr:hover {
+            background-color: var(--orange-bg);
+            transform: translateX(5px);
+        }
+
+        .tabela-itens td {
+            padding: 0.65rem 0.75rem;
+            vertical-align: middle;
+        }
+
+        /* Descrição do item (primeira coluna) */
+        .item-descricao {
+            color: #495057;
+            font-weight: 500;
+            padding-left: 2rem !important;
+            position: relative;
+        }
+
+        .item-descricao::before {
+            content: "▸";
+            position: absolute;
+            left: 0.75rem;
+            color: var(--orange-primary);
+            font-size: 0.8rem;
+        }
+
+        /* Valores numéricos */
+        .valor-positivo {
+            color: #28a745;
+            font-weight: 600;
+        }
+
+        .valor-negativo {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .valor-neutral {
+            color: #6c757d;
+        }
+
+        /* Info box */
+        .info-box {
+            background: linear-gradient(135deg, var(--orange-bg) 0%, #ffffff 100%);
+            border-left: 4px solid var(--orange-primary);
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .info-box h2 {
+            color: var(--orange-dark);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Filtros container */
+        .filtros-container {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            border: 1px solid #e9ecef;
+        }
+
+        /* Separador entre grupos */
+        .grupo-separador {
+            border-top: 2px dashed #dee2e6;
+            margin: 2rem -1.5rem;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: #6c757d;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: var(--orange-light);
+            margin-bottom: 1rem;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .grupo-principal {
+                font-size: 0.95rem;
+                padding: 0.75rem 1rem;
+            }
+
+            .subgrupo-header {
+                font-size: 0.85rem;
+                padding: 0.5rem 0.75rem;
+            }
+
+            .tabela-itens {
+                font-size: 0.8rem;
+            }
+
+            .item-descricao {
+                padding-left: 1.5rem !important;
+            }
+        }
     </style>
 
-    <div class="bg-white rounded-3 shadow p-4 mb-5">
+    <div class="bg-white rounded-3 shadow p-4 mb-4">
         <h2 class="h5 fw-bold text-dark mb-4 border-bottom pb-2">
             <i class="bi bi-search me-2 text-primary"></i> Consulta de Dados
         </h2>
@@ -81,105 +295,196 @@
         </form>
     </div>
 
-    <hr class="my-5">
-
     {% if data_results %}
-        <div class="result-area">
-            <h2 class="h4 mb-4 text-dark border-bottom pb-2">
-                <i class="bi bi-bar-chart-fill me-2 text-primary"></i> Resultados de Análise
-                <small class="text-muted ms-3 fs-6">({{ empresa_selecionada }} - {{ mes_selecionado }}/{{ ano_selecionado }})</small>
+        <div class="info-box">
+            <h2 class="h5 mb-2">
+                <i class="bi bi-bar-chart-fill me-2"></i> Resultados de Análise
             </h2>
-
-            <div class="mb-4 d-flex gap-2">
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter active" onclick="filtrarGrupo('todos', this)">Mostrar Todos</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter" onclick="filtrarGrupo('Viabilidade Real', this)">Viabilidade Real</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter" onclick="filtrarGrupo('Viabilidade PE', this)">Viabilidade PE</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary btn-filter" onclick="filtrarGrupo('Viabilidade Ideal', this)">Viabilidade Ideal</button>
-            </div>
-            
-            {% set tables_config = [
-                ('Itens Normais', 'TbItens', ['Grupo', 'Subgrupo', 'Descrição', '%', 'Valor'], 'bi-list-ul'),
-                ('Investimentos', 'TbItensInvestimentos', ['Grupo', 'Subgrupo', 'Descrição', 'Parcela', 'Juros', 'Total Parcela'], 'bi-currency-exchange'),
-                ('Dívidas', 'TbItensDividas', ['Grupo', 'Subgrupo', 'Descrição', 'Parcela', 'Juros', 'Total Parcela'], 'bi-cash-coin'),
-                ('Investimento Geral', 'TbItensInvestimentoGeral', ['Grupo', 'Subgrupo', 'Descrição', 'Valor'], 'bi-graph-up-arrow'),
-                ('Gastos Operacionais', 'TbItensGastosOperacionais', ['Grupo', 'Subgrupo', 'Descrição', 'Custo KM', 'Custo Mensal'], 'bi-fuel-pump')
-            ] %}
-
-            {% for title, key, headers, icon in tables_config %}
-                {% if data_results[key] %}
-                    <div class="bg-white rounded-3 shadow p-4 mb-4">
-                        <h3 class="h6 fw-bold mb-3 border-bottom pb-1">
-                            <i class="{{ icon }} me-2 text-orange"></i> {{ title }}
-                        </h3>
-                        
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover table-sm">
-                                <thead>
-                                    <tr class="table-custom-header">
-                                        {% for header in headers %}
-                                            <th scope="col">{{ header }}</th>
-                                        {% endfor %}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for row in data_results[key] %}
-                                        {# Aplica a classe CSS baseada no nome do grupo (row[0]) #}
-                                        {% set css_class = row[0]|lower|replace(' ', '-') %}
-                                        <tr class="grupo-row {{ css_class }}" data-grupo="{{ row[0] }}">
-                                            {% for item in row %}
-                                                <td>{{ item }}</td>
-                                            {% endfor %}
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                {% endif %}
-            {% endfor %}
-            
+            <p class="mb-0 text-muted">
+                <strong>{{ empresa_selecionada }}</strong> - 
+                {{ ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][mes_selecionado|int] }}/{{ ano_selecionado }}
+            </p>
         </div>
+
+        <div class="filtros-container">
+            <label class="form-label fw-semibold mb-2">
+                <i class="bi bi-funnel me-2"></i> Filtrar por Grupo:
+            </label>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="button" class="btn btn-sm btn-filter active" onclick="filtrarGrupo('todos', this)">
+                    <i class="bi bi-grid-3x3-gap me-1"></i> Mostrar Todos
+                </button>
+                <button type="button" class="btn btn-sm btn-filter" onclick="filtrarGrupo('Viabilidade Real', this)">
+                    <i class="bi bi-circle-fill text-success me-1"></i> Viabilidade Real
+                </button>
+                <button type="button" class="btn btn-sm btn-filter" onclick="filtrarGrupo('Viabilidade PE', this)">
+                    <i class="bi bi-circle-fill text-warning me-1"></i> Viabilidade PE
+                </button>
+                <button type="button" class="btn btn-sm btn-filter" onclick="filtrarGrupo('Viabilidade Ideal', this)">
+                    <i class="bi bi-circle-fill text-primary me-1"></i> Viabilidade Ideal
+                </button>
+            </div>
+        </div>
+        
+        {% set tables_config = [
+            ('Itens Normais', 'TbItens', ['Descrição', 'Percentual (%)', 'Valor (R$)'], 'bi-list-ul'),
+            ('Investimentos', 'TbItensInvestimentos', ['Descrição', 'Parcela (R$)', 'Juros (R$)', 'Total Parcela (R$)'], 'bi-currency-exchange'),
+            ('Dívidas', 'TbItensDividas', ['Descrição', 'Parcela (R$)', 'Juros (R$)', 'Total Parcela (R$)'], 'bi-cash-coin'),
+            ('Investimento Geral', 'TbItensInvestimentoGeral', ['Descrição', 'Valor (R$)'], 'bi-graph-up-arrow'),
+            ('Gastos Operacionais', 'TbItensGastosOperacionais', ['Descrição', 'Custo por KM (R$)', 'Custo Mensal (R$)'], 'bi-fuel-pump')
+        ] %}
+
+        {% for title, key, headers, icon in tables_config %}
+            {% if data_results[key] %}
+                <div class="table-card">
+                    <h3 class="section-header">
+                        <i class="{{ icon }} me-2"></i> {{ title }}
+                        <span class="badge bg-light text-dark ms-2" id="contador-{{ key }}">{{ data_results[key]|length }} registros</span>
+                    </h3>
+                    
+                    <div class="table-card-body">
+                        {# Organizar dados por Grupo > Subgrupo > Itens #}
+                        {% set grupos_organizados = {} %}
+                        {% for row in data_results[key] %}
+                            {% set grupo = row[0] %}
+                            {% set subgrupo = row[1] %}
+                            
+                            {% if grupo not in grupos_organizados %}
+                                {% set _ = grupos_organizados.update({grupo: {}}) %}
+                            {% endif %}
+                            
+                            {% if subgrupo not in grupos_organizados[grupo] %}
+                                {% set _ = grupos_organizados[grupo].update({subgrupo: []}) %}
+                            {% endif %}
+                            
+                            {% set _ = grupos_organizados[grupo][subgrupo].append(row[2:]) %}
+                        {% endfor %}
+
+                        {# Exibir dados organizados #}
+                        {% for grupo, subgrupos in grupos_organizados.items() %}
+                            <div class="grupo-container" data-grupo="{{ grupo }}">
+                                {# Título do Grupo Principal #}
+                                {% set badge_class = 'badge-real' if 'real' in grupo|lower else ('badge-pe' if 'pe' in grupo|lower else 'badge-ideal') %}
+                                <div class="grupo-principal">
+                                    <span class="badge {{ badge_class }} me-2">{{ grupo }}</span>
+                                </div>
+
+                                {# Subgrupos e Itens #}
+                                {% for subgrupo, itens in subgrupos.items() %}
+                                    <div class="subgrupo-header">
+                                        <i class="bi bi-folder2-open"></i>
+                                        {{ subgrupo }}
+                                    </div>
+
+                                    <table class="tabela-itens">
+                                        <thead>
+                                            <tr>
+                                                {% for header in headers %}
+                                                    <th>{{ header }}</th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in itens %}
+                                                <tr>
+                                                    {# Primeira coluna: descrição #}
+                                                    <td class="item-descricao">{{ item[0] }}</td>
+                                                    
+                                                    {# Demais colunas: valores #}
+                                                    {% for valor in item[1:] %}
+                                                        <td class="text-end">
+                                                            {% if valor is number and valor != 0 %}
+                                                                <span class="{{ 'valor-positivo' if valor > 0 else 'valor-negativo' }}">
+                                                                    {{ "R$ {:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.') if valor|abs >= 0.01 else "R$ 0,00" }}
+                                                                </span>
+                                                            {% elif valor is number and valor == 0 %}
+                                                                <span class="valor-neutral">R$ 0,00</span>
+                                                            {% else %}
+                                                                {{ valor }}
+                                                            {% endif %}
+                                                        </td>
+                                                    {% endfor %}
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                {% endfor %}
+
+                                {# Separador entre grupos (exceto último) #}
+                                {% if not loop.last %}
+                                    <div class="grupo-separador"></div>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        {% endfor %}
+        
     {% else %}
-        <p class="alert alert-info mt-5">Selecione uma empresa, mês e ano para iniciar a consulta.</p>
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <h3 class="h5 text-muted">Nenhum resultado encontrado</h3>
+            <p class="text-muted">Selecione uma empresa, mês e ano para iniciar a consulta.</p>
+        </div>
     {% endif %}
 
     <script>
-    function filtrarGrupo(grupo, clickedButton) {
-        const rows = document.querySelectorAll(".grupo-row");
+    function filtrarGrupo(grupoFiltro, clickedButton) {
+        const grupoContainers = document.querySelectorAll(".grupo-container");
         const filterButtons = document.querySelectorAll(".btn-filter");
         
-        // 1. Atualiza o estado visual dos botões
+        // Atualiza o estado visual dos botões
         filterButtons.forEach(btn => btn.classList.remove('active'));
         if (clickedButton) {
             clickedButton.classList.add('active');
         }
 
-        // 2. Filtra as linhas da tabela
-        rows.forEach(row => {
-            const rowGroup = row.dataset.grupo;
+        // Filtra os grupos
+        grupoContainers.forEach(container => {
+            const grupo = container.dataset.grupo;
             
-            if (grupo === "todos") {
-                row.style.display = ""; // Mostra
+            if (grupoFiltro === "todos") {
+                container.style.display = "block";
             } else {
-                if (rowGroup === grupo) {
-                    row.style.display = ""; // Mostra
+                container.style.display = (grupo === grupoFiltro) ? "block" : "none";
+            }
+        });
+
+        // Atualiza os contadores
+        atualizarContadores();
+    }
+
+    function atualizarContadores() {
+        document.querySelectorAll('.table-card').forEach(card => {
+            const visibleGroups = card.querySelectorAll('.grupo-container:not([style*="display: none"])');
+            let totalVisible = 0;
+            
+            visibleGroups.forEach(group => {
+                totalVisible += group.querySelectorAll('tbody tr').length;
+            });
+            
+            const totalRows = card.querySelectorAll('tbody tr').length;
+            const badge = card.querySelector('.section-header .badge');
+            
+            if (badge) {
+                if (totalVisible === totalRows) {
+                    badge.textContent = `${totalRows} registros`;
                 } else {
-                    row.style.display = "none"; // Esconde
+                    badge.textContent = `${totalVisible} de ${totalRows} registros`;
                 }
             }
         });
     }
 
-    // Inicializa o filtro para "Mostrar Todos" ao carregar a página se houver resultados
+    // Inicializa
     document.addEventListener('DOMContentLoaded', function() {
-        if (document.querySelector('.grupo-row')) {
-            // Garante que o botão 'Mostrar Todos' esteja ativo visualmente no início
+        if (document.querySelector('.grupo-container')) {
             const defaultButton = document.querySelector(".btn-filter[onclick*='todos']");
             if (defaultButton) {
                 defaultButton.classList.add('active');
             }
-            // Chama o filtro para garantir que tudo esteja visível por padrão
-            filtrarGrupo('todos'); 
+            filtrarGrupo('todos');
         }
     });
     </script>

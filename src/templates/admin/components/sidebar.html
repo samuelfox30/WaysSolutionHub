@@ -7,28 +7,60 @@
     </a>
     <ul class="nav nav-pills flex-column mt-3">
         <li class="nav-item">
-            <a href="{{ url_for('admin.admin_dashboard') }}" class="nav-link {% if request.path == url_for('admin.admin_dashboard') %}active{% endif %}">
+            <a href="{{ url_for('admin.admin_dashboard') }}" 
+               class="nav-link {% if request.endpoint == 'admin.admin_dashboard' %}active{% endif %}">
                 <i class="bi bi-people-fill me-2"></i>
                 <span>Gerenciar de Usuários</span>
             </a>
         </li>
-        <li>
-            <a href="{{ url_for('admin.dados_empresas') }}" class="nav-link link-dark">
+        <li class="nav-item">
+            <a href="{{ url_for('admin.dados_empresas') }}" 
+               class="nav-link {% if request.endpoint == 'admin.dados_empresas' %}active{% endif %}">
                 <i class="bi bi-upload me-2"></i>
                 <span>Upload de Dados</span>
             </a>
         </li>
-        <li>
-            <a href="{{ url_for('admin.consultar_dados_page') }}" class="nav-link link-dark">
+        <li class="nav-item">
+            <a href="{{ url_for('admin.consultar_dados_page') }}" 
+               class="nav-link {% if request.endpoint == 'admin.consultar_dados_page' %}active{% endif %}">
                 <i class="bi bi-table me-2"></i>
                 <span>Visualizar Dados</span>
             </a>
         </li>
-        <li>
-            <a href="#" class="nav-link link-dark">
+        <li class="nav-item">
+            <a href="#" class="nav-link">
                 <i class="bi bi-gear-fill me-2"></i>
                 <span>Configurações</span>
             </a>
         </li>
     </ul>
 </div>
+
+<style>
+    /* Estilos para o sidebar */
+    .sidebar .nav-link {
+        color: #6c757d;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin-bottom: 0.25rem;
+        transition: all 0.3s ease;
+    }
+
+    .sidebar .nav-link:hover {
+        background-color: #f8f9fa;
+        color: #ff9900;
+    }
+
+    .sidebar .nav-link.active {
+        background-color: #ff9900;
+        color: white;
+    }
+
+    .sidebar .nav-link.active i {
+        color: white;
+    }
+
+    .bg-orange {
+        background-color: #ff9900;
+    }
+</style>

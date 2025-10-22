@@ -57,7 +57,7 @@
             </div>
             <div class="col-md-3">
                 <label for="anoInput" class="form-label">Ano</label>
-                <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="2025" required>
+                <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="{{ current_year }}" required>
             </div>
             <div class="col-md-12">
                 <label for="arquivoEmpresas" class="form-label">Arquivo (.csv ou .xlsx)</label>
@@ -72,7 +72,25 @@
     </div>
 
     <div class="bg-white rounded-3 shadow p-4">
-        <h2 class="h5 fw-semibold text-dark mb-4">Uploads Realizados</h2>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="h5 fw-semibold text-dark mb-0">Uploads Realizados</h2>
+            
+            <!-- Navegação de Ano -->
+            <div class="d-flex align-items-center gap-2">
+                <a href="{{ url_for('admin.dados_empresas', ano=current_year - 1) }}" 
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-chevron-left"></i>
+                </a>
+                <span class="fw-bold text-dark px-3" style="min-width: 80px; text-align: center; font-size: 1.1rem;">
+                    {{ current_year }}
+                </span>
+                <a href="{{ url_for('admin.dados_empresas', ano=current_year + 1) }}" 
+                   class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+
         <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
             <table class="table table-hover align-middle text-center">
                 <thead>
@@ -81,7 +99,6 @@
                         {% for mes in range(1, 13) %}
                             <th scope="col">{{ mes }}</th>
                         {% endfor %}
-                        <!-- <th scope="col">Ano</th> -->
                     </tr>
                 </thead>
                 <tbody>
@@ -94,22 +111,15 @@
                             <td>
                                 <button type="button" 
                                         class="btn-bolinha {{ 'com-dados' if tem_dados else 'sem-dados' }}" 
-                                        onclick="abrirPopup('{{ user.empresa }}', {{ mes }}, {{ tem_dados|tojson }})"
+                                        onclick="abrirPopup('{{ user.empresa }}', {{ mes }}, {{ current_year }}, {{ tem_dados|tojson }})"
                                         {{ 'disabled' if not tem_dados else '' }}>
                                 </button>
                             </td>
                         {% endfor %}
-
-                        <!-- <td>
-                            <form method="GET" action="{{ url_for('admin.dados_empresas') }}">
-                                <input type="number" name="ano" value="{{ request.args.get('ano', current_year) }}"
-                                    class="form-control form-control-sm" style="width: 90px;">
-                            </form>
-                        </td> -->
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="14" class="text-center">Nenhuma empresa cadastrada.</td>
+                        <td colspan="13" class="text-center">Nenhuma empresa cadastrada.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -129,7 +139,7 @@
                     <p class="mb-3">
                         <strong>Empresa:</strong> <span id="popup-empresa"></span><br>
                         <strong>Mês:</strong> <span id="popup-mes"></span><br>
-                        <strong>Ano:</strong> 2025
+                        <strong>Ano:</strong> <span id="popup-ano"></span>
                     </p>
                     
                     <div class="d-grid gap-2">
@@ -137,7 +147,7 @@
                         <form method="POST" action="{{ url_for('admin.consultar_dados_page') }}" class="mb-2">
                             <input type="hidden" name="empresa" id="form-ver-empresa">
                             <input type="hidden" name="mes" id="form-ver-mes">
-                            <input type="hidden" name="ano" value="2025">
+                            <input type="hidden" name="ano" id="form-ver-ano">
                             <button type="submit" class="btn btn-primary w-100">
                                 <i class="bi bi-eye me-2"></i> Ver Dados
                             </button>
@@ -148,7 +158,7 @@
                               onsubmit="return confirm('Tem certeza que deseja excluir estes dados? Esta ação não pode ser desfeita.');">
                             <input type="hidden" name="empresa" id="form-excluir-empresa">
                             <input type="hidden" name="mes" id="form-excluir-mes">
-                            <input type="hidden" name="ano" value="2025">
+                            <input type="hidden" name="ano" id="form-excluir-ano">
                             <button type="submit" class="btn btn-danger w-100">
                                 <i class="bi bi-trash me-2"></i> Excluir Dados
                             </button>
@@ -238,6 +248,18 @@
         .modal-body {
             padding: 1.5rem;
         }
+
+        /* Estilos para navegação de ano */
+        .btn-outline-secondary {
+            border-color: #dee2e6;
+            color: #6c757d;
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: #ff9900;
+            border-color: #ff9900;
+            color: white;
+        }
     </style>
    
     <script>
@@ -246,7 +268,7 @@
             'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
         ];
 
-        function abrirPopup(empresa, mes, temDados) {
+        function abrirPopup(empresa, mes, ano, temDados) {
             if (!temDados) return;
 
             const mesFormatado = mes.toString().padStart(2, '0');
@@ -254,12 +276,15 @@
 
             document.getElementById('popup-empresa').textContent = empresa;
             document.getElementById('popup-mes').textContent = mesNome;
+            document.getElementById('popup-ano').textContent = ano;
 
             document.getElementById('form-ver-empresa').value = empresa;
             document.getElementById('form-ver-mes').value = mesFormatado;
+            document.getElementById('form-ver-ano').value = ano;
             
             document.getElementById('form-excluir-empresa').value = empresa;
             document.getElementById('form-excluir-mes').value = mesFormatado;
+            document.getElementById('form-excluir-ano').value = ano;
 
             const modal = new bootstrap.Modal(document.getElementById('popupDados'));
             modal.show();

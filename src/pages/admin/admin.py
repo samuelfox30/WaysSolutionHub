@@ -180,6 +180,7 @@ def dados_empresas():
         from models.user_manager import UserManager
         from models.company_manager import CompanyManager
 
+        # Pega o ano da query string ou usa o ano atual
         ano = request.args.get('ano', datetime.now().year, type=int)
 
         user_manager = UserManager()
