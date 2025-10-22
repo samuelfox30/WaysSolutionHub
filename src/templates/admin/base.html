@@ -9,15 +9,104 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='admin/css/styles.css') }}">
     <style>
-        body { background-color: #f8f9fa; }
-        .sidebar { min-height: 100vh; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background-color: #f8f9fa;
+            display: flex;
+        }
+
+        /* Sidebar fixo */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 280px;
+            overflow-y: auto;
+            z-index: 1000;
+        }
+
+        /* Área principal com margem para o sidebar */
+        .main-wrapper {
+            margin-left: 280px;
+            width: calc(100% - 280px);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Header fixo */
+        .main-header {
+            position: sticky;
+            top: 0;
+            z-index: 999;
+            background-color: white;
+        }
+
+        /* Área de conteúdo com scroll */
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 1.5rem;
+        }
+
+        /* Scroll customizado */
+        .sidebar::-webkit-scrollbar,
+        .main-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        .main-content::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        .main-content::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .main-content::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 0;
+                overflow: hidden;
+                transition: width 0.3s ease;
+            }
+
+            .sidebar.active {
+                width: 280px;
+            }
+
+            .main-wrapper {
+                margin-left: 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body class="d-flex">
+<body>
     {% include 'admin/components/sidebar.html' %}
 
-    <div class="flex-grow-1 d-flex flex-column">
-        <header class="navbar navbar-light bg-white shadow-sm p-4">
+    <div class="main-wrapper">
+        <header class="navbar navbar-light bg-white shadow-sm p-4 main-header">
             <div class="container-fluid">
                 <div>
                     <h1 class="h3 fw-bold mb-1">{% block header_title %}Dashboard{% endblock %}</h1>
@@ -32,7 +121,7 @@
             </div>
         </header>
 
-        <main class="flex-grow-1 p-4">
+        <main class="main-content">
             {% block content %}{% endblock %}
         </main>
     </div>
