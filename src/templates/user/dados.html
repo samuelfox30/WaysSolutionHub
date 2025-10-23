@@ -1,7 +1,7 @@
 {% extends "user/base.html" %}
 
 {% block header_title %}Dados Detalhados{% endblock %}
-{% block header_subtitle %}Visualize e filtre seus dados financeiros{% endblock %}
+{% block header_subtitle %}Visualize e filtre seus dados financeiros anuais{% endblock %}
 
 {% block content %}
 <style>
@@ -171,30 +171,33 @@
         color: var(--orange-light);
         margin-bottom: 1rem;
     }
+
+    .info-banner {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        border-left: 4px solid var(--orange-primary);
+        padding: 1rem 1.5rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+
+    .info-banner-text {
+        font-size: 0.875rem;
+        color: #92400e;
+        font-weight: 500;
+        margin: 0;
+    }
 </style>
 
 <!-- Filtros -->
 <div class="filter-card">
     <h5 class="mb-3"><i class="bi bi-funnel me-2"></i> Filtros</h5>
     <form method="GET" class="row g-3">
-        <div class="col-md-4">
-            <label for="mes" class="form-label fw-semibold">Mês:</label>
-            <select name="mes" id="mes" class="form-select" required>
-                <option value="">-- Selecione --</option>
-                {% for i in range(1, 13) %}
-                    <option value="{{ i }}" {% if mes_selecionado == i %}selected{% endif %}>
-                        {{ ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][i] }}
-                    </option>
-                {% endfor %}
-            </select>
-        </div>
-
-        <div class="col-md-4">
+        <div class="col-md-6">
             <label for="ano" class="form-label fw-semibold">Ano:</label>
-            <input type="number" name="ano" id="ano" class="form-control" value="{{ ano_selecionado }}" required>
+            <input type="number" name="ano" id="ano" class="form-control" value="{{ ano_selecionado or '' }}" placeholder="Ex: 2025" required>
         </div>
 
-        <div class="col-md-4 d-flex align-items-end">
+        <div class="col-md-6 d-flex align-items-end">
             <button type="submit" class="btn btn-primary w-100">
                 <i class="bi bi-search me-2"></i> Buscar Dados
             </button>
@@ -203,6 +206,14 @@
 </div>
 
 {% if data_results %}
+    <!-- Banner Informativo -->
+    <div class="info-banner">
+        <p class="info-banner-text">
+            <i class="bi bi-calendar-check me-2"></i>
+            <strong>Dados do Ano {{ ano_selecionado }}</strong> - Visualizando informações financeiras anuais
+        </p>
+    </div>
+
     <!-- Filtro por Grupo -->
     <div class="filter-card">
         <label class="form-label fw-semibold mb-2">
@@ -318,7 +329,7 @@
     <div class="empty-state">
         <i class="bi bi-inbox"></i>
         <h3 class="h5 text-muted">Nenhum dado encontrado</h3>
-        <p class="text-muted">Selecione um mês e ano para visualizar os dados.</p>
+        <p class="text-muted">Selecione um ano para visualizar os dados financeiros.</p>
     </div>
 {% endif %}
 

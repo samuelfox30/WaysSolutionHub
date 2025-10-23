@@ -94,7 +94,7 @@ class DatabaseConnection:
             self.cursor.execute(subgrupo_schema)
 
             # =========================
-            # Tabela de Itens (cenários normais)
+            # Tabela de Itens (cenários normais) - SEM MÊS
             # =========================
             itens_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItens ("
@@ -102,7 +102,6 @@ class DatabaseConnection:
                 "  descricao VARCHAR(255) NOT NULL,"
                 "  porcentagem DECIMAL(10,2),"
                 "  valor DECIMAL(15,2) NOT NULL,"
-                "  mes INT NOT NULL,"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
                 "  usuario_id INT NOT NULL,"
@@ -113,7 +112,7 @@ class DatabaseConnection:
             self.cursor.execute(itens_schema)
 
             # =========================
-            # Tabela de Itens Investimentos
+            # Tabela de Itens Investimentos - SEM MÊS
             # =========================
             investimentos_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensInvestimentos ("
@@ -122,7 +121,6 @@ class DatabaseConnection:
                 "  valor_parc DECIMAL(15,2),"
                 "  valor_juros DECIMAL(15,2),"
                 "  valor_total_parc DECIMAL(15,2),"
-                "  mes INT NOT NULL,"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
                 "  usuario_id INT NOT NULL,"
@@ -133,7 +131,7 @@ class DatabaseConnection:
             self.cursor.execute(investimentos_schema)
 
             # =========================
-            # Tabela de Itens Dívidas
+            # Tabela de Itens Dívidas - SEM MÊS
             # =========================
             dividas_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensDividas ("
@@ -142,7 +140,6 @@ class DatabaseConnection:
                 "  valor_parc DECIMAL(15,2),"
                 "  valor_juros DECIMAL(15,2),"
                 "  valor_total_parc DECIMAL(15,2),"
-                "  mes INT NOT NULL,"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
                 "  usuario_id INT NOT NULL,"
@@ -153,14 +150,13 @@ class DatabaseConnection:
             self.cursor.execute(dividas_schema)
 
             # =========================
-            # Tabela de Investimento Geral
+            # Tabela de Investimento Geral - SEM MÊS
             # =========================
             investimento_geral_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensInvestimentoGeral ("
                 "  id INT AUTO_INCREMENT PRIMARY KEY,"
                 "  descricao VARCHAR(255) NOT NULL,"
                 "  valor DECIMAL(15,2),"
-                "  mes INT NOT NULL,"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
                 "  usuario_id INT NOT NULL,"
@@ -171,7 +167,7 @@ class DatabaseConnection:
             self.cursor.execute(investimento_geral_schema)
 
             # =========================
-            # Tabela de Gastos Operacionais
+            # Tabela de Gastos Operacionais - SEM MÊS
             # =========================
             gastos_operacionais_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensGastosOperacionais ("
@@ -179,7 +175,6 @@ class DatabaseConnection:
                 "  descricao VARCHAR(255) NOT NULL,"
                 "  valor_custo_km DECIMAL(15,2),"
                 "  valor_mensal DECIMAL(15,2),"
-                "  mes INT NOT NULL,"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
                 "  usuario_id INT NOT NULL,"
@@ -191,7 +186,7 @@ class DatabaseConnection:
 
             # Commit final
             self.connection.commit()
-            print("Todas as tabelas verificadas/criadas com sucesso.")
+            print("Todas as tabelas verificadas/criadas com sucesso (SEM coluna MÊS).")
 
         except mysql.connector.Error as err:
             print(f"Erro ao criar as tabelas de empresas: {err}")

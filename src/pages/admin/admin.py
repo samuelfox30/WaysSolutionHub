@@ -176,12 +176,13 @@ def editar_usuario():
 
 @admin_bp.route('/admin/empresas')
 def dados_empresas():
+    """
+    Exibe uma lista de empresas e indica quais anos possuem dados cadastrados.
+    Removido o controle de meses, pois os dados agora são anuais.
+    """
     if 'user_email' in session and session.get('user_role') == 'admin':
         from models.user_manager import UserManager
         from models.company_manager import CompanyManager
-
-        # Pega o ano da query string ou usa o ano atual
-        ano = request.args.get('ano', datetime.now().year, type=int)
 
         user_manager = UserManager()
         users = user_manager.get_all_users()
@@ -190,25 +191,26 @@ def dados_empresas():
         company_manager = CompanyManager()
         uploads = {}
         for user in users:
-            meses_com_dados = company_manager.get_meses_com_dados(user["id"], ano)
-            uploads[user["empresa"]] = {m: (m in meses_com_dados) for m in range(1, 13)}
+            anos_com_dados = company_manager.get_anos_com_dados(user["id"])
+            uploads[user["empresa"]] = anos_com_dados
         company_manager.close()
 
         return render_template(
             'admin/empresas.html',
             users=users,
-            uploads=uploads,
-            current_year=ano
+            uploads=uploads
         )
     else:
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
 
 
-
 @admin_bp.route('/admin/upload', methods=['GET', 'POST'])
 def upload_dados():
-
+    """
+    Recebe o upload de arquivo Excel com dados anuais da empresa.
+    Removido o campo 'mes', mantendo apenas empresa e ano.
+    """
     # Verificação de autenticação de administrador
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
@@ -218,59 +220,68 @@ def upload_dados():
         return redirect(url_for('admin.dados_empresas'))
 
     empresa = request.form.get('empresa')
-    mes = request.form.get('mes')
     ano = request.form.get('ano')
     arquivo = request.files.get('arquivo')
 
-    # ✅ Prints de verificação
+    # Validação básica
+    if not empresa or not ano or not arquivo:
+        flash("Todos os campos são obrigatórios.", "danger")
+        return redirect(url_for('admin.dados_empresas'))
+
+    # Prints de verificação
     print(f"Empresa selecionada: {empresa}")
-    print(f"Mês selecionado: {mes}")
     print(f"Ano selecionado: {ano}")
     print(f"Nome do arquivo recebido: {arquivo.filename if arquivo else 'Nenhum arquivo'}")
-    from controllers.data_processing.file_processing import process_uploaded_file
-    dados = process_uploaded_file(arquivo)
-    d1 = dados[0]
-    d2 = dados[1]
-    from models.company_manager import CompanyManager
-    company_manager_variable = CompanyManager()
-    company_manager_variable.salvar_itens_empresa(empresa, mes, ano, d1, d2)
-    company_manager_variable.close()
 
+    try:
+        from controllers.data_processing.file_processing import process_uploaded_file
+        dados = process_uploaded_file(arquivo)
+        d1 = dados[0]
+        d2 = dados[1]
+        
+        from models.company_manager import CompanyManager
+        company_manager_variable = CompanyManager()
+        company_manager_variable.salvar_itens_empresa(empresa, ano, d1, d2)
+        company_manager_variable.close()
 
-    # ...continuação do processamento
+        flash(f"Dados da empresa '{empresa}' para o ano {ano} foram salvos com sucesso.", "success")
+    except Exception as e:
+        print(f"Erro ao processar arquivo: {e}")
+        flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
 
     return redirect(url_for('admin.dados_empresas'))
-    
 
 
 @admin_bp.route('/admin/consultar', methods=['GET', 'POST'])
 def consultar_dados_page():
+    """
+    Consulta dados de uma empresa para um ano específico.
+    Removido o campo 'mes'.
+    """
     # Verificação de autenticação de administrador
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
-        return redirect(url_for('index.login'))  # Use o nome correto do seu Blueprint de login
+        return redirect(url_for('index.login'))
 
     from models.user_manager import UserManager
     from models.company_manager import CompanyManager
 
     user_manager = UserManager()
     users = user_manager.get_all_users()  # Lista de empresas para o select
+    user_manager.close()
 
     data_results = None
     empresa_selecionada = None
-    mes_selecionado = None
     ano_selecionado = None
 
     if request.method == 'POST':
         empresa_selecionada = request.form.get('empresa')
-        mes_selecionado = request.form.get('mes')
         ano_selecionado = request.form.get('ano')
 
-        if empresa_selecionada and mes_selecionado and ano_selecionado:
+        if empresa_selecionada and ano_selecionado:
             company_manager = CompanyManager()
             data_results = company_manager.buscar_dados_empresa(
                 empresa_selecionada,
-                int(mes_selecionado),
                 int(ano_selecionado)
             )
             company_manager.close()
@@ -280,31 +291,33 @@ def consultar_dados_page():
         users=users,
         data_results=data_results,
         empresa_selecionada=empresa_selecionada,
-        mes_selecionado=mes_selecionado,
         ano_selecionado=ano_selecionado
     )
 
 
 @admin_bp.route('/admin/deletar_dados', methods=['POST'])
 def deletar_dados_empresa():
+    """
+    Exclui todos os dados de uma empresa para um ano específico.
+    Removido o campo 'mes'.
+    """
     if 'user_email' in session and session.get('user_role') == 'admin':
         empresa = request.form.get('empresa')
-        mes = request.form.get('mes', type=int)
         ano = request.form.get('ano', type=int)
 
-        if not empresa or not mes or not ano:
+        if not empresa or not ano:
             flash("Parâmetros inválidos para exclusão.", "danger")
             return redirect(url_for('admin.dados_empresas'))
 
         from models.company_manager import CompanyManager
         company_manager = CompanyManager()
-        ok = company_manager.excluir_dados_empresa(empresa, mes, ano)
+        ok = company_manager.excluir_dados_empresa(empresa, ano)
         company_manager.close()
 
         if ok:
-            flash(f"Dados da empresa '{empresa}' para {mes}/{ano} foram excluídos com sucesso.", "success")
+            flash(f"Dados da empresa '{empresa}' para o ano {ano} foram excluídos com sucesso.", "success")
         else:
-            flash(f"Erro ao excluir dados da empresa '{empresa}' para {mes}/{ano}.", "danger")
+            flash(f"Erro ao excluir dados da empresa '{empresa}' para o ano {ano}.", "danger")
 
         return redirect(url_for('admin.dados_empresas'))
 

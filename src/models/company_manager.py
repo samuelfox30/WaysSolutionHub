@@ -3,7 +3,11 @@ import mysql.connector
 
 class CompanyManager(DatabaseConnection):
 
-    def salvar_itens_empresa(self, empresa_selecionada, mes_selecionado, ano_selecionado, lista_cenarios, dados_especiais):
+    def salvar_itens_empresa(self, empresa_selecionada, ano_selecionado, lista_cenarios, dados_especiais):
+        """
+        Salva dados da empresa para um ANO específico (SEM mês).
+        Remove os dados antigos do mesmo ano antes de inserir os novos.
+        """
         try:
             # 1. Buscar o ID do usuário pela empresa
             self.cursor.execute("SELECT id FROM users WHERE empresa = %s", (empresa_selecionada,))
@@ -13,7 +17,7 @@ class CompanyManager(DatabaseConnection):
             usuario_id = row[0]
 
             # ============================
-            # 2. Limpar dados existentes (para evitar duplicação)
+            # 2. Limpar dados existentes do mesmo ANO (para evitar duplicação)
             # ============================
             tabelas = [
                 "TbItens",
@@ -24,10 +28,10 @@ class CompanyManager(DatabaseConnection):
             ]
             for tabela in tabelas:
                 self.cursor.execute(
-                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND mes = %s AND ano = %s",
-                    (usuario_id, mes_selecionado, ano_selecionado)
+                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND ano = %s",
+                    (usuario_id, ano_selecionado)
                 )
-            print(f"[DEBUG] Dados antigos removidos para empresa={empresa_selecionada}, mes={mes_selecionado}, ano={ano_selecionado}")
+            print(f"[DEBUG] Dados antigos removidos para empresa={empresa_selecionada}, ano={ano_selecionado}")
 
             # ============================
             # 3. Mapeamento de nomes do Excel -> nomes no banco
@@ -53,7 +57,7 @@ class CompanyManager(DatabaseConnection):
             }
 
             # ============================
-            # 4. Inserir Itens Normais (TbItens)
+            # 4. Inserir Itens Normais (TbItens) - SEM MÊS
             # ============================
             for cenario in lista_cenarios:
                 # Descobrir o nome do cenário olhando o primeiro item de qualquer subgrupo
@@ -86,14 +90,13 @@ class CompanyManager(DatabaseConnection):
                     for item in itens:
                         valor = item.get("valor") if item.get("valor") is not None else 0.00
                         sql = """
-                            INSERT INTO TbItens (descricao, porcentagem, valor, mes, ano, subgrupo_id, usuario_id)
-                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            INSERT INTO TbItens (descricao, porcentagem, valor, ano, subgrupo_id, usuario_id)
+                            VALUES (%s, %s, %s, %s, %s, %s)
                         """
                         values = (
                             item["descricao"],
                             item.get("percentual"),
                             valor,
-                            mes_selecionado,
                             ano_selecionado,
                             subgrupo_id,
                             usuario_id
@@ -101,7 +104,7 @@ class CompanyManager(DatabaseConnection):
                         self.cursor.execute(sql, values)
 
             # ============================
-            # 5. Inserir Itens Especiais
+            # 5. Inserir Itens Especiais - SEM MÊS
             # ============================
             for grupo_id in [1, 2, 3]:
                 # DIVIDAS
@@ -112,12 +115,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensDividas (descricao, valor_parc, valor_juros, valor_total_parc, mes, ano, subgrupo_id, usuario_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO TbItensDividas (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, usuario_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["valor_parc"], it["valor_juros"], it["valor_total_parcela"],
-                        mes_selecionado, ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, usuario_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -129,12 +132,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensInvestimentos (descricao, valor_parc, valor_juros, valor_total_parc, mes, ano, subgrupo_id, usuario_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO TbItensInvestimentos (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, usuario_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["valor_parc"], it["valor_juros"], it["valor_total_parcela"],
-                        mes_selecionado, ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, usuario_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -146,12 +149,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensInvestimentoGeral (descricao, valor, mes, ano, subgrupo_id, usuario_id)
-                        VALUES (%s, %s, %s, %s, %s, %s)
+                        INSERT INTO TbItensInvestimentoGeral (descricao, valor, ano, subgrupo_id, usuario_id)
+                        VALUES (%s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["valor"],
-                        mes_selecionado, ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, usuario_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -163,12 +166,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensGastosOperacionais (descricao, valor_custo_km, valor_mensal, mes, ano, subgrupo_id, usuario_id)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        INSERT INTO TbItensGastosOperacionais (descricao, valor_custo_km, valor_mensal, ano, subgrupo_id, usuario_id)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["custo_km"], it["custo_mensal"],
-                        mes_selecionado, ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, usuario_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -183,7 +186,10 @@ class CompanyManager(DatabaseConnection):
             self.connection.rollback()
 
 
-    def buscar_dados_empresa(self, empresa_selecionada, mes_selecionado, ano_selecionado):
+    def buscar_dados_empresa(self, empresa_selecionada, ano_selecionado):
+        """
+        Busca todos os dados de uma empresa para um ANO específico (SEM mês).
+        """
         try:
             # 1. Buscar o ID do usuário pela empresa
             self.cursor.execute("SELECT id FROM users WHERE empresa = %s", (empresa_selecionada,))
@@ -201,68 +207,68 @@ class CompanyManager(DatabaseConnection):
             }
 
             # ============================
-            # 2. Buscar Itens Normais
+            # 2. Buscar Itens Normais - SEM MÊS
             # ============================
             sql_itens = """
                 SELECT g.nome AS grupo, s.nome AS subgrupo, i.descricao, i.porcentagem, i.valor
                 FROM TbItens i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.mes = %s AND i.ano = %s
+                WHERE i.usuario_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_itens, (usuario_id, mes_selecionado, ano_selecionado))
+            self.cursor.execute(sql_itens, (usuario_id, ano_selecionado))
             resultado["TbItens"] = self.cursor.fetchall()
 
             # ============================
-            # 3. Buscar Itens Investimentos
+            # 3. Buscar Itens Investimentos - SEM MÊS
             # ============================
             sql_invest = """
                 SELECT g.nome AS grupo, s.nome AS subgrupo, i.descricao, i.valor_parc, i.valor_juros, i.valor_total_parc
                 FROM TbItensInvestimentos i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.mes = %s AND i.ano = %s
+                WHERE i.usuario_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_invest, (usuario_id, mes_selecionado, ano_selecionado))
+            self.cursor.execute(sql_invest, (usuario_id, ano_selecionado))
             resultado["TbItensInvestimentos"] = self.cursor.fetchall()
 
             # ============================
-            # 4. Buscar Itens Dívidas
+            # 4. Buscar Itens Dívidas - SEM MÊS
             # ============================
             sql_dividas = """
                 SELECT g.nome AS grupo, s.nome AS subgrupo, i.descricao, i.valor_parc, i.valor_juros, i.valor_total_parc
                 FROM TbItensDividas i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.mes = %s AND i.ano = %s
+                WHERE i.usuario_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_dividas, (usuario_id, mes_selecionado, ano_selecionado))
+            self.cursor.execute(sql_dividas, (usuario_id, ano_selecionado))
             resultado["TbItensDividas"] = self.cursor.fetchall()
 
             # ============================
-            # 5. Buscar Investimento Geral
+            # 5. Buscar Investimento Geral - SEM MÊS
             # ============================
             sql_invest_geral = """
                 SELECT g.nome AS grupo, s.nome AS subgrupo, i.descricao, i.valor
                 FROM TbItensInvestimentoGeral i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.mes = %s AND i.ano = %s
+                WHERE i.usuario_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_invest_geral, (usuario_id, mes_selecionado, ano_selecionado))
+            self.cursor.execute(sql_invest_geral, (usuario_id, ano_selecionado))
             resultado["TbItensInvestimentoGeral"] = self.cursor.fetchall()
 
             # ============================
-            # 6. Buscar Gastos Operacionais
+            # 6. Buscar Gastos Operacionais - SEM MÊS
             # ============================
             sql_gastos = """
                 SELECT g.nome AS grupo, s.nome AS subgrupo, i.descricao, i.valor_custo_km, i.valor_mensal
                 FROM TbItensGastosOperacionais i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.mes = %s AND i.ano = %s
+                WHERE i.usuario_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_gastos, (usuario_id, mes_selecionado, ano_selecionado))
+            self.cursor.execute(sql_gastos, (usuario_id, ano_selecionado))
             resultado["TbItensGastosOperacionais"] = self.cursor.fetchall()
 
             return resultado
@@ -272,10 +278,9 @@ class CompanyManager(DatabaseConnection):
             return None
 
 
-    def excluir_dados_empresa(self, empresa_selecionada, mes_selecionado, ano_selecionado):
+    def excluir_dados_empresa(self, empresa_selecionada, ano_selecionado):
         """
-        Exclui todos os registros de uma empresa em um determinado mês e ano
-        em todas as tabelas de itens.
+        Exclui todos os registros de uma empresa para um ANO específico (SEM mês).
         """
         try:
             # 1. Buscar o ID do usuário pela empresa
@@ -294,16 +299,16 @@ class CompanyManager(DatabaseConnection):
                 "TbItensGastosOperacionais"
             ]
 
-            # 3. Executar exclusão em cada tabela
+            # 3. Executar exclusão em cada tabela - SEM MÊS
             for tabela in tabelas:
                 self.cursor.execute(
-                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND mes = %s AND ano = %s",
-                    (usuario_id, mes_selecionado, ano_selecionado)
+                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND ano = %s",
+                    (usuario_id, ano_selecionado)
                 )
 
             # 4. Commit final
             self.connection.commit()
-            print(f"[DEBUG] Dados excluídos para empresa={empresa_selecionada}, mes={mes_selecionado}, ano={ano_selecionado}")
+            print(f"[DEBUG] Dados excluídos para empresa={empresa_selecionada}, ano={ano_selecionado}")
             return True
 
         except mysql.connector.Error as err:
@@ -312,47 +317,49 @@ class CompanyManager(DatabaseConnection):
             return False
 
 
-    def get_meses_com_dados(self, usuario_id, ano):
+    def get_anos_com_dados(self, usuario_id):
         """
-        Retorna uma lista com os meses (1..12) em que já existem dados
-        para o usuário e ano especificados.
+        Retorna uma lista com os anos em que existem dados para o usuário.
+        SUBSTITUIU a função get_meses_com_dados.
         """
         try:
             sql = """
-                SELECT DISTINCT mes
+                SELECT DISTINCT ano
+                FROM TbItens
+                WHERE usuario_id = %s
+                ORDER BY ano DESC
+            """
+            self.cursor.execute(sql, (usuario_id,))
+            rows = self.cursor.fetchall()
+
+            # rows vem como lista de tuplas [(2025,), (2024,), ...]
+            anos = [r[0] for r in rows]
+            return anos
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] get_anos_com_dados: {err}")
+            return []
+
+
+    def verificar_dados_existentes(self, usuario_id, ano):
+        """
+        Verifica se existem dados para um usuário em um ano específico.
+        Retorna True se existir, False caso contrário.
+        """
+        try:
+            sql = """
+                SELECT COUNT(*) as total
                 FROM TbItens
                 WHERE usuario_id = %s AND ano = %s
             """
             self.cursor.execute(sql, (usuario_id, ano))
-            rows = self.cursor.fetchall()
-
-            # rows vem como lista de tuplas [(1,), (3,), (7,)...]
-            meses = [r[0] for r in rows]
-            return meses
+            row = self.cursor.fetchone()
+            
+            return row[0] > 0 if row else False
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] get_meses_com_dados: {err}")
-            return []
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+            print(f"[ERRO] verificar_dados_existentes: {err}")
+            return False
 
 
     def close(self):

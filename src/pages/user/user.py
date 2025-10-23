@@ -5,7 +5,7 @@ user_bp = Blueprint('user', __name__)
 
 @user_bp.route('/user/dashboard')
 def user_dashboard():
-    """Dashboard principal do usuário"""
+    """Dashboard principal do usuário - agora mostra dados anuais"""
     if 'user_email' in session and session.get('user_role') == 'user':
         from models.user_manager import UserManager
         from models.company_manager import CompanyManager
@@ -19,19 +19,15 @@ def user_dashboard():
             flash("Erro ao carregar dados do usuário.", "danger")
             return redirect(url_for('index.login'))
         
-        # Pega o ano atual ou o ano filtrado
-        ano_atual = request.args.get('ano', datetime.now().year, type=int)
-        
-        # Busca meses com dados disponíveis
+        # Busca anos com dados disponíveis
         company_manager = CompanyManager()
-        meses_disponiveis = company_manager.get_meses_com_dados(user_data['id'], ano_atual)
+        anos_disponiveis = company_manager.get_anos_com_dados(user_data['id'])
         company_manager.close()
         
         return render_template(
             'user/dashboard.html',
             user=user_data,
-            ano_atual=ano_atual,
-            meses_disponiveis=meses_disponiveis
+            anos_disponiveis=anos_disponiveis
         )
     else:
         flash("Acesso negado. Faça login como usuário.", "danger")
@@ -40,7 +36,7 @@ def user_dashboard():
 
 @user_bp.route('/user/dados')
 def visualizar_dados():
-    """Página de visualização detalhada dos dados"""
+    """Página de visualização detalhada dos dados anuais"""
     if 'user_email' in session and session.get('user_role') == 'user':
         from models.user_manager import UserManager
         from models.company_manager import CompanyManager
@@ -54,18 +50,16 @@ def visualizar_dados():
             flash("Erro ao carregar dados do usuário.", "danger")
             return redirect(url_for('index.login'))
         
-        # Parâmetros de filtro
-        mes_selecionado = request.args.get('mes', type=int)
-        ano_selecionado = request.args.get('ano', datetime.now().year, type=int)
+        # Parâmetro de filtro (apenas ano)
+        ano_selecionado = request.args.get('ano', type=int)
         
         data_results = None
         
-        if mes_selecionado:
-            # Busca dados específicos
+        if ano_selecionado:
+            # Busca dados específicos do ano
             company_manager = CompanyManager()
             data_results = company_manager.buscar_dados_empresa(
                 user_data['empresa'],
-                mes_selecionado,
                 ano_selecionado
             )
             company_manager.close()
@@ -74,7 +68,6 @@ def visualizar_dados():
             'user/dados.html',
             user=user_data,
             data_results=data_results,
-            mes_selecionado=mes_selecionado,
             ano_selecionado=ano_selecionado
         )
     else:
@@ -82,9 +75,9 @@ def visualizar_dados():
         return redirect(url_for('index.login'))
 
 
-@user_bp.route('/user/api/dados/<int:mes>/<int:ano>')
-def api_dados_mes(mes, ano):
-    """API para retornar dados de um mês específico (para gráficos)"""
+@user_bp.route('/user/api/dados/<int:ano>')
+def api_dados_ano(ano):
+    """API para retornar dados de um ano específico (para gráficos)"""
     if 'user_email' in session and session.get('user_role') == 'user':
         from models.user_manager import UserManager
         from models.company_manager import CompanyManager
@@ -100,14 +93,12 @@ def api_dados_mes(mes, ano):
         company_manager = CompanyManager()
         data_results = company_manager.buscar_dados_empresa(
             user_data['empresa'],
-            mes,
             ano
         )
         company_manager.close()
         
         # Processa dados para formato JSON amigável
         dados_processados = {
-            "mes": mes,
             "ano": ano,
             "itens": [],
             "totais": {}

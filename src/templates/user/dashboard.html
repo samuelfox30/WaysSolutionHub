@@ -129,7 +129,7 @@
         letter-spacing: 0.5px;
     }
     
-    .month-selector {
+    .year-selector {
         background: white;
         border-radius: 16px;
         padding: 1.5rem;
@@ -138,45 +138,53 @@
         border: 1px solid #e2e8f0;
     }
     
-    .month-btn {
+    .year-btn {
         border: 2px solid #e2e8f0;
         border-radius: 12px;
-        padding: 0.875rem 1rem;
-        margin: 0.25rem;
+        padding: 1rem 1.5rem;
+        margin: 0.5rem;
         background: white;
         cursor: pointer;
         transition: all 0.3s ease;
         font-weight: 600;
+        font-size: 1.125rem;
         position: relative;
+        min-width: 120px;
     }
     
-    .month-btn:hover:not(:disabled) {
+    .year-btn:hover:not(:disabled) {
         border-color: var(--primary-orange);
         background: #fff7ed;
         transform: translateY(-2px);
         box-shadow: 0 4px 6px rgba(255, 153, 0, 0.2);
     }
     
-    .month-btn.active {
+    .year-btn.active {
         background: linear-gradient(135deg, var(--primary-orange), var(--warning-yellow));
         color: white;
         border-color: var(--primary-orange);
         box-shadow: 0 8px 16px rgba(255, 153, 0, 0.3);
     }
     
-    .month-btn.has-data::after {
-        content: '';
+    .year-btn.has-data::after {
+        content: '✓';
         position: absolute;
-        top: 6px;
-        right: 6px;
-        width: 8px;
-        height: 8px;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
         background: var(--success-green);
         border-radius: 50%;
         border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: bold;
     }
     
-    .month-btn.no-data {
+    .year-btn.no-data {
         opacity: 0.4;
         cursor: not-allowed;
     }
@@ -208,45 +216,6 @@
         margin-left: 0.5rem;
     }
 
-    .year-selector {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        background: #f8fafc;
-        padding: 0.5rem 1rem;
-        border-radius: 12px;
-        border: 2px solid #e2e8f0;
-    }
-
-    .year-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 8px;
-        border: none;
-        background: white;
-        color: #64748b;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-    }
-
-    .year-btn:hover {
-        background: var(--primary-orange);
-        color: white;
-        transform: scale(1.1);
-    }
-
-    .year-display {
-        font-weight: 700;
-        font-size: 1.125rem;
-        color: #1e293b;
-        min-width: 80px;
-        text-align: center;
-    }
-
     .data-summary {
         background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
         border-radius: 12px;
@@ -262,232 +231,142 @@
     }
 </style>
 
-<!-- Seletor de Período -->
-<div class="month-selector">
+<!-- Seletor de Ano -->
+<div class="year-selector">
     <div class="section-header">
         <div>
-            <h5 class="section-title mb-1">
-                <i class="bi bi-calendar-event"></i> Período de Análise
-            </h5>
-            <p class="text-muted mb-0" style="font-size: 0.875rem;">Selecione o mês para visualizar os dados financeiros</p>
-        </div>
-        <div class="year-selector">
-            <a href="{{ url_for('user.user_dashboard', ano=ano_atual - 1) }}" class="year-btn">
-                <i class="bi bi-chevron-left"></i>
-            </a>
-            <span class="year-display">{{ ano_atual }}</span>
-            <a href="{{ url_for('user.user_dashboard', ano=ano_atual + 1) }}" class="year-btn">
-                <i class="bi bi-chevron-right"></i>
-            </a>
+            <h3 class="section-title mb-1">
+                <i class="bi bi-calendar-range me-2"></i>Selecione o Ano
+            </h3>
+            <p class="text-muted mb-0 small">Escolha um ano para visualizar os dados financeiros</p>
         </div>
     </div>
     
-    {% if meses_disponiveis %}
-    <div class="data-summary">
-        <i class="bi bi-info-circle me-2"></i>
-        <span class="data-summary-text">
-            Você possui dados disponíveis para <strong>{{ meses_disponiveis|length }} meses</strong> em {{ ano_atual }}
-        </span>
-    </div>
-    {% endif %}
-    
-    <div class="row g-2">
-        {% set meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'] %}
-        {% for i in range(1, 13) %}
-            {% set has_data = i in meses_disponiveis %}
-            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
-                <button class="month-btn w-100 {{ 'has-data' if has_data else 'no-data' }}" 
-                        onclick="carregarDadosMes({{ i }}, {{ ano_atual }})"
-                        {{ 'disabled' if not has_data else '' }}>
-                    <div class="fw-bold" style="font-size: 0.875rem;">{{ meses[i-1][:3] }}</div>
-                    <div style="font-size: 1.5rem; font-weight: 700; margin: 0.25rem 0;">{{ '%02d'|format(i) }}</div>
-                    <small style="font-size: 0.75rem; opacity: 0.8;">
-                        {% if has_data %}
-                            <i class="bi bi-check-circle-fill"></i> Disponível
-                        {% else %}
-                            Sem dados
-                        {% endif %}
-                    </small>
+    {% if anos_disponiveis %}
+        <div class="data-summary mb-3">
+            <p class="data-summary-text mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>{{ anos_disponiveis|length }}</strong> ano(s) com dados disponíveis
+            </p>
+        </div>
+        
+        <div class="d-flex flex-wrap justify-content-center">
+            {% for ano in anos_disponiveis|sort(reverse=True) %}
+                <button 
+                    class="year-btn has-data" 
+                    onclick="carregarDadosAno({{ ano }})"
+                    data-ano="{{ ano }}">
+                    {{ ano }}
                 </button>
-            </div>
-        {% endfor %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Nenhum dado disponível</strong><br>
+            Entre em contato com o administrador para que os dados sejam carregados.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Cards de Métricas -->
+<div id="metrics-container" class="row g-4 mb-4">
+    <div class="col-12 text-center text-muted">
+        <i class="bi bi-bar-chart display-4"></i>
+        <p class="mt-3">Selecione um ano para visualizar as métricas</p>
     </div>
 </div>
 
-<!-- Cards de Métricas Principais -->
-<div class="mb-4">
-    <h5 class="section-title mb-3">
-        <i class="bi bi-speedometer2"></i> Indicadores Principais
-    </h5>
-</div>
-
-<div class="row g-4 mb-4">
-    <div class="col-md-6 col-xl-3">
-        <div class="metric-card">
-            <div class="metric-icon" style="background: linear-gradient(135deg, #dcfce7, #bbf7d0); color: var(--success-green);">
-                <i class="bi bi-arrow-up-circle-fill"></i>
+<!-- Gráficos -->
+<div id="charts-container" style="display: none;">
+    <div class="row g-4 mb-4">
+        <!-- Viabilidade Financeira -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-pie-chart-fill"></i>
+                        Viabilidade Financeira
+                    </h3>
+                    <span class="chart-badge bg-success text-white">Anual</span>
+                </div>
+                <canvas id="viabilidadeChart" height="300"></canvas>
             </div>
-            <div class="metric-label">Receita Total</div>
-            <div class="metric-value text-success" id="receita-total">R$ 0,00</div>
-            <span class="metric-trend trend-up" id="receita-trend">
-                <i class="bi bi-arrow-up"></i> 0%
-            </span>
+        </div>
+        
+        <!-- Distribuição de Despesas -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-cash-stack"></i>
+                        Distribuição de Despesas
+                    </h3>
+                    <span class="chart-badge bg-warning text-dark">Por Categoria</span>
+                </div>
+                <canvas id="despesasChart" height="300"></canvas>
+            </div>
         </div>
     </div>
     
-    <div class="col-md-6 col-xl-3">
-        <div class="metric-card">
-            <div class="metric-icon" style="background: linear-gradient(135deg, #fee2e2, #fecaca); color: var(--danger-red);">
-                <i class="bi bi-arrow-down-circle-fill"></i>
+    <div class="row g-4 mb-4">
+        <!-- Investimentos vs Dívidas -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-bar-chart-line"></i>
+                        Investimentos vs Dívidas
+                    </h3>
+                    <span class="chart-badge bg-info text-white">Comparativo</span>
+                </div>
+                <canvas id="investDividasChart" height="300"></canvas>
             </div>
-            <div class="metric-label">Despesas Totais</div>
-            <div class="metric-value text-danger" id="despesas-total">R$ 0,00</div>
-            <span class="metric-trend trend-down" id="despesas-trend">
-                <i class="bi bi-arrow-down"></i> 0%
-            </span>
+        </div>
+        
+        <!-- Top 10 Despesas -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-graph-down-arrow"></i>
+                        Top 10 Despesas
+                    </h3>
+                    <span class="chart-badge bg-danger text-white">Maiores Custos</span>
+                </div>
+                <canvas id="topDespesasChart" height="300"></canvas>
+            </div>
         </div>
     </div>
     
-    <div class="col-md-6 col-xl-3">
-        <div class="metric-card">
-            <div class="metric-icon" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); color: var(--info-blue);">
-                <i class="bi bi-graph-up-arrow"></i>
+    <div class="row g-4 mb-4">
+        <!-- Gastos Operacionais -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-gear-wide-connected"></i>
+                        Gastos Operacionais
+                    </h3>
+                    <span class="chart-badge" style="background: #8b5cf6; color: white;">Análise</span>
+                </div>
+                <canvas id="gastosOperacionaisChart" height="300"></canvas>
             </div>
-            <div class="metric-label">Resultado Líquido</div>
-            <div class="metric-value" id="resultado">R$ 0,00</div>
-            <span class="metric-trend" id="resultado-trend">
-                <i class="bi bi-dash"></i> --
-            </span>
         </div>
-    </div>
-    
-    <div class="col-md-6 col-xl-3">
-        <div class="metric-card">
-            <div class="metric-icon" style="background: linear-gradient(135deg, #fef3c7, #fde68a); color: var(--warning-yellow);">
-                <i class="bi bi-percent"></i>
+        
+        <!-- Receita vs Despesa -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-graph-up"></i>
+                        Receita vs Despesa
+                    </h3>
+                    <span class="chart-badge" style="background: var(--primary-orange); color: white;">Fluxo</span>
+                </div>
+                <canvas id="receitaDespesaChart" height="300"></canvas>
             </div>
-            <div class="metric-label">Margem de Lucro</div>
-            <div class="metric-value" style="color: var(--warning-yellow);" id="margem">0.0%</div>
-            <span class="metric-trend" id="margem-trend">
-                <i class="bi bi-dash"></i> --
-            </span>
         </div>
-    </div>
-</div>
-
-<!-- Seção de Gráficos -->
-<div class="mb-4">
-    <h5 class="section-title mb-3">
-        <i class="bi bi-bar-chart-line-fill"></i> Análise Financeira Detalhada
-    </h5>
-</div>
-
-<!-- Linha 1: Análise Comparativa -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-8">
-        <div class="chart-container">
-            <div class="chart-header">
-                <h6 class="chart-title">
-                    <i class="bi bi-bar-chart-fill"></i>
-                    Comparativo por Cenário de Viabilidade
-                </h6>
-                <span class="chart-badge" style="background: #fff7ed; color: var(--primary-orange);">
-                    Mensal
-                </span>
-            </div>
-            <canvas id="gruposChart" height="80"></canvas>
-        </div>
-    </div>
-    
-    <div class="col-xl-4">
-        <div class="chart-container">
-            <div class="chart-header">
-                <h6 class="chart-title">
-                    <i class="bi bi-pie-chart-fill"></i>
-                    Composição de Despesas
-                </h6>
-            </div>
-            <canvas id="despesasChart"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Linha 2: Análise de Investimentos e Custos -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-6">
-        <div class="chart-container">
-            <div class="chart-header">
-                <h6 class="chart-title">
-                    <i class="bi bi-cash-stack"></i>
-                    Análise de Investimentos vs Dívidas
-                </h6>
-                <span class="chart-badge" style="background: #dcfce7; color: var(--success-green);">
-                    Comparativo
-                </span>
-            </div>
-            <canvas id="investDividasChart" height="100"></canvas>
-        </div>
-    </div>
-    
-    <div class="col-xl-6">
-        <div class="chart-container">
-            <div class="chart-header">
-                <h6 class="chart-title">
-                    <i class="bi bi-speedometer2"></i>
-                    Top 10 Maiores Despesas
-                </h6>
-                <span class="chart-badge" style="background: #fee2e2; color: var(--danger-red);">
-                    Ranking
-                </span>
-            </div>
-            <canvas id="topDespesasChart" height="100"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Linha 3: Análises Operacionais -->
-<div class="row g-4 mb-4">
-    <div class="col-xl-4">
-        <div class="chart-container">
-            <div class="chart-header">
-                <h6 class="chart-title">
-                    <i class="bi bi-fuel-pump-fill"></i>
-                    Custos Operacionais
-                </h6>
-            </div>
-            <canvas id="gastosOperacionaisChart"></canvas>
-        </div>
-    </div>
-    
-    <div class="col-xl-8">
-        <div class="chart-container">
-            <div class="chart-header">
-                <h6 class="chart-title">
-                    <i class="bi bi-graph-up"></i>
-                    Evolução: Receitas vs Despesas por Grupo
-                </h6>
-                <span class="chart-badge" style="background: #dbeafe; color: var(--info-blue);">
-                    Tendência
-                </span>
-            </div>
-            <canvas id="receitaDespesaChart" height="70"></canvas>
-        </div>
-    </div>
-</div>
-
-<!-- Botões de Ação -->
-<div class="row g-3 mb-4">
-    <div class="col-md-6">
-        <a href="{{ url_for('user.visualizar_dados') }}" class="btn btn-lg w-100" 
-           style="background: linear-gradient(135deg, var(--primary-orange), var(--warning-yellow)); color: white; border: none; border-radius: 12px; font-weight: 600; padding: 1rem;">
-            <i class="bi bi-table me-2"></i> Ver Dados Detalhados
-        </a>
-    </div>
-    <div class="col-md-6">
-        <button class="btn btn-lg w-100" onclick="exportarRelatorio()"
-           style="background: white; color: var(--primary-orange); border: 2px solid var(--primary-orange); border-radius: 12px; font-weight: 600; padding: 1rem;">
-            <i class="bi bi-file-earmark-pdf me-2"></i> Exportar Relatório
-        </button>
     </div>
 </div>
 
@@ -496,121 +375,159 @@
 let charts = {};
 let dadosAtuais = null;
 
-function carregarDadosMes(mes, ano) {
-    document.querySelectorAll('.month-btn').forEach(btn => btn.classList.remove('active'));
-    event.target.closest('.month-btn').classList.add('active');
-    
-    fetch(`/user/api/dados/${mes}/${ano}`)
-        .then(response => response.json())
-        .then(data => {
-            dadosAtuais = data;
-            atualizarMetricas(data);
-            atualizarGraficos(data);
-        })
-        .catch(error => console.error('Erro:', error));
-}
-
-function atualizarMetricas(data) {
-    const totais = data.totais || {};
-    
-    let receita = 0, despesas = 0;
-    for (const [grupo, valor] of Object.entries(totais)) {
-        if (valor > 0) receita += valor;
-        else despesas += Math.abs(valor);
-    }
-    
-    const resultado = receita - despesas;
-    const margem = receita > 0 ? ((resultado / receita) * 100) : 0;
-    
-    document.getElementById('receita-total').textContent = formatarMoeda(receita);
-    document.getElementById('despesas-total').textContent = formatarMoeda(despesas);
-    document.getElementById('resultado').textContent = formatarMoeda(resultado);
-    document.getElementById('resultado').style.color = resultado >= 0 ? 'var(--success-green)' : 'var(--danger-red)';
-    document.getElementById('margem').textContent = margem.toFixed(1) + '%';
-    
-    // Atualizar trends (simulado - você pode calcular real comparando com mês anterior)
-    const trendReceita = document.getElementById('receita-trend');
-    trendReceita.innerHTML = '<i class="bi bi-arrow-up"></i> +12.5%';
-    trendReceita.className = 'metric-trend trend-up';
-    
-    const trendDespesas = document.getElementById('despesas-trend');
-    trendDespesas.innerHTML = '<i class="bi bi-arrow-down"></i> -8.3%';
-    trendDespesas.className = 'metric-trend trend-up';
-    
-    const trendResultado = document.getElementById('resultado-trend');
-    if (resultado >= 0) {
-        trendResultado.innerHTML = '<i class="bi bi-arrow-up"></i> Positivo';
-        trendResultado.className = 'metric-trend trend-up';
-    } else {
-        trendResultado.innerHTML = '<i class="bi bi-arrow-down"></i> Negativo';
-        trendResultado.className = 'metric-trend trend-down';
+async function carregarDadosAno(ano) {
+    try {
+        // Atualizar botão ativo
+        document.querySelectorAll('.year-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // Fazer requisição dos dados
+        const response = await fetch(`/user/api/dados/${ano}`);
+        const dados = await response.json();
+        
+        if (dados.error) {
+            alert('Erro ao carregar dados: ' + dados.error);
+            return;
+        }
+        
+        dadosAtuais = dados;
+        
+        // Atualizar métricas
+        atualizarMetricas(dados);
+        
+        // Atualizar gráficos
+        atualizarGraficos(dados);
+        
+        // Mostrar container de gráficos
+        document.getElementById('charts-container').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        alert('Erro ao carregar dados do ano ' + ano);
     }
 }
 
-function atualizarGraficos(data) {
-    const totais = data.totais || {};
+function atualizarMetricas(dados) {
+    const totais = dados.totais || {};
     const grupos = Object.keys(totais);
     const valores = Object.values(totais);
     
-    Object.values(charts).forEach(chart => chart && chart.destroy());
+    const totalReceita = valores.filter(v => v > 0).reduce((a, b) => a + b, 0);
+    const totalDespesa = Math.abs(valores.filter(v => v < 0).reduce((a, b) => a + b, 0));
+    const saldo = totalReceita - totalDespesa;
+    const percentualLucro = totalReceita > 0 ? ((saldo / totalReceita) * 100) : 0;
+    
+    const metricsHTML = `
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <i class="bi bi-arrow-up-circle-fill text-white"></i>
+                </div>
+                <div class="metric-value text-success">${formatarMoeda(totalReceita)}</div>
+                <div class="metric-label">Receita Total</div>
+                <span class="metric-trend trend-up">
+                    <i class="bi bi-graph-up"></i> Ano ${dados.ano}
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    <i class="bi bi-arrow-down-circle-fill text-white"></i>
+                </div>
+                <div class="metric-value text-danger">${formatarMoeda(totalDespesa)}</div>
+                <div class="metric-label">Despesas Totais</div>
+                <span class="metric-trend trend-down">
+                    <i class="bi bi-graph-down"></i> Ano ${dados.ano}
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #ff9900, #f59e0b);">
+                    <i class="bi bi-cash-coin text-white"></i>
+                </div>
+                <div class="metric-value" style="color: ${saldo >= 0 ? '#10b981' : '#ef4444'}">${formatarMoeda(saldo)}</div>
+                <div class="metric-label">Saldo</div>
+                <span class="metric-trend ${saldo >= 0 ? 'trend-up' : 'trend-down'}">
+                    <i class="bi bi-${saldo >= 0 ? 'arrow-up' : 'arrow-down'}"></i> ${Math.abs(percentualLucro).toFixed(1)}%
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                    <i class="bi bi-pie-chart-fill text-white"></i>
+                </div>
+                <div class="metric-value text-primary">${grupos.length}</div>
+                <div class="metric-label">Categorias</div>
+                <span class="metric-trend" style="background: #dbeafe; color: #1e40af;">
+                    <i class="bi bi-folder"></i> Ativas
+                </span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('metrics-container').innerHTML = metricsHTML;
+}
+
+function atualizarGraficos(dados) {
+    // Destruir gráficos antigos
+    Object.values(charts).forEach(chart => chart.destroy());
     charts = {};
     
-    // Configuração comum de Chart.js
-    Chart.defaults.font.family = "'Inter', sans-serif";
-    Chart.defaults.color = '#64748b';
+    const totais = dados.totais || {};
+    const grupos = Object.keys(totais);
+    const valores = Object.values(totais);
     
-    // 1. Gráfico de Barras por Grupo
-    charts.grupos = new Chart(document.getElementById('gruposChart'), {
-        type: 'bar',
+    // Dados para despesas (valores negativos)
+    const despesas = valores.map(v => v < 0 ? Math.abs(v) : 0).filter(v => v > 0);
+    const labelsDespesas = grupos.filter((g, i) => valores[i] < 0);
+    
+    // 1. Viabilidade Financeira
+    charts.viabilidade = new Chart(document.getElementById('viabilidadeChart'), {
+        type: 'pie',
         data: {
             labels: grupos,
             datasets: [{
-                label: 'Valores (R$)',
-                data: valores,
-                backgroundColor: valores.map(v => v >= 0 ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)'),
-                borderColor: valores.map(v => v >= 0 ? 'rgba(16, 185, 129, 1)' : 'rgba(239, 68, 68, 1)'),
-                borderWidth: 2,
-                borderRadius: 8,
-                borderSkipped: false,
+                data: valores.map(v => Math.abs(v)),
+                backgroundColor: ['#10b981', '#3b82f6', '#ff9900', '#ef4444', '#8b5cf6', '#f59e0b'],
+                borderWidth: 3,
+                borderColor: 'white'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             plugins: {
-                legend: { display: false },
-                tooltip: {
-                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-                    titleColor: 'white',
-                    bodyColor: 'white',
-                    borderColor: '#e2e8f0',
-                    borderWidth: 1,
-                    padding: 12,
-                    displayColors: false,
-                    callbacks: {
-                        label: (context) => 'Valor: ' + formatarMoeda(context.parsed.y)
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: '#f1f5f9' },
-                    ticks: {
-                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle'
                     }
                 },
-                x: {
-                    grid: { display: false }
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label || '';
+                            const value = formatarMoeda(context.parsed);
+                            return `${label}: ${value}`;
+                        }
+                    }
                 }
             }
         }
     });
     
-    // 2. Pizza de Despesas
-    const despesas = valores.filter(v => v < 0).map(v => Math.abs(v));
-    const labelsDespesas = grupos.filter((g, i) => valores[i] < 0);
-    
+    // 2. Distribuição de Despesas
     charts.despesas = new Chart(document.getElementById('despesasChart'), {
         type: 'doughnut',
         data: {
@@ -839,42 +756,19 @@ function formatarMoeda(valor) {
     });
 }
 
-function exportarRelatorio() {
-    if (!dadosAtuais) {
-        alert('Por favor, selecione um mês primeiro.');
-        return;
-    }
-    
-    // Aqui você pode implementar a lógica de exportação
-    alert('Funcionalidade de exportação em desenvolvimento!\n\nEm breve você poderá exportar relatórios em PDF.');
-}
-
-// Carregar dados do primeiro mês disponível
+// Carregar dados do primeiro ano disponível
 document.addEventListener('DOMContentLoaded', function() {
-    {% if meses_disponiveis %}
-        const primeiroMes = {{ meses_disponiveis[0] }};
-        const ano = {{ ano_atual }};
+    {% if anos_disponiveis %}
+        const primeiroAno = {{ anos_disponiveis|sort(reverse=True)|first }};
         
         // Simula o click no primeiro botão disponível
         setTimeout(() => {
-            const primeiroBotao = document.querySelector('.month-btn.has-data:not([disabled])');
+            const primeiroBotao = document.querySelector('.year-btn.has-data:not([disabled])');
             if (primeiroBotao) {
                 primeiroBotao.classList.add('active');
-                carregarDadosMes(primeiroMes, ano);
+                carregarDadosAno(primeiroAno);
             }
         }, 100);
-    {% else %}
-        // Exibe mensagem se não há dados
-        const metricsContainer = document.getElementById('metrics-container');
-        metricsContainer.innerHTML = `
-            <div class="col-12">
-                <div class="alert alert-warning" role="alert">
-                    <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>Nenhum dado disponível para ${ano_atual}</strong><br>
-                    Entre em contato com o administrador para que os dados sejam carregados.
-                </div>
-            </div>
-        `;
     {% endif %}
 });
 </script>

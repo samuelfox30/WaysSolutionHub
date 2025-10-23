@@ -261,11 +261,11 @@
 
     <div class="bg-white rounded-3 shadow p-4 mb-4">
         <h2 class="h5 fw-bold text-dark mb-4 border-bottom pb-2">
-            <i class="bi bi-search me-2 text-primary"></i> Consulta de Dados
+            <i class="bi bi-search me-2 text-primary"></i> Consulta de Dados Anuais
         </h2>
 
         <form method="POST" class="row g-3 align-items-end">
-            <div class="col-md-5 col-lg-4">
+            <div class="col-md-6 col-lg-6">
                 <label for="empresa" class="form-label fw-semibold">Empresa:</label>
                 <select name="empresa" id="empresa" class="form-select" required>
                     <option value="">-- Selecione --</option>
@@ -277,17 +277,12 @@
                 </select>
             </div>
 
-            <div class="col-md-3 col-lg-2">
-                <label for="mes" class="form-label fw-semibold">Mês:</label>
-                <input type="number" name="mes" id="mes" min="1" max="12" class="form-control" value="{{ mes_selecionado or '' }}" required>
-            </div>
-
-            <div class="col-md-3 col-lg-2">
+            <div class="col-md-4 col-lg-3">
                 <label for="ano" class="form-label fw-semibold">Ano:</label>
                 <input type="number" name="ano" id="ano" class="form-control" value="{{ ano_selecionado or '' }}" required>
             </div>
 
-            <div class="col-md-1 col-lg-4 d-grid">
+            <div class="col-md-2 col-lg-3 d-grid">
                 <button type="submit" class="btn btn-primary">
                     <i class="bi bi-search me-2"></i> Consultar
                 </button>
@@ -301,8 +296,7 @@
                 <i class="bi bi-bar-chart-fill me-2"></i> Resultados de Análise
             </h2>
             <p class="mb-0 text-muted">
-                <strong>{{ empresa_selecionada }}</strong> - 
-                {{ ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'][mes_selecionado|int] }}/{{ ano_selecionado }}
+                <strong>{{ empresa_selecionada }}</strong> - Ano {{ ano_selecionado }}
             </p>
         </div>
 
@@ -425,7 +419,7 @@
         <div class="empty-state">
             <i class="bi bi-inbox"></i>
             <h3 class="h5 text-muted">Nenhum resultado encontrado</h3>
-            <p class="text-muted">Selecione uma empresa, mês e ano para iniciar a consulta.</p>
+            <p class="text-muted">Selecione uma empresa e ano para iniciar a consulta.</p>
         </div>
     {% endif %}
 

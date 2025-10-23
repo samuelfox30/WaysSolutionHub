@@ -1,8 +1,8 @@
 {% extends "admin/base.html" %}
 
-{% block header_title %}Upload de Dados Mensais e Consulta{% endblock %}
+{% block header_title %}Upload de Dados Anuais e Consulta{% endblock %}
 
-{% block header_subtitle %}Envie e visualize os dados mensais vinculados às empresas cadastradas{% endblock %}
+{% block header_subtitle %}Envie e visualize os dados anuais vinculados às empresas cadastradas{% endblock %}
 
 {% block content %}
     <div id="loading-overlay" class="loading-overlay">
@@ -26,7 +26,7 @@
     {% endwith %}
 
     <div class="bg-white rounded-3 shadow p-4 mb-4">
-        <h2 class="h5 fw-semibold text-dark mb-4">Importar Dados Mensais</h2>
+        <h2 class="h5 fw-semibold text-dark mb-4">Importar Dados Anuais</h2>
         <form id="upload-form" action="{{ url_for('admin.upload_dados') }}" method="post" enctype="multipart/form-data" class="row g-3">
             <div class="col-md-6">
                 <label for="empresaSelect" class="form-label">Empresa</label>
@@ -37,27 +37,9 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="col-md-3">
-                <label for="mesSelect" class="form-label">Mês</label>
-                <select class="form-select" id="mesSelect" name="mes" required>
-                    <option selected disabled value="">Selecione o mês...</option>
-                    <option value="01">Janeiro</option>
-                    <option value="02">Fevereiro</option>
-                    <option value="03">Março</option>
-                    <option value="04">Abril</option>
-                    <option value="05">Maio</option>
-                    <option value="06">Junho</option>
-                    <option value="07">Julho</option>
-                    <option value="08">Agosto</option>
-                    <option value="09">Setembro</option>
-                    <option value="10">Outubro</option>
-                    <option value="11">Novembro</option>
-                    <option value="12">Dezembro</option>
-                </select>
-            </div>
-            <div class="col-md-3">
+            <div class="col-md-6">
                 <label for="anoInput" class="form-label">Ano</label>
-                <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="{{ current_year }}" required>
+                <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="{{ current_year|default(2025) }}" required>
             </div>
             <div class="col-md-12">
                 <label for="arquivoEmpresas" class="form-label">Arquivo (.csv ou .xlsx)</label>
@@ -74,52 +56,50 @@
     <div class="bg-white rounded-3 shadow p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="h5 fw-semibold text-dark mb-0">Uploads Realizados</h2>
-            
-            <!-- Navegação de Ano -->
-            <div class="d-flex align-items-center gap-2">
-                <a href="{{ url_for('admin.dados_empresas', ano=current_year - 1) }}" 
-                   class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-chevron-left"></i>
-                </a>
-                <span class="fw-bold text-dark px-3" style="min-width: 80px; text-align: center; font-size: 1.1rem;">
-                    {{ current_year }}
-                </span>
-                <a href="{{ url_for('admin.dados_empresas', ano=current_year + 1) }}" 
-                   class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-chevron-right"></i>
-                </a>
-            </div>
         </div>
 
         <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
-            <table class="table table-hover align-middle text-center">
+            <table class="table table-hover align-middle">
                 <thead>
                     <tr class="table-light">
-                        <th scope="col">Empresa</th>
-                        {% for mes in range(1, 13) %}
-                            <th scope="col">{{ mes }}</th>
-                        {% endfor %}
+                        <th scope="col" class="text-start">Empresa</th>
+                        <th scope="col" class="text-center">Anos com Dados</th>
+                        <th scope="col" class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for user in users %}
                     <tr>
                         <td class="fw-semibold text-start">{{ user.empresa }}</td>
-                        
-                        {% for mes in range(1, 13) %}
-                            {% set tem_dados = uploads.get(user.empresa, {}).get(mes, False) %}
-                            <td>
+                        <td class="text-center">
+                            {% set anos = uploads.get(user.empresa, []) %}
+                            {% if anos %}
+                                <div class="d-flex flex-wrap justify-content-center gap-2">
+                                    {% for ano in anos|sort(reverse=True) %}
+                                        <span class="badge bg-success">{{ ano }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted">Nenhum dado cadastrado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% if anos %}
                                 <button type="button" 
-                                        class="btn-bolinha {{ 'com-dados' if tem_dados else 'sem-dados' }}" 
-                                        onclick="abrirPopup('{{ user.empresa }}', {{ mes }}, {{ current_year }}, {{ tem_dados|tojson }})"
-                                        {{ 'disabled' if not tem_dados else '' }}>
+                                        class="btn btn-sm btn-primary" 
+                                        onclick="abrirPopup('{{ user.empresa }}', {{ anos|tojson }})">
+                                    <i class="bi bi-gear-fill me-1"></i> Gerenciar
                                 </button>
-                            </td>
-                        {% endfor %}
+                            {% else %}
+                                <button type="button" class="btn btn-sm btn-secondary" disabled>
+                                    <i class="bi bi-x-circle me-1"></i> Sem Dados
+                                </button>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="13" class="text-center">Nenhuma empresa cadastrada.</td>
+                        <td colspan="3" class="text-center">Nenhuma empresa cadastrada.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -137,18 +117,22 @@
                 </div>
                 <div class="modal-body">
                     <p class="mb-3">
-                        <strong>Empresa:</strong> <span id="popup-empresa"></span><br>
-                        <strong>Mês:</strong> <span id="popup-mes"></span><br>
-                        <strong>Ano:</strong> <span id="popup-ano"></span>
+                        <strong>Empresa:</strong> <span id="popup-empresa"></span>
                     </p>
+                    
+                    <div class="mb-3">
+                        <label for="anoSelect" class="form-label fw-semibold">Selecione o Ano:</label>
+                        <select class="form-select" id="anoSelect" onchange="atualizarFormsAno()">
+                            <option value="">-- Selecione um ano --</option>
+                        </select>
+                    </div>
                     
                     <div class="d-grid gap-2">
                         <!-- Form para Ver Dados -->
                         <form method="POST" action="{{ url_for('admin.consultar_dados_page') }}" class="mb-2">
                             <input type="hidden" name="empresa" id="form-ver-empresa">
-                            <input type="hidden" name="mes" id="form-ver-mes">
                             <input type="hidden" name="ano" id="form-ver-ano">
-                            <button type="submit" class="btn btn-primary w-100">
+                            <button type="submit" class="btn btn-primary w-100" id="btn-ver-dados" disabled>
                                 <i class="bi bi-eye me-2"></i> Ver Dados
                             </button>
                         </form>
@@ -157,9 +141,8 @@
                         <form method="POST" action="{{ url_for('admin.deletar_dados_empresa') }}" 
                               onsubmit="return confirm('Tem certeza que deseja excluir estes dados? Esta ação não pode ser desfeita.');">
                             <input type="hidden" name="empresa" id="form-excluir-empresa">
-                            <input type="hidden" name="mes" id="form-excluir-mes">
                             <input type="hidden" name="ano" id="form-excluir-ano">
-                            <button type="submit" class="btn btn-danger w-100">
+                            <button type="submit" class="btn btn-danger w-100" id="btn-excluir-dados" disabled>
                                 <i class="bi bi-trash me-2"></i> Excluir Dados
                             </button>
                         </form>
@@ -202,38 +185,6 @@
             color: #ff9900 !important;
         }
 
-        /* Estilos para as bolinhas como botões */
-        .btn-bolinha {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            border: none;
-            padding: 0;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-block;
-        }
-
-        .btn-bolinha.com-dados {
-            background-color: green;
-        }
-
-        .btn-bolinha.com-dados:hover {
-            background-color: #006400;
-            transform: scale(1.3);
-            box-shadow: 0 0 8px rgba(0, 128, 0, 0.6);
-        }
-
-        .btn-bolinha.sem-dados {
-            background-color: gold;
-            cursor: not-allowed;
-            opacity: 0.7;
-        }
-
-        .btn-bolinha:disabled {
-            cursor: not-allowed;
-        }
-
         /* Ajustes no modal */
         .modal-content {
             border: none;
@@ -249,45 +200,77 @@
             padding: 1.5rem;
         }
 
-        /* Estilos para navegação de ano */
-        .btn-outline-secondary {
-            border-color: #dee2e6;
-            color: #6c757d;
+        /* Badge para anos */
+        .badge {
+            font-size: 0.875rem;
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
         }
 
-        .btn-outline-secondary:hover {
+        /* Estilos de botões */
+        .btn-orange {
             background-color: #ff9900;
             border-color: #ff9900;
+            color: white;
+        }
+
+        .btn-orange:hover {
+            background-color: #e68a00;
+            border-color: #e68a00;
             color: white;
         }
     </style>
    
     <script>
-        const mesesNomes = [
-            '', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-        ];
+        let empresaAtual = '';
+        let anosDisponiveis = [];
 
-        function abrirPopup(empresa, mes, ano, temDados) {
-            if (!temDados) return;
-
-            const mesFormatado = mes.toString().padStart(2, '0');
-            const mesNome = mesesNomes[mes];
+        function abrirPopup(empresa, anos) {
+            empresaAtual = empresa;
+            anosDisponiveis = anos;
 
             document.getElementById('popup-empresa').textContent = empresa;
-            document.getElementById('popup-mes').textContent = mesNome;
-            document.getElementById('popup-ano').textContent = ano;
 
-            document.getElementById('form-ver-empresa').value = empresa;
-            document.getElementById('form-ver-mes').value = mesFormatado;
-            document.getElementById('form-ver-ano').value = ano;
+            // Preencher o select de anos
+            const anoSelect = document.getElementById('anoSelect');
+            anoSelect.innerHTML = '<option value="">-- Selecione um ano --</option>';
             
+            anos.sort((a, b) => b - a); // Ordenar em ordem decrescente
+            anos.forEach(ano => {
+                const option = document.createElement('option');
+                option.value = ano;
+                option.textContent = ano;
+                anoSelect.appendChild(option);
+            });
+
+            // Preencher os campos hidden com a empresa
+            document.getElementById('form-ver-empresa').value = empresa;
             document.getElementById('form-excluir-empresa').value = empresa;
-            document.getElementById('form-excluir-mes').value = mesFormatado;
-            document.getElementById('form-excluir-ano').value = ano;
+
+            // Desabilitar botões até que um ano seja selecionado
+            document.getElementById('btn-ver-dados').disabled = true;
+            document.getElementById('btn-excluir-dados').disabled = true;
 
             const modal = new bootstrap.Modal(document.getElementById('popupDados'));
             modal.show();
+        }
+
+        function atualizarFormsAno() {
+            const anoSelecionado = document.getElementById('anoSelect').value;
+            
+            if (anoSelecionado) {
+                // Atualizar os campos hidden
+                document.getElementById('form-ver-ano').value = anoSelecionado;
+                document.getElementById('form-excluir-ano').value = anoSelecionado;
+
+                // Habilitar os botões
+                document.getElementById('btn-ver-dados').disabled = false;
+                document.getElementById('btn-excluir-dados').disabled = false;
+            } else {
+                // Desabilitar os botões se nenhum ano foi selecionado
+                document.getElementById('btn-ver-dados').disabled = true;
+                document.getElementById('btn-excluir-dados').disabled = true;
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
