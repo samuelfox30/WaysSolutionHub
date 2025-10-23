@@ -5,9 +5,6 @@ app_index = Blueprint('index', __name__)
 #------------------FUNÇÃO PRINCIPAL------------------#
 @app_index.route('/')
 def index():
-    """ if 'user' in session:
-        return redirect(url_for('profile.profile'))
-    return render_template('pages/public/index.html') """
     return render_template('public/index.html')
 
 
@@ -24,27 +21,38 @@ def login():
         if not validar_email(email):
             print("Email inválido")
             flash('Email inválido', 'danger')
+            return render_template('public/logar.html')
+            
         if not validar_senha(senha):
             print("Senha inválida")
             flash('Senha inválida', 'danger')
+            return render_template('public/logar.html')
+            
         if not validar_tipo_usuario(user_type):
             print("Tipo de usuário inválido")
             flash('Tipo de usuário inválido', 'danger')
+            return render_template('public/logar.html')
 
         from models.user_manager import UserManager
         user = UserManager()
         dado = user.find_user_by_email(email)
+        
         if dado:
             from controllers.auth.hash import hash_senha_sha256
-            senha = hash_senha_sha256(senha)
-            if dado['password'] == senha:
+            senha_hash = hash_senha_sha256(senha)
+            
+            if dado['password'] == senha_hash:
                 if dado['role'] == user_type:
                     session['user_email'] = dado['email']
                     session['user_role'] = dado['role']
+                    
+                    # Redireciona conforme o tipo de usuário
                     if dado['role'] == 'admin':
+                        user.close()
                         return redirect(url_for('admin.admin_dashboard'))
-                    else:
-                        print('REDIRECIONAMENTO PARA PAGINA DE USUARIO COMUM, QUE AINDA NÃO EXISTE')
+                    else:  # user
+                        user.close()
+                        return redirect(url_for('user.user_dashboard'))
                 else:
                     print("Tipo de usuário incorreto!")
                     flash('Tipo de usuário incorreto!', 'danger')
@@ -54,6 +62,7 @@ def login():
         else:
             print("Usuário não encontrado!")
             flash('Usuário não encontrado!', 'danger')
+        
         user.close()
 
     return render_template('public/logar.html')

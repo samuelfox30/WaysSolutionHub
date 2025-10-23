@@ -1,0 +1,328 @@
+{% extends "user/base.html" %}
+
+{% block header_title %}Dashboard{% endblock %}
+{% block header_subtitle %}Visão geral dos seus dados financeiros{% endblock %}
+
+{% block content %}
+<style>
+    .metric-card {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border-left: 4px solid #ff9900;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(255, 153, 0, 0.2);
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+    }
+    
+    .metric-label {
+        color: #718096;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .month-selector {
+        background: white;
+        border-radius: 12px;
+        padding: 1rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        margin-bottom: 2rem;
+    }
+    
+    .month-btn {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        margin: 0.25rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+    
+    .month-btn:hover {
+        border-color: #ff9900;
+        background: #fff5e6;
+    }
+    
+    .month-btn.active {
+        background: #ff9900;
+        color: white;
+        border-color: #ff9900;
+    }
+    
+    .month-btn.has-data {
+        border-color: #48bb78;
+    }
+    
+    .month-btn.no-data {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+</style>
+
+<!-- Seletor de Ano -->
+<div class="month-selector">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-calendar-range me-2"></i> Selecione o Período</h5>
+        <div class="d-flex align-items-center gap-2">
+            <a href="{{ url_for('user.user_dashboard', ano=ano_atual - 1) }}" 
+               class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-chevron-left"></i>
+            </a>
+            <span class="fw-bold px-3">{{ ano_atual }}</span>
+            <a href="{{ url_for('user.user_dashboard', ano=ano_atual + 1) }}" 
+               class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+    
+    <!-- Grid de Meses -->
+    <div class="row g-2">
+        {% set meses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'] %}
+        {% for i in range(1, 13) %}
+            {% set has_data = i in meses_disponiveis %}
+            <div class="col-6 col-md-3 col-lg-2">
+                <button class="month-btn w-100 {{ 'has-data' if has_data else 'no-data' }}" 
+                        onclick="carregarDadosMes({{ i }}, {{ ano_atual }})"
+                        {{ 'disabled' if not has_data else '' }}>
+                    <div class="fw-bold">{{ meses[i-1] }}</div>
+                    <small>
+                        {% if has_data %}
+                            <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                            <i class="bi bi-x-circle text-muted"></i>
+                        {% endif %}
+                    </small>
+                </button>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Cards de Métricas -->
+<div class="row g-4 mb-4" id="metrics-container">
+    <div class="col-md-6 col-lg-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-cash-coin fs-3 text-success me-3"></i>
+                <span class="metric-label">Receita Total</span>
+            </div>
+            <div class="metric-value" id="receita-total">R$ 0,00</div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-wallet2 fs-3 text-danger me-3"></i>
+                <span class="metric-label">Despesas Totais</span>
+            </div>
+            <div class="metric-value" id="despesas-total">R$ 0,00</div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-graph-up-arrow fs-3 text-primary me-3"></i>
+                <span class="metric-label">Resultado</span>
+            </div>
+            <div class="metric-value" id="resultado">R$ 0,00</div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 col-lg-3">
+        <div class="metric-card">
+            <div class="d-flex align-items-center mb-2">
+                <i class="bi bi-calendar-check fs-3 text-warning me-3"></i>
+                <span class="metric-label">Meses com Dados</span>
+            </div>
+            <div class="metric-value">{{ meses_disponiveis|length }}/12</div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="chart-container">
+            <h5 class="mb-4"><i class="bi bi-bar-chart-fill me-2"></i> Comparativo por Grupo</h5>
+            <canvas id="gruposChart" height="100"></canvas>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="chart-container">
+            <h5 class="mb-4"><i class="bi bi-pie-chart-fill me-2"></i> Distribuição de Despesas</h5>
+            <canvas id="despesasChart"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Botão para ver dados detalhados -->
+<div class="text-center mt-4">
+    <a href="{{ url_for('user.visualizar_dados') }}" class="btn btn-lg" style="background-color: #ff9900; color: white;">
+        <i class="bi bi-table me-2"></i> Ver Dados Detalhados
+    </a>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let gruposChart, despesasChart;
+
+function carregarDadosMes(mes, ano) {
+    // Remove active de todos os botões
+    document.querySelectorAll('.month-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Adiciona active no botão clicado
+    event.target.closest('.month-btn').classList.add('active');
+    
+    // Busca dados via API
+    fetch(`/user/api/dados/${mes}/${ano}`)
+        .then(response => response.json())
+        .then(data => {
+            atualizarMetricas(data);
+            atualizarGraficos(data);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar dados:', error);
+        });
+}
+
+function atualizarMetricas(data) {
+    const totais = data.totais || {};
+    
+    // Calcula totais
+    let receita = 0;
+    let despesas = 0;
+    
+    for (const [grupo, valor] of Object.entries(totais)) {
+        if (valor > 0) {
+            receita += valor;
+        } else {
+            despesas += Math.abs(valor);
+        }
+    }
+    
+    const resultado = receita - despesas;
+    
+    // Atualiza cards
+    document.getElementById('receita-total').textContent = formatarMoeda(receita);
+    document.getElementById('despesas-total').textContent = formatarMoeda(despesas);
+    document.getElementById('resultado').textContent = formatarMoeda(resultado);
+    document.getElementById('resultado').style.color = resultado >= 0 ? '#48bb78' : '#f56565';
+}
+
+function atualizarGraficos(data) {
+    const totais = data.totais || {};
+    const grupos = Object.keys(totais);
+    const valores = Object.values(totais);
+    
+    // Destrói gráficos anteriores
+    if (gruposChart) gruposChart.destroy();
+    if (despesasChart) despesasChart.destroy();
+    
+    // Gráfico de barras por grupo
+    const ctxGrupos = document.getElementById('gruposChart').getContext('2d');
+    gruposChart = new Chart(ctxGrupos, {
+        type: 'bar',
+        data: {
+            labels: grupos,
+            datasets: [{
+                label: 'Valores (R$)',
+                data: valores,
+                backgroundColor: valores.map(v => v >= 0 ? 'rgba(72, 187, 120, 0.7)' : 'rgba(245, 101, 101, 0.7)'),
+                borderColor: valores.map(v => v >= 0 ? 'rgba(72, 187, 120, 1)' : 'rgba(245, 101, 101, 1)'),
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return 'R$ ' + value.toLocaleString('pt-BR');
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // Gráfico de pizza de despesas
+    const despesas = valores.filter(v => v < 0).map(v => Math.abs(v));
+    const labelsDespesas = grupos.filter((g, i) => valores[i] < 0);
+    
+    const ctxDespesas = document.getElementById('despesasChart').getContext('2d');
+    despesasChart = new Chart(ctxDespesas, {
+        type: 'doughnut',
+        data: {
+            labels: labelsDespesas,
+            datasets: [{
+                data: despesas,
+                backgroundColor: [
+                    'rgba(255, 153, 0, 0.7)',
+                    'rgba(52, 152, 219, 0.7)',
+                    'rgba(231, 76, 60, 0.7)',
+                    'rgba(46, 204, 113, 0.7)',
+                    'rgba(155, 89, 182, 0.7)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function formatarMoeda(valor) {
+    return 'R$ ' + valor.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Carrega dados do primeiro mês disponível ao carregar a página
+document.addEventListener('DOMContentLoaded', function() {
+    {% if meses_disponiveis %}
+        carregarDadosMes({{ meses_disponiveis[0] }}, {{ ano_atual }});
+        document.querySelector('.month-btn:not([disabled])').classList.add('active');
+    {% endif %}
+});
+</script>
+{% endblock %}
