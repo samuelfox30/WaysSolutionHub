@@ -4,43 +4,45 @@ from datetime import datetime
 
 admin_bp = Blueprint('admin', __name__)
 
+# ============================
+# DASHBOARD E AUTENTICAÇÃO
+# ============================
+
 @admin_bp.route('/admin')
 def admin_dashboard():
-
+    """Dashboard principal - gerenciamento de usuários"""
     if 'user_email' in session and session.get('user_role') == 'admin':
         from models.user_manager import UserManager
         user_manager = UserManager()
         users = user_manager.get_all_users()
         user_manager.close()
         return render_template('admin/admin.html', users=users)
-
     else:
-
         return redirect(url_for('index.login'))
 
 
 @admin_bp.route('/logout')
 def logout():
-    # Verificação de autenticação de administrador
+    """Logout do administrador"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
-        
-    # Remove as informações do usuário da sessão
+
     session.pop('user_email', None)
     session.pop('user_role', None)
-
-    # Redireciona o usuário para a página inicial (ou de login)
     return redirect(url_for('index.login'))
 
 
-@admin_bp.route('/admin/cadastrar', methods=['GET', 'POST'])
+# ============================
+# GERENCIAMENTO DE USUÁRIOS
+# ============================
+
+@admin_bp.route('/admin/cadastrar_usuario', methods=['GET', 'POST'])
 def cadastrar_usuario():
-    # Se a requisição não for POST, redireciona para a dashboard
+    """Cadastra um novo usuário (SEM campos de empresa)"""
     if request.method != 'POST':
         return redirect(url_for('admin.admin_dashboard'))
 
-    # Verificação de autenticação de administrador (melhor usar um decorador como discutido antes)
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
@@ -48,69 +50,88 @@ def cadastrar_usuario():
     nome = request.form.get('nome')
     email = request.form.get('email')
     telefone = request.form.get('telefone')
-    empresa = request.form.get('empresa')
-    seguimento = request.form.get('seguimento')
     senha = request.form.get('senha')
     perfil = request.form.get('perfil')
 
-    # ----------------------------- Validações de dados -----------------------------
-    from controllers.auth.validation import validar_email, validar_senha_cadastro, validar_tipo_usuario, validar_nome_empresa, validar_telefone, validar_seguimento
+    # ----------------------------- Validações -----------------------------
+    from controllers.auth.validation import validar_email, validar_senha_cadastro, validar_tipo_usuario, validar_telefone
 
-    # Verificações sequenciais com flash e redirect
     if not validar_email(email):
         flash('Email inválido. Por favor, verifique o formato.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
-    
+
     if not validar_senha_cadastro(senha):
         flash('A senha precisa conter ao menos 8 caracteres, uma letra maiúscula, uma letra minúscula, um número e um caractere especial.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
-    
+
     if not validar_tipo_usuario(perfil):
         flash('Tipo de usuário inválido.', 'danger')
-        return redirect(url_for('admin.admin_dashboard'))
-
-    if not validar_nome_empresa(empresa):
-        flash('Nome de empresa inválido.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
 
     if not validar_telefone(telefone):
         flash('Por favor, digite um número de telefone válido. Use o formato: (XX) XXXXX-XXXX ou XXXXXXXXXXX.', 'danger')
         return redirect(url_for('admin.admin_dashboard'))
 
-    if not validar_seguimento(seguimento):
-        flash('Seguimento inválido.', 'danger')
-        return redirect(url_for('admin.admin_dashboard'))
-
-    # ----------------------------- Validação e Cadastro no banco de dados -----------------------------
+    # ----------------------------- Cadastro no banco -----------------------------
     from models.user_manager import UserManager
     user_manager = UserManager()
-    
-    # A função register_user agora retorna uma tupla (True/False, mensagem)
-    success = user_manager.register_user(
-        nome, 
-        email, 
-        telefone, 
-        empresa, 
-        seguimento, 
-        senha, 
-        perfil
-    )
 
-    if success:
-        flash("Usuário cadastrado com sucesso!", "success")
+    user_id = user_manager.register_user(nome, email, telefone, senha, perfil)
+
+    if user_id:
+        flash(f"Usuário cadastrado com sucesso! Agora você pode vinculá-lo a empresas.", "success")
     else:
         flash("Ocorreu um erro ao cadastrar o usuário. Por favor, verifique os dados e tente novamente.", "danger")
 
-    # Fecha a conexão do banco de dados (boa prática)
     user_manager.close()
-    
-    # Redireciona para a página principal, onde a mensagem será exibida
     return redirect(url_for('admin.admin_dashboard'))
 
 
-@admin_bp.route('/admin/delete/<int:user_id>', methods=['GET', 'POST'])
-def delete_user_route(user_id):
-    # Verificação de segurança: apenas admins podem excluir usuários
+@admin_bp.route('/admin/editar_usuario', methods=['POST'])
+def editar_usuario():
+    """Edita um usuário existente (SEM campo empresa)"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    user_id = request.form.get('id')
+    nome = request.form.get('nome')
+    email = request.form.get('email')
+    telefone = request.form.get('telefone')
+    perfil = request.form.get('perfil')
+
+    # ----------------------------- Validações -----------------------------
+    from controllers.auth.validation import validar_email, validar_tipo_usuario, validar_telefone
+
+    if not validar_email(email):
+        flash('Email inválido. Por favor, verifique o formato.', 'danger')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    if not validar_tipo_usuario(perfil):
+        flash('Tipo de usuário inválido.', 'danger')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    if not validar_telefone(telefone):
+        flash('Telefone inválido.', 'danger')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    # ----------------------------- Atualização no banco -----------------------------
+    from models.user_manager import UserManager
+    user_manager = UserManager()
+    success = user_manager.update_user(user_id, nome, email, telefone, perfil)
+    user_manager.close()
+
+    if success:
+        flash("Usuário atualizado com sucesso!", "success")
+    else:
+        flash("Erro ao atualizar usuário. Verifique os dados e tente novamente.", "danger")
+
+    return redirect(url_for('admin.admin_dashboard'))
+
+
+@admin_bp.route('/admin/deletar_usuario/<int:user_id>', methods=['GET', 'POST'])
+def deletar_usuario(user_id):
+    """Deleta um usuário"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
@@ -128,137 +149,136 @@ def delete_user_route(user_id):
     return redirect(url_for('admin.admin_dashboard'))
 
 
-
-@admin_bp.route('/admin/edit', methods=['POST'])
-def editar_usuario():
-    # Verificação de autenticação de administrador
-    if not ('user_email' in session and session.get('user_role') == 'admin'):
-        flash("Acesso negado. Você precisa ser um administrador.", "danger")
-        return redirect(url_for('index.login'))
-
-    # Coleta dos dados do formulário
-    user_id = request.form.get('id')
-    nome = request.form.get('nome')
-    email = request.form.get('email')
-    empresa = request.form.get('empresa')
-    perfil = request.form.get('perfil')
-
-    # ----------------------------- Validações -----------------------------
-    from controllers.auth.validation import validar_email, validar_tipo_usuario, validar_nome_empresa
-
-    if not validar_email(email):
-        flash('Email inválido. Por favor, verifique o formato.', 'danger')
-        return redirect(url_for('admin.admin_dashboard'))
-
-    if not validar_tipo_usuario(perfil):
-        flash('Tipo de usuário inválido.', 'danger')
-        return redirect(url_for('admin.admin_dashboard'))
-
-    if not validar_nome_empresa(empresa):
-        flash('Nome de empresa inválido.', 'danger')
-        return redirect(url_for('admin.admin_dashboard'))
-
-    # ----------------------------- Atualização no banco de dados -----------------------------
-    from models.user_manager import UserManager
-    user_manager = UserManager()
-    success = user_manager.update_user(user_id, nome, email, empresa, perfil)
-    user_manager.close()
-
-    if success:
-        flash("Usuário atualizado com sucesso!", "success")
-    else:
-        flash("Erro ao atualizar usuário. Verifique os dados e tente novamente.", "danger")
-
-    return redirect(url_for('admin.admin_dashboard'))
-
-
-# ----------------------------------------------------------------------------- CONTROLE DE EMPRESAS --------------------------------------------------------------------------------------------
+# ============================
+# GERENCIAMENTO DE EMPRESAS
+# ============================
 
 @admin_bp.route('/admin/empresas')
-def dados_empresas():
-    """
-    Exibe uma lista de empresas e indica quais anos possuem dados cadastrados.
-    Removido o controle de meses, pois os dados agora são anuais.
-    """
-    if 'user_email' in session and session.get('user_role') == 'admin':
-        from models.user_manager import UserManager
-        from models.company_manager import CompanyManager
-
-        user_manager = UserManager()
-        users = user_manager.get_all_users()
-        user_manager.close()
-
-        company_manager = CompanyManager()
-        uploads = {}
-        for user in users:
-            anos_com_dados = company_manager.get_anos_com_dados(user["id"])
-            uploads[user["empresa"]] = anos_com_dados
-        company_manager.close()
-
-        return render_template(
-            'admin/empresas.html',
-            users=users,
-            uploads=uploads
-        )
-    else:
-        flash("Acesso negado. Você precisa ser um administrador.", "danger")
-        return redirect(url_for('index.login'))
-
-
-@admin_bp.route('/admin/upload', methods=['GET', 'POST'])
-def upload_dados():
-    """
-    Recebe o upload de arquivo Excel com dados anuais da empresa.
-    Removido o campo 'mes', mantendo apenas empresa e ano.
-    """
-    # Verificação de autenticação de administrador
+def gerenciar_empresas():
+    """Página de gerenciamento de empresas"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
 
-    if request.method != 'POST':
-        return redirect(url_for('admin.dados_empresas'))
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    empresas = company_manager.listar_todas_empresas()
 
-    empresa = request.form.get('empresa')
-    ano = request.form.get('ano')
-    arquivo = request.files.get('arquivo')
+    # Para cada empresa, buscar anos com dados
+    uploads = {}
+    for empresa in empresas:
+        anos_com_dados = company_manager.get_anos_com_dados(empresa['id'])
+        uploads[empresa['id']] = anos_com_dados
 
-    # Validação básica
-    if not empresa or not ano or not arquivo:
-        flash("Todos os campos são obrigatórios.", "danger")
-        return redirect(url_for('admin.dados_empresas'))
+    company_manager.close()
 
-    # Prints de verificação
-    print(f"Empresa selecionada: {empresa}")
-    print(f"Ano selecionado: {ano}")
-    print(f"Nome do arquivo recebido: {arquivo.filename if arquivo else 'Nenhum arquivo'}")
-
-    try:
-        from controllers.data_processing.file_processing import process_uploaded_file
-        dados = process_uploaded_file(arquivo)
-        d1 = dados[0]
-        d2 = dados[1]
-        
-        from models.company_manager import CompanyManager
-        company_manager_variable = CompanyManager()
-        company_manager_variable.salvar_itens_empresa(empresa, ano, d1, d2)
-        company_manager_variable.close()
-
-        flash(f"Dados da empresa '{empresa}' para o ano {ano} foram salvos com sucesso.", "success")
-    except Exception as e:
-        print(f"Erro ao processar arquivo: {e}")
-        flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
-
-    return redirect(url_for('admin.dados_empresas'))
+    return render_template('admin/empresas.html', empresas=empresas, uploads=uploads)
 
 
-@admin_bp.route('/admin/consultar', methods=['GET', 'POST'])
-def consultar_dados_page():
-    """
-    Consulta dados de uma empresa para um ano específico.
-    Removido o campo 'mes'.
-    """
-    # Verificação de autenticação de administrador
+@admin_bp.route('/admin/cadastrar_empresa', methods=['POST'])
+def cadastrar_empresa():
+    """Cadastra uma nova empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    nome = request.form.get('nome')
+    cnpj = request.form.get('cnpj')
+    telefone = request.form.get('telefone')
+    email = request.form.get('email')
+    cep = request.form.get('cep')
+    complemento = request.form.get('complemento', '')
+    seguimento = request.form.get('seguimento')
+    website = request.form.get('website', None)
+
+    # ----------------------------- Validações básicas -----------------------------
+    if not all([nome, cnpj, telefone, email, cep, seguimento]):
+        flash('Todos os campos obrigatórios devem ser preenchidos.', 'danger')
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # ----------------------------- Cadastro no banco -----------------------------
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    empresa_id = company_manager.criar_empresa(
+        nome, cnpj, telefone, email, cep, complemento, seguimento, website
+    )
+
+    if empresa_id:
+        flash(f"Empresa '{nome}' cadastrada com sucesso!", "success")
+    else:
+        flash("Erro ao cadastrar empresa. Verifique se o CNPJ já não está cadastrado.", "danger")
+
+    company_manager.close()
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/editar_empresa', methods=['POST'])
+def editar_empresa():
+    """Edita uma empresa existente"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    empresa_id = request.form.get('id')
+    nome = request.form.get('nome')
+    cnpj = request.form.get('cnpj')
+    telefone = request.form.get('telefone')
+    email = request.form.get('email')
+    cep = request.form.get('cep')
+    complemento = request.form.get('complemento', '')
+    seguimento = request.form.get('seguimento')
+    website = request.form.get('website', None)
+
+    # ----------------------------- Validações básicas -----------------------------
+    if not all([empresa_id, nome, cnpj, telefone, email, cep, seguimento]):
+        flash('Todos os campos obrigatórios devem ser preenchidos.', 'danger')
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # ----------------------------- Atualização no banco -----------------------------
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    success = company_manager.atualizar_empresa(
+        empresa_id, nome, cnpj, telefone, email, cep, complemento, seguimento, website
+    )
+
+    if success:
+        flash("Empresa atualizada com sucesso!", "success")
+    else:
+        flash("Erro ao atualizar empresa.", "danger")
+
+    company_manager.close()
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/deletar_empresa/<int:empresa_id>', methods=['GET', 'POST'])
+def deletar_empresa(empresa_id):
+    """Deleta uma empresa (e todos os seus dados CASCADE)"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    success = company_manager.deletar_empresa(empresa_id)
+    company_manager.close()
+
+    if success:
+        flash("Empresa excluída com sucesso!", "success")
+    else:
+        flash("Erro ao excluir empresa.", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+# ============================
+# RELACIONAMENTO USER-EMPRESA
+# ============================
+
+@admin_bp.route('/admin/vinculos')
+def gerenciar_vinculos():
+    """Página de gerenciamento de vínculos usuário-empresa"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
@@ -267,28 +287,154 @@ def consultar_dados_page():
     from models.company_manager import CompanyManager
 
     user_manager = UserManager()
-    users = user_manager.get_all_users()  # Lista de empresas para o select
+    company_manager = CompanyManager()
+
+    users = user_manager.get_all_users()
+    empresas = company_manager.listar_todas_empresas()
+
+    # Para cada usuário, buscar empresas vinculadas
+    user_empresas = {}
+    for user in users:
+        user_empresas[user['id']] = user_manager.get_empresas_do_usuario(user['id'])
+
     user_manager.close()
+    company_manager.close()
+
+    return render_template('admin/vinculos.html',
+                         users=users,
+                         empresas=empresas,
+                         user_empresas=user_empresas)
+
+
+@admin_bp.route('/admin/vincular', methods=['POST'])
+def vincular_user_empresa():
+    """Vincula um usuário a uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    user_id = request.form.get('user_id')
+    empresa_id = request.form.get('empresa_id')
+
+    if not user_id or not empresa_id:
+        flash("Selecione um usuário e uma empresa.", "danger")
+        return redirect(url_for('admin.gerenciar_vinculos'))
+
+    from models.user_manager import UserManager
+    user_manager = UserManager()
+    success = user_manager.vincular_user_empresa(int(user_id), int(empresa_id))
+    user_manager.close()
+
+    if success:
+        flash("Vínculo criado com sucesso!", "success")
+    else:
+        flash("Erro ao criar vínculo.", "danger")
+
+    return redirect(url_for('admin.gerenciar_vinculos'))
+
+
+@admin_bp.route('/admin/desvincular', methods=['POST'])
+def desvincular_user_empresa():
+    """Desvincula um usuário de uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    user_id = request.form.get('user_id')
+    empresa_id = request.form.get('empresa_id')
+
+    if not user_id or not empresa_id:
+        flash("Parâmetros inválidos.", "danger")
+        return redirect(url_for('admin.gerenciar_vinculos'))
+
+    from models.user_manager import UserManager
+    user_manager = UserManager()
+    success = user_manager.desvincular_user_empresa(int(user_id), int(empresa_id))
+    user_manager.close()
+
+    if success:
+        flash("Vínculo removido com sucesso!", "success")
+    else:
+        flash("Erro ao remover vínculo.", "danger")
+
+    return redirect(url_for('admin.gerenciar_vinculos'))
+
+
+# ============================
+# UPLOAD E GESTÃO DE DADOS
+# ============================
+
+@admin_bp.route('/admin/upload', methods=['GET', 'POST'])
+def upload_dados():
+    """Recebe upload de arquivo Excel com dados anuais da empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    if request.method != 'POST':
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    empresa_id = request.form.get('empresa_id')
+    ano = request.form.get('ano')
+    arquivo = request.files.get('arquivo')
+
+    # Validação básica
+    if not empresa_id or not ano or not arquivo:
+        flash("Todos os campos são obrigatórios.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    try:
+        from controllers.data_processing.file_processing import process_uploaded_file
+        from models.company_manager import CompanyManager
+
+        dados = process_uploaded_file(arquivo)
+        d1 = dados[0]
+        d2 = dados[1]
+
+        company_manager = CompanyManager()
+        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
+        company_manager.close()
+
+        flash(f"Dados da empresa para o ano {ano} foram salvos com sucesso.", "success")
+    except Exception as e:
+        print(f"Erro ao processar arquivo: {e}")
+        flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/consultar', methods=['GET', 'POST'])
+def consultar_dados():
+    """Consulta dados de uma empresa para um ano específico"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+
+    company_manager = CompanyManager()
+    empresas = company_manager.listar_todas_empresas()
 
     data_results = None
     empresa_selecionada = None
     ano_selecionado = None
 
     if request.method == 'POST':
-        empresa_selecionada = request.form.get('empresa')
+        empresa_id = request.form.get('empresa_id')
         ano_selecionado = request.form.get('ano')
 
-        if empresa_selecionada and ano_selecionado:
-            company_manager = CompanyManager()
+        if empresa_id and ano_selecionado:
             data_results = company_manager.buscar_dados_empresa(
-                empresa_selecionada,
+                int(empresa_id),
                 int(ano_selecionado)
             )
-            company_manager.close()
+            empresa_selecionada = int(empresa_id)
+
+    company_manager.close()
 
     return render_template(
         'admin/consultar_dados.html',
-        users=users,
+        empresas=empresas,
         data_results=data_results,
         empresa_selecionada=empresa_selecionada,
         ano_selecionado=ano_selecionado
@@ -297,30 +443,26 @@ def consultar_dados_page():
 
 @admin_bp.route('/admin/deletar_dados', methods=['POST'])
 def deletar_dados_empresa():
-    """
-    Exclui todos os dados de uma empresa para um ano específico.
-    Removido o campo 'mes'.
-    """
-    if 'user_email' in session and session.get('user_role') == 'admin':
-        empresa = request.form.get('empresa')
-        ano = request.form.get('ano', type=int)
-
-        if not empresa or not ano:
-            flash("Parâmetros inválidos para exclusão.", "danger")
-            return redirect(url_for('admin.dados_empresas'))
-
-        from models.company_manager import CompanyManager
-        company_manager = CompanyManager()
-        ok = company_manager.excluir_dados_empresa(empresa, ano)
-        company_manager.close()
-
-        if ok:
-            flash(f"Dados da empresa '{empresa}' para o ano {ano} foram excluídos com sucesso.", "success")
-        else:
-            flash(f"Erro ao excluir dados da empresa '{empresa}' para o ano {ano}.", "danger")
-
-        return redirect(url_for('admin.dados_empresas'))
-
-    else:
+    """Exclui todos os dados de uma empresa para um ano específico"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
+
+    empresa_id = request.form.get('empresa_id')
+    ano = request.form.get('ano', type=int)
+
+    if not empresa_id or not ano:
+        flash("Parâmetros inválidos para exclusão.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    ok = company_manager.excluir_dados_empresa(int(empresa_id), ano)
+    company_manager.close()
+
+    if ok:
+        flash(f"Dados da empresa para o ano {ano} foram excluídos com sucesso.", "success")
+    else:
+        flash(f"Erro ao excluir dados da empresa para o ano {ano}.", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))

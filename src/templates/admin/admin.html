@@ -43,7 +43,7 @@
                             <i class="bi bi-envelope me-1"></i>Email
                         </th>
                         <th scope="col" class="fw-semibold">
-                            <i class="bi bi-building me-1"></i>Empresa
+                            <i class="bi bi-telephone me-1"></i>Telefone
                         </th>
                         <th scope="col" class="fw-semibold text-center">
                             <i class="bi bi-shield-check me-1"></i>Perfil
@@ -61,12 +61,7 @@
                             {{ user.nome }}
                         </td>
                         <td class="text-muted">{{ user.email }}</td>
-                        <td>
-                            <span class="badge bg-light text-dark border">
-                                <i class="bi bi-briefcase-fill me-1"></i>
-                                {{ user.empresa }}
-                            </span>
-                        </td>
+                        <td class="text-muted">{{ user.telefone }}</td>
                         <td class="text-center">
                             {% if user.role == 'admin' %}
                                 <span class="badge bg-warning text-dark">
@@ -84,7 +79,7 @@
                             <div class="btn-group" role="group">
                                 <button
                                     class="btn btn-sm btn-outline-primary"
-                                    onclick="showEditModal('{{ user.id }}', '{{ user.nome }}', '{{ user.email }}', '{{ user.empresa }}', '{{ user.role }}')"
+                                    onclick="showEditModal('{{ user.id }}', '{{ user.nome }}', '{{ user.email }}', '{{ user.telefone }}', '{{ user.role }}')"
                                     title="Editar usuário">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
@@ -137,14 +132,6 @@
                         <input type="tel" class="form-control" id="telefone" name="telefone" placeholder="(XX) XXXXX-XXXX" required>
                     </div>
                     <div class="col-md-6">
-                        <label for="company" class="form-label">Empresa</label>
-                        <input type="text" class="form-control" id="company" name="empresa" required>
-                    </div>
-                    <div class="col-md-6">
-                        <label for="seguimento" class="form-label">Seguimento</label>
-                        <input type="text" class="form-control" id="seguimento" name="seguimento" placeholder="Ex: Varejo, Indústria">
-                    </div>
-                    <div class="col-md-6">
                         <label for="password" class="form-label">Senha</label>
                         <input type="password" class="form-control" id="password" name="senha" required>
                         <div class="form-text">Mínimo 8 caracteres com maiúsculas, minúsculas, números e símbolos</div>
@@ -156,6 +143,12 @@
                             <option value="user">Cliente</option>
                             <option value="admin">Administrador</option>
                         </select>
+                    </div>
+                    <div class="col-12">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>Nota:</strong> Após cadastrar o usuário, você poderá vinculá-lo a empresas na página de Vínculos.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -195,7 +188,7 @@
 <!-------------------------------------------- EDIÇÃO DE USUÁRIO -------------------------------------------->
 <div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <form class="modal-content" method="post" action="/admin/edit">
+        <form class="modal-content" method="post" action="{{ url_for('admin.editar_usuario') }}">
             <div class="modal-header">
                 <h5 class="modal-title text-primary" id="editUserModalLabel">Editar Usuário</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
@@ -211,8 +204,8 @@
                     <input type="email" class="form-control" id="editUserEmail" name="email" required>
                 </div>
                 <div class="mb-3">
-                    <label for="editUserEmpresa" class="form-label">Empresa</label>
-                    <input type="text" class="form-control" id="editUserEmpresa" name="empresa" required>
+                    <label for="editUserTelefone" class="form-label">Telefone</label>
+                    <input type="tel" class="form-control" id="editUserTelefone" name="telefone" placeholder="(XX) XXXXX-XXXX" required>
                 </div>
                 <div class="mb-3">
                     <label for="editUserPerfil" class="form-label">Perfil</label>
@@ -236,7 +229,7 @@
     function showDeleteModal(userId, userName) {
         // Encontra o modal na página
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
-        
+
         // Pega os elementos dentro do modal que precisam ser atualizados
         const userNameElement = document.getElementById('userNameToDelete');
         const confirmButton = document.getElementById('confirmDeleteButton');
@@ -245,7 +238,7 @@
         userNameElement.textContent = userName;
 
         // Atualiza o link do botão de exclusão com o ID correto
-        confirmButton.href = `/admin/delete/${userId}`;
+        confirmButton.href = `/admin/deletar_usuario/${userId}`;
 
         // Exibe o modal
         deleteModal.show();
@@ -254,13 +247,13 @@
 
 <!-- Script para preencher e mostrar o modal de edição -->
 <script>
-    function showEditModal(id, nome, email, empresa, perfil) {
+    function showEditModal(id, nome, email, telefone, perfil) {
         const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
 
         document.getElementById('editUserId').value = id;
         document.getElementById('editUserName').value = nome;
         document.getElementById('editUserEmail').value = email;
-        document.getElementById('editUserEmpresa').value = empresa;
+        document.getElementById('editUserTelefone').value = telefone;
         document.getElementById('editUserPerfil').value = perfil;
 
         editModal.show();
