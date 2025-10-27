@@ -387,12 +387,23 @@
                                                     {# Demais colunas: valores #}
                                                     {% for valor in item[1:] %}
                                                         <td class="text-end">
-                                                            {% if valor is number and valor != 0 %}
-                                                                <span class="{{ 'valor-positivo' if valor > 0 else 'valor-negativo' }}">
-                                                                    {{ "R$ {:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.') if valor|abs >= 0.01 else "R$ 0,00" }}
-                                                                </span>
-                                                            {% elif valor is number and valor == 0 %}
-                                                                <span class="valor-neutral">R$ 0,00</span>
+                                                            {% if valor is number %}
+                                                                {% if loop.index == 1 and headers|length == 3 and 'Percentual' in headers[1] %}
+                                                                    {# Primeira coluna de valor quando é percentual - só adiciona o % #}
+                                                                    {% if valor != 0 %}
+                                                                        <span class="{{ 'valor-positivo' if valor > 0 else 'valor-negativo' }}">
+                                                                            {{ "{:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.') }}%
+                                                                        </span>
+                                                                    {% else %}
+                                                                        <span class="valor-neutral">0,00%</span>
+                                                                    {% endif %}
+                                                                {% elif valor != 0 %}
+                                                                    <span class="{{ 'valor-positivo' if valor > 0 else 'valor-negativo' }}">
+                                                                        {{ "R$ {:,.2f}".format(valor).replace(',', 'X').replace('.', ',').replace('X', '.') if valor|abs >= 0.01 else "R$ 0,00" }}
+                                                                    </span>
+                                                                {% else %}
+                                                                    <span class="valor-neutral">R$ 0,00</span>
+                                                                {% endif %}
                                                             {% else %}
                                                                 {{ valor }}
                                                             {% endif %}

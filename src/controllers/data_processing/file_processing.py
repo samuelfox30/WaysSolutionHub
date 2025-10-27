@@ -20,20 +20,16 @@ def process_uploaded_file(file):
 
     def normalizar_percentual(valor):
         """
-        Normaliza valores de porcentagem para o formato correto.
-        Se o valor absoluto for < 1, assume que está em formato decimal (ex: 0.8 = 80%)
-        e mantém como está. Se for muito pequeno (< 0.01), multiplica por 100.
+        Normaliza valores de porcentagem do Excel para o formato numérico correto.
+        Excel armazena porcentagens como decimais (ex: 0.1327 = 13.27%)
+        Multiplica por 100 para obter o valor percentual real.
         """
         if valor is None or valor == 0:
             return valor
         
-        # Se o valor absoluto for muito pequeno (< 0.01), provavelmente
-        # não está no formato de porcentagem do Excel, então multiplica por 100
-        if abs(valor) < 0.01:
-            return valor * 100
-        
-        # Caso contrário, mantém o valor original (já está correto)
-        return valor
+        # Excel armazena porcentagens como decimal, então multiplica por 100
+        # Ex: 0.18313253012048192 * 100 = 18.313253012048192%
+        return valor * 100
 
     subgrupos = [
         "RECEITA",
