@@ -3,18 +3,18 @@ import mysql.connector
 
 class CompanyManager(DatabaseConnection):
 
-    def salvar_itens_empresa(self, empresa_selecionada, ano_selecionado, lista_cenarios, dados_especiais):
+    def salvar_itens_empresa(self, empresa_id, ano_selecionado, lista_cenarios, dados_especiais):
         """
         Salva dados da empresa para um ANO específico (SEM mês).
         Remove os dados antigos do mesmo ano antes de inserir os novos.
+        Agora recebe diretamente o empresa_id ao invés do nome da empresa.
         """
         try:
-            # 1. Buscar o ID do usuário pela empresa
-            self.cursor.execute("SELECT id FROM users WHERE empresa = %s", (empresa_selecionada,))
+            # 1. Verificar se a empresa existe
+            self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
             row = self.cursor.fetchone()
             if not row:
-                raise Exception(f"Empresa '{empresa_selecionada}' não encontrada na tabela users.")
-            usuario_id = row[0]
+                raise Exception(f"Empresa com ID '{empresa_id}' não encontrada na tabela empresas.")
 
             # ============================
             # 2. Limpar dados existentes do mesmo ANO (para evitar duplicação)
@@ -28,10 +28,10 @@ class CompanyManager(DatabaseConnection):
             ]
             for tabela in tabelas:
                 self.cursor.execute(
-                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND ano = %s",
-                    (usuario_id, ano_selecionado)
+                    f"DELETE FROM {tabela} WHERE empresa_id = %s AND ano = %s",
+                    (empresa_id, ano_selecionado)
                 )
-            print(f"[DEBUG] Dados antigos removidos para empresa={empresa_selecionada}, ano={ano_selecionado}")
+            print(f"[DEBUG] Dados antigos removidos para empresa_id={empresa_id}, ano={ano_selecionado}")
 
             # ============================
             # 3. Mapeamento de nomes do Excel -> nomes no banco
@@ -90,7 +90,7 @@ class CompanyManager(DatabaseConnection):
                     for item in itens:
                         valor = item.get("valor") if item.get("valor") is not None else 0.00
                         sql = """
-                            INSERT INTO TbItens (descricao, porcentagem, valor, ano, subgrupo_id, usuario_id)
+                            INSERT INTO TbItens (descricao, porcentagem, valor, ano, subgrupo_id, empresa_id)
                             VALUES (%s, %s, %s, %s, %s, %s)
                         """
                         values = (
@@ -99,7 +99,7 @@ class CompanyManager(DatabaseConnection):
                             valor,
                             ano_selecionado,
                             subgrupo_id,
-                            usuario_id
+                            empresa_id
                         )
                         self.cursor.execute(sql, values)
 
@@ -115,12 +115,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensDividas (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, usuario_id)
+                        INSERT INTO TbItensDividas (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["valor_parc"], it["valor_juros"], it["valor_total_parcela"],
-                        ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -132,12 +132,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensInvestimentos (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, usuario_id)
+                        INSERT INTO TbItensInvestimentos (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["valor_parc"], it["valor_juros"], it["valor_total_parcela"],
-                        ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -149,12 +149,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensInvestimentoGeral (descricao, valor, ano, subgrupo_id, usuario_id)
+                        INSERT INTO TbItensInvestimentoGeral (descricao, valor, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["valor"],
-                        ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -166,12 +166,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_id = self.cursor.fetchone()[0]
                     sql = """
-                        INSERT INTO TbItensGastosOperacionais (descricao, valor_custo_km, valor_mensal, ano, subgrupo_id, usuario_id)
+                        INSERT INTO TbItensGastosOperacionais (descricao, valor_custo_km, valor_mensal, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s, %s)
                     """
                     values = (
                         it["descricao"], it["custo_km"], it["custo_mensal"],
-                        ano_selecionado, subgrupo_id, usuario_id
+                        ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
 
@@ -186,17 +186,17 @@ class CompanyManager(DatabaseConnection):
             self.connection.rollback()
 
 
-    def buscar_dados_empresa(self, empresa_selecionada, ano_selecionado):
+    def buscar_dados_empresa(self, empresa_id, ano_selecionado):
         """
         Busca todos os dados de uma empresa para um ANO específico (SEM mês).
+        Agora recebe diretamente o empresa_id.
         """
         try:
-            # 1. Buscar o ID do usuário pela empresa
-            self.cursor.execute("SELECT id FROM users WHERE empresa = %s", (empresa_selecionada,))
+            # 1. Verificar se a empresa existe
+            self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
             row = self.cursor.fetchone()
             if not row:
-                raise Exception(f"Empresa '{empresa_selecionada}' não encontrada na tabela users.")
-            usuario_id = row[0]
+                raise Exception(f"Empresa com ID '{empresa_id}' não encontrada na tabela empresas.")
 
             resultado = {
                 "TbItens": [],
@@ -214,9 +214,9 @@ class CompanyManager(DatabaseConnection):
                 FROM TbItens i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.ano = %s
+                WHERE i.empresa_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_itens, (usuario_id, ano_selecionado))
+            self.cursor.execute(sql_itens, (empresa_id, ano_selecionado))
             resultado["TbItens"] = self.cursor.fetchall()
 
             # ============================
@@ -227,9 +227,9 @@ class CompanyManager(DatabaseConnection):
                 FROM TbItensInvestimentos i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.ano = %s
+                WHERE i.empresa_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_invest, (usuario_id, ano_selecionado))
+            self.cursor.execute(sql_invest, (empresa_id, ano_selecionado))
             resultado["TbItensInvestimentos"] = self.cursor.fetchall()
 
             # ============================
@@ -240,9 +240,9 @@ class CompanyManager(DatabaseConnection):
                 FROM TbItensDividas i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.ano = %s
+                WHERE i.empresa_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_dividas, (usuario_id, ano_selecionado))
+            self.cursor.execute(sql_dividas, (empresa_id, ano_selecionado))
             resultado["TbItensDividas"] = self.cursor.fetchall()
 
             # ============================
@@ -253,9 +253,9 @@ class CompanyManager(DatabaseConnection):
                 FROM TbItensInvestimentoGeral i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.ano = %s
+                WHERE i.empresa_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_invest_geral, (usuario_id, ano_selecionado))
+            self.cursor.execute(sql_invest_geral, (empresa_id, ano_selecionado))
             resultado["TbItensInvestimentoGeral"] = self.cursor.fetchall()
 
             # ============================
@@ -266,9 +266,9 @@ class CompanyManager(DatabaseConnection):
                 FROM TbItensGastosOperacionais i
                 JOIN TbSubGrupo s ON i.subgrupo_id = s.id
                 JOIN TbGrupo g ON s.grupo_id = g.id
-                WHERE i.usuario_id = %s AND i.ano = %s
+                WHERE i.empresa_id = %s AND i.ano = %s
             """
-            self.cursor.execute(sql_gastos, (usuario_id, ano_selecionado))
+            self.cursor.execute(sql_gastos, (empresa_id, ano_selecionado))
             resultado["TbItensGastosOperacionais"] = self.cursor.fetchall()
 
             return resultado
@@ -278,17 +278,17 @@ class CompanyManager(DatabaseConnection):
             return None
 
 
-    def excluir_dados_empresa(self, empresa_selecionada, ano_selecionado):
+    def excluir_dados_empresa(self, empresa_id, ano_selecionado):
         """
         Exclui todos os registros de uma empresa para um ANO específico (SEM mês).
+        Agora recebe diretamente o empresa_id.
         """
         try:
-            # 1. Buscar o ID do usuário pela empresa
-            self.cursor.execute("SELECT id FROM users WHERE empresa = %s", (empresa_selecionada,))
+            # 1. Verificar se a empresa existe
+            self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
             row = self.cursor.fetchone()
             if not row:
-                raise Exception(f"Empresa '{empresa_selecionada}' não encontrada na tabela users.")
-            usuario_id = row[0]
+                raise Exception(f"Empresa com ID '{empresa_id}' não encontrada na tabela empresas.")
 
             # 2. Listar as tabelas que precisam ser limpas
             tabelas = [
@@ -302,13 +302,13 @@ class CompanyManager(DatabaseConnection):
             # 3. Executar exclusão em cada tabela - SEM MÊS
             for tabela in tabelas:
                 self.cursor.execute(
-                    f"DELETE FROM {tabela} WHERE usuario_id = %s AND ano = %s",
-                    (usuario_id, ano_selecionado)
+                    f"DELETE FROM {tabela} WHERE empresa_id = %s AND ano = %s",
+                    (empresa_id, ano_selecionado)
                 )
 
             # 4. Commit final
             self.connection.commit()
-            print(f"[DEBUG] Dados excluídos para empresa={empresa_selecionada}, ano={ano_selecionado}")
+            print(f"[DEBUG] Dados excluídos para empresa_id={empresa_id}, ano={ano_selecionado}")
             return True
 
         except mysql.connector.Error as err:
@@ -317,19 +317,19 @@ class CompanyManager(DatabaseConnection):
             return False
 
 
-    def get_anos_com_dados(self, usuario_id):
+    def get_anos_com_dados(self, empresa_id):
         """
-        Retorna uma lista com os anos em que existem dados para o usuário.
-        SUBSTITUIU a função get_meses_com_dados.
+        Retorna uma lista com os anos em que existem dados para a empresa.
+        Agora busca por empresa_id ao invés de usuario_id.
         """
         try:
             sql = """
                 SELECT DISTINCT ano
                 FROM TbItens
-                WHERE usuario_id = %s
+                WHERE empresa_id = %s
                 ORDER BY ano DESC
             """
-            self.cursor.execute(sql, (usuario_id,))
+            self.cursor.execute(sql, (empresa_id,))
             rows = self.cursor.fetchall()
 
             # rows vem como lista de tuplas [(2025,), (2024,), ...]
@@ -341,26 +341,173 @@ class CompanyManager(DatabaseConnection):
             return []
 
 
-    def verificar_dados_existentes(self, usuario_id, ano):
+    def verificar_dados_existentes(self, empresa_id, ano):
         """
-        Verifica se existem dados para um usuário em um ano específico.
+        Verifica se existem dados para uma empresa em um ano específico.
         Retorna True se existir, False caso contrário.
+        Agora usa empresa_id ao invés de usuario_id.
         """
         try:
             sql = """
                 SELECT COUNT(*) as total
                 FROM TbItens
-                WHERE usuario_id = %s AND ano = %s
+                WHERE empresa_id = %s AND ano = %s
             """
-            self.cursor.execute(sql, (usuario_id, ano))
+            self.cursor.execute(sql, (empresa_id, ano))
             row = self.cursor.fetchone()
-            
+
             return row[0] > 0 if row else False
 
         except mysql.connector.Error as err:
             print(f"[ERRO] verificar_dados_existentes: {err}")
             return False
 
+
+    # ============================
+    # MÉTODOS PARA GERENCIAR EMPRESAS (CRUD)
+    # ============================
+
+    def criar_empresa(self, nome, cnpj, telefone, email, cep, complemento, seguimento, website=None):
+        """
+        Cria uma nova empresa no sistema.
+        Retorna o ID da empresa criada ou None em caso de erro.
+        """
+        try:
+            sql = """
+                INSERT INTO empresas (nome, cnpj, website, telefone, email, cep, complemento, seguimento)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """
+            values = (nome, cnpj, website, telefone, email, cep, complemento, seguimento)
+            self.cursor.execute(sql, values)
+            self.connection.commit()
+
+            empresa_id = self.cursor.lastrowid
+            print(f"[DEBUG] Empresa '{nome}' criada com sucesso. ID: {empresa_id}")
+            return empresa_id
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao criar empresa: {err}")
+            self.connection.rollback()
+            return None
+
+    def buscar_empresa_por_id(self, empresa_id):
+        """Busca uma empresa pelo ID e retorna seus dados."""
+        try:
+            sql = "SELECT * FROM empresas WHERE id = %s"
+            self.cursor.execute(sql, (empresa_id,))
+            row = self.cursor.fetchone()
+
+            if row:
+                return {
+                    'id': row[0],
+                    'nome': row[1],
+                    'cnpj': row[2],
+                    'website': row[3],
+                    'telefone': row[4],
+                    'email': row[5],
+                    'cep': row[6],
+                    'complemento': row[7],
+                    'seguimento': row[8],
+                    'created_at': row[9]
+                }
+            return None
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao buscar empresa: {err}")
+            return None
+
+    def buscar_empresa_por_cnpj(self, cnpj):
+        """Busca uma empresa pelo CNPJ."""
+        try:
+            sql = "SELECT * FROM empresas WHERE cnpj = %s"
+            self.cursor.execute(sql, (cnpj,))
+            row = self.cursor.fetchone()
+
+            if row:
+                return {
+                    'id': row[0],
+                    'nome': row[1],
+                    'cnpj': row[2],
+                    'website': row[3],
+                    'telefone': row[4],
+                    'email': row[5],
+                    'cep': row[6],
+                    'complemento': row[7],
+                    'seguimento': row[8],
+                    'created_at': row[9]
+                }
+            return None
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao buscar empresa por CNPJ: {err}")
+            return None
+
+    def listar_todas_empresas(self):
+        """Retorna uma lista com todas as empresas cadastradas."""
+        try:
+            sql = "SELECT * FROM empresas ORDER BY nome ASC"
+            self.cursor.execute(sql)
+            rows = self.cursor.fetchall()
+
+            empresas = []
+            for row in rows:
+                empresas.append({
+                    'id': row[0],
+                    'nome': row[1],
+                    'cnpj': row[2],
+                    'website': row[3],
+                    'telefone': row[4],
+                    'email': row[5],
+                    'cep': row[6],
+                    'complemento': row[7],
+                    'seguimento': row[8],
+                    'created_at': row[9]
+                })
+
+            return empresas
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao listar empresas: {err}")
+            return []
+
+    def atualizar_empresa(self, empresa_id, nome, cnpj, telefone, email, cep, complemento, seguimento, website=None):
+        """Atualiza os dados de uma empresa."""
+        try:
+            sql = """
+                UPDATE empresas
+                SET nome = %s, cnpj = %s, website = %s, telefone = %s,
+                    email = %s, cep = %s, complemento = %s, seguimento = %s
+                WHERE id = %s
+            """
+            values = (nome, cnpj, website, telefone, email, cep, complemento, seguimento, empresa_id)
+            self.cursor.execute(sql, values)
+            self.connection.commit()
+
+            print(f"[DEBUG] Empresa ID {empresa_id} atualizada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao atualizar empresa: {err}")
+            self.connection.rollback()
+            return False
+
+    def deletar_empresa(self, empresa_id):
+        """
+        Deleta uma empresa do sistema.
+        ATENÇÃO: Isso também deletará todos os dados relacionados (CASCADE).
+        """
+        try:
+            sql = "DELETE FROM empresas WHERE id = %s"
+            self.cursor.execute(sql, (empresa_id,))
+            self.connection.commit()
+
+            print(f"[DEBUG] Empresa ID {empresa_id} deletada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"[ERRO] Erro ao deletar empresa: {err}")
+            self.connection.rollback()
+            return False
 
     def close(self):
         """Fecha a conexão com o banco de dados."""

@@ -31,21 +31,20 @@ class UserManager:
                 self.cursor = None
 
 
-    def register_user(self, name, email, telefone, company, seguimento, password, role):
+    def register_user(self, name, email, telefone, password, role):
         """
         Registers a new user in the database.
+        Agora SEM campos de empresa (esses campos foram movidos para a tabela empresas).
 
         Args:
             name (str): User's full name.
             email (str): User's email address.
             telefone (str): User's phone number.
-            company (str): User's company name.
-            seguimento (str): User's business segment.
             password (str): User's plain-text password.
-            role (str): User's role (e.g., 'admin', 'client').
+            role (str): User's role (e.g., 'admin', 'user').
 
         Returns:
-            bool: True on success, False otherwise.
+            int|bool: user_id on success, False otherwise.
         """
         if not self.db_connection or not self.db_connection.is_connected():
             print("Conexão com o banco de dados não está ativa.")
@@ -61,12 +60,16 @@ class UserManager:
             hashed_password = hash_senha_sha256(password)
 
             query = """
-                INSERT INTO users (nome, email, telefone, empresa, seguimento, password, role)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO users (nome, email, telefone, password, role)
+                VALUES (%s, %s, %s, %s, %s)
             """
-            self.cursor.execute(query, (name, email, telefone, company, seguimento, hashed_password, role))
+            self.cursor.execute(query, (name, email, telefone, hashed_password, role))
             self.db_connection.commit()
-            return True
+
+            # Retorna o ID do usuário criado
+            user_id = self.cursor.lastrowid
+            print(f"[DEBUG] Usuário '{name}' criado com sucesso. ID: {user_id}")
+            return user_id
 
         except mysql.connector.Error as err:
             print(f"Erro ao cadastrar usuário: {err}")
@@ -78,11 +81,12 @@ class UserManager:
 
 
     def get_all_users(self):
+        """Retorna todos os usuários (sem campos de empresa)."""
         try:
             if not self.cursor:
                 self.cursor = self.db_connection.cursor(dictionary=True)
 
-            query = "SELECT id, nome, email, empresa, seguimento, role FROM users"
+            query = "SELECT id, nome, email, telefone, role, created_at FROM users"
             self.cursor.execute(query)
             users = self.cursor.fetchall()
             return users
@@ -132,16 +136,17 @@ class UserManager:
 
 
 
-    def update_user(self, user_id, nome, email, empresa, perfil):
+    def update_user(self, user_id, nome, email, telefone, perfil):
         """
         Atualiza os dados de um usuário existente no banco de dados.
+        Agora SEM campo empresa.
 
         Args:
             user_id (int): ID do usuário a ser atualizado.
             nome (str): Novo nome do usuário.
             email (str): Novo email do usuário.
-            empresa (str): Nova empresa do usuário.
-            perfil (str): Novo perfil do usuário.
+            telefone (str): Novo telefone do usuário.
+            perfil (str): Novo perfil do usuário (role).
 
         Returns:
             bool: True em caso de sucesso, False em caso de falha.
@@ -156,10 +161,10 @@ class UserManager:
 
             query = """
                 UPDATE users
-                SET nome = %s, email = %s, empresa = %s, role = %s
+                SET nome = %s, email = %s, telefone = %s, role = %s
                 WHERE id = %s
             """
-            self.cursor.execute(query, (nome, email, empresa, perfil, user_id))
+            self.cursor.execute(query, (nome, email, telefone, perfil, user_id))
             self.db_connection.commit()
             print(f"Usuário com ID {user_id} atualizado com sucesso.")
             return True
@@ -173,6 +178,159 @@ class UserManager:
             # Mantém a conexão ativa para outras operações
             pass
 
+
+    # ============================
+    # MÉTODOS PARA GERENCIAR RELACIONAMENTO USER-EMPRESA (MUITOS PARA MUITOS)
+    # ============================
+
+    def vincular_user_empresa(self, user_id, empresa_id):
+        """
+        Cria um vínculo entre um usuário e uma empresa na tabela user_empresa.
+
+        Args:
+            user_id (int): ID do usuário
+            empresa_id (int): ID da empresa
+
+        Returns:
+            bool: True em caso de sucesso, False em caso de falha
+        """
+        if not self.db_connection or not self.db_connection.is_connected():
+            print("Erro: Conexão com o banco de dados não está ativa.")
+            return False
+
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            # Verifica se o vínculo já existe
+            check_query = "SELECT * FROM user_empresa WHERE user_id = %s AND empresa_id = %s"
+            self.cursor.execute(check_query, (user_id, empresa_id))
+            if self.cursor.fetchone():
+                print(f"[DEBUG] Vínculo entre user_id={user_id} e empresa_id={empresa_id} já existe.")
+                return True
+
+            # Cria o vínculo
+            insert_query = "INSERT INTO user_empresa (user_id, empresa_id) VALUES (%s, %s)"
+            self.cursor.execute(insert_query, (user_id, empresa_id))
+            self.db_connection.commit()
+            print(f"[DEBUG] Vínculo criado: user_id={user_id} <-> empresa_id={empresa_id}")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao vincular usuário e empresa: {err}")
+            self.db_connection.rollback()
+            return False
+
+    def desvincular_user_empresa(self, user_id, empresa_id):
+        """
+        Remove o vínculo entre um usuário e uma empresa.
+
+        Args:
+            user_id (int): ID do usuário
+            empresa_id (int): ID da empresa
+
+        Returns:
+            bool: True em caso de sucesso, False em caso de falha
+        """
+        if not self.db_connection or not self.db_connection.is_connected():
+            print("Erro: Conexão com o banco de dados não está ativa.")
+            return False
+
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = "DELETE FROM user_empresa WHERE user_id = %s AND empresa_id = %s"
+            self.cursor.execute(query, (user_id, empresa_id))
+            self.db_connection.commit()
+            print(f"[DEBUG] Vínculo removido: user_id={user_id} <-> empresa_id={empresa_id}")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao desvincular usuário e empresa: {err}")
+            self.db_connection.rollback()
+            return False
+
+    def get_empresas_do_usuario(self, user_id):
+        """
+        Retorna todas as empresas vinculadas a um usuário.
+
+        Args:
+            user_id (int): ID do usuário
+
+        Returns:
+            list: Lista de empresas vinculadas ao usuário
+        """
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = """
+                SELECT e.*
+                FROM empresas e
+                INNER JOIN user_empresa ue ON e.id = ue.empresa_id
+                WHERE ue.user_id = %s
+                ORDER BY e.nome ASC
+            """
+            self.cursor.execute(query, (user_id,))
+            empresas = self.cursor.fetchall()
+            return empresas
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao buscar empresas do usuário: {err}")
+            return []
+
+    def get_usuarios_da_empresa(self, empresa_id):
+        """
+        Retorna todos os usuários vinculados a uma empresa.
+
+        Args:
+            empresa_id (int): ID da empresa
+
+        Returns:
+            list: Lista de usuários vinculados à empresa
+        """
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = """
+                SELECT u.id, u.nome, u.email, u.telefone, u.role, u.created_at
+                FROM users u
+                INNER JOIN user_empresa ue ON u.id = ue.user_id
+                WHERE ue.empresa_id = %s
+                ORDER BY u.nome ASC
+            """
+            self.cursor.execute(query, (empresa_id,))
+            users = self.cursor.fetchall()
+            return users
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao buscar usuários da empresa: {err}")
+            return []
+
+    def get_user_by_id(self, user_id):
+        """
+        Busca um usuário pelo ID.
+
+        Args:
+            user_id (int): ID do usuário
+
+        Returns:
+            dict|None: Dados do usuário ou None se não encontrado
+        """
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            query = "SELECT * FROM users WHERE id = %s"
+            self.cursor.execute(query, (user_id,))
+            user = self.cursor.fetchone()
+            return user
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao buscar usuário por ID: {err}")
+            return None
 
     def close(self):
         self.db_connector.close_connection()

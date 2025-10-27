@@ -28,6 +28,8 @@ class DatabaseConnection:
             self.create_database_if_not_exists()
             self.connection.database = self.database_name
             self.create_user_table_if_not_exists()
+            self.create_empresa_table_if_not_exists()
+            self.create_user_empresa_table_if_not_exists()
             self.create_empresa_tables_if_not_exists()
             self.insert_default_grupos_subgrupos()
 
@@ -47,14 +49,13 @@ class DatabaseConnection:
             print(f"Erro ao criar o banco de dados: {err}")
 
     def create_user_table_if_not_exists(self):
+        """Cria a tabela de usuários (sem campos de empresa)"""
         table_schema = (
             "CREATE TABLE IF NOT EXISTS users ("
             "  id INT AUTO_INCREMENT PRIMARY KEY,"
             "  nome VARCHAR(255) NOT NULL,"
             "  email VARCHAR(255) NOT NULL UNIQUE,"
             "  telefone VARCHAR(20) NOT NULL,"
-            "  empresa VARCHAR(255) NOT NULL UNIQUE,"
-            "  seguimento VARCHAR(255),"
             "  password VARCHAR(255) NOT NULL,"
             "  role ENUM('admin', 'user') NOT NULL,"
             "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
@@ -66,6 +67,49 @@ class DatabaseConnection:
             print("Tabela 'users' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
             print(f"Erro ao criar a tabela de usuários: {err}")
+
+    def create_empresa_table_if_not_exists(self):
+        """Cria a tabela de empresas"""
+        table_schema = (
+            "CREATE TABLE IF NOT EXISTS empresas ("
+            "  id INT AUTO_INCREMENT PRIMARY KEY,"
+            "  nome VARCHAR(255) NOT NULL,"
+            "  cnpj VARCHAR(18) NOT NULL UNIQUE,"
+            "  website VARCHAR(255),"
+            "  telefone VARCHAR(20) NOT NULL,"
+            "  email VARCHAR(255) NOT NULL,"
+            "  cep VARCHAR(10) NOT NULL,"
+            "  complemento TEXT,"
+            "  seguimento VARCHAR(255) NOT NULL,"
+            "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"
+            ")"
+        )
+        try:
+            self.cursor.execute(table_schema)
+            self.connection.commit()
+            print("Tabela 'empresas' verificada/criada com sucesso.")
+        except mysql.connector.Error as err:
+            print(f"Erro ao criar a tabela de empresas: {err}")
+
+    def create_user_empresa_table_if_not_exists(self):
+        """Cria a tabela de relacionamento muitos-para-muitos entre users e empresas"""
+        table_schema = (
+            "CREATE TABLE IF NOT EXISTS user_empresa ("
+            "  id INT AUTO_INCREMENT PRIMARY KEY,"
+            "  user_id INT NOT NULL,"
+            "  empresa_id INT NOT NULL,"
+            "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+            "  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,"
+            "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,"
+            "  UNIQUE KEY unique_user_empresa (user_id, empresa_id)"
+            ")"
+        )
+        try:
+            self.cursor.execute(table_schema)
+            self.connection.commit()
+            print("Tabela 'user_empresa' verificada/criada com sucesso.")
+        except mysql.connector.Error as err:
+            print(f"Erro ao criar a tabela de relacionamento user_empresa: {err}")
 
     def create_empresa_tables_if_not_exists(self):
         try:
@@ -94,7 +138,7 @@ class DatabaseConnection:
             self.cursor.execute(subgrupo_schema)
 
             # =========================
-            # Tabela de Itens (cenários normais) - SEM MÊS
+            # Tabela de Itens (cenários normais) - SEM MÊS - FK EMPRESA
             # =========================
             itens_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItens ("
@@ -104,15 +148,15 @@ class DatabaseConnection:
                 "  valor DECIMAL(15,2) NOT NULL,"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
-                "  usuario_id INT NOT NULL,"
+                "  empresa_id INT NOT NULL,"
                 "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
-                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE"
                 ")"
             )
             self.cursor.execute(itens_schema)
 
             # =========================
-            # Tabela de Itens Investimentos - SEM MÊS
+            # Tabela de Itens Investimentos - SEM MÊS - FK EMPRESA
             # =========================
             investimentos_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensInvestimentos ("
@@ -123,15 +167,15 @@ class DatabaseConnection:
                 "  valor_total_parc DECIMAL(15,2),"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
-                "  usuario_id INT NOT NULL,"
+                "  empresa_id INT NOT NULL,"
                 "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
-                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE"
                 ")"
             )
             self.cursor.execute(investimentos_schema)
 
             # =========================
-            # Tabela de Itens Dívidas - SEM MÊS
+            # Tabela de Itens Dívidas - SEM MÊS - FK EMPRESA
             # =========================
             dividas_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensDividas ("
@@ -142,15 +186,15 @@ class DatabaseConnection:
                 "  valor_total_parc DECIMAL(15,2),"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
-                "  usuario_id INT NOT NULL,"
+                "  empresa_id INT NOT NULL,"
                 "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
-                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE"
                 ")"
             )
             self.cursor.execute(dividas_schema)
 
             # =========================
-            # Tabela de Investimento Geral - SEM MÊS
+            # Tabela de Investimento Geral - SEM MÊS - FK EMPRESA
             # =========================
             investimento_geral_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensInvestimentoGeral ("
@@ -159,15 +203,15 @@ class DatabaseConnection:
                 "  valor DECIMAL(15,2),"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
-                "  usuario_id INT NOT NULL,"
+                "  empresa_id INT NOT NULL,"
                 "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
-                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE"
                 ")"
             )
             self.cursor.execute(investimento_geral_schema)
 
             # =========================
-            # Tabela de Gastos Operacionais - SEM MÊS
+            # Tabela de Gastos Operacionais - SEM MÊS - FK EMPRESA
             # =========================
             gastos_operacionais_schema = (
                 "CREATE TABLE IF NOT EXISTS TbItensGastosOperacionais ("
@@ -177,16 +221,16 @@ class DatabaseConnection:
                 "  valor_mensal DECIMAL(15,2),"
                 "  ano INT NOT NULL,"
                 "  subgrupo_id INT NOT NULL,"
-                "  usuario_id INT NOT NULL,"
+                "  empresa_id INT NOT NULL,"
                 "  FOREIGN KEY (subgrupo_id) REFERENCES TbSubGrupo(id) ON DELETE CASCADE,"
-                "  FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE CASCADE"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE"
                 ")"
             )
             self.cursor.execute(gastos_operacionais_schema)
 
             # Commit final
             self.connection.commit()
-            print("Todas as tabelas verificadas/criadas com sucesso (SEM coluna MÊS).")
+            print("Todas as tabelas de dados verificadas/criadas com sucesso (FK EMPRESA, SEM coluna MÊS).")
 
         except mysql.connector.Error as err:
             print(f"Erro ao criar as tabelas de empresas: {err}")
