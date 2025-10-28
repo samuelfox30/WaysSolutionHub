@@ -267,11 +267,11 @@
         <form method="POST" class="row g-3 align-items-end">
             <div class="col-md-6 col-lg-6">
                 <label for="empresa" class="form-label fw-semibold">Empresa:</label>
-                <select name="empresa" id="empresa" class="form-select" required>
+                <select name="empresa_id" id="empresa" class="form-select" required>
                     <option value="">-- Selecione --</option>
-                    {% for user in users %}
-                        <option value="{{ user['empresa'] }}" {% if empresa_selecionada == user['empresa'] %}selected{% endif %}>
-                            {{ user['empresa'] }}
+                    {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}" {% if empresa_selecionada == empresa.id %}selected{% endif %}>
+                            {{ empresa.nome }}
                         </option>
                     {% endfor %}
                 </select>
@@ -296,7 +296,11 @@
                 <i class="bi bi-bar-chart-fill me-2"></i> Resultados de Análise
             </h2>
             <p class="mb-0 text-muted">
-                <strong>{{ empresa_selecionada }}</strong> - Ano {{ ano_selecionado }}
+                {% for empresa in empresas %}
+                    {% if empresa.id == empresa_selecionada %}
+                        <strong>{{ empresa.nome }}</strong> - Ano {{ ano_selecionado }}
+                    {% endif %}
+                {% endfor %}
             </p>
         </div>
 
