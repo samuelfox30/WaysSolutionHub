@@ -52,7 +52,7 @@ def login():
                         return redirect(url_for('admin.admin_dashboard'))
                     else:  # user
                         user.close()
-                        return redirect(url_for('user.user_dashboard'))
+                        return redirect(url_for('user.selecionar_empresa'))
                 else:
                     print("Tipo de usuário incorreto!")
                     flash('Tipo de usuário incorreto!', 'danger')

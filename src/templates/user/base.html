@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Dashboard - {{ user.empresa }}{% endblock %}</title>
+    <title>{% block title %}Dashboard - {{ empresa_nome }}{% endblock %}</title>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -135,38 +135,61 @@
     <div class="sidebar p-3">
         <a href="{{ url_for('user.user_dashboard') }}" class="d-flex align-items-center mb-3 text-decoration-none border-bottom pb-3">
             <div class="p-2 bg-orange rounded me-3">
-                <i class="bi bi-speedometer2 text-white fs-4"></i>
+                <i class="bi bi-building-fill text-white fs-4"></i>
             </div>
-            <div>
-                <span class="fs-5 fw-bold text-dark d-block">{{ user.empresa }}</span>
-                <small class="text-muted">{{ user.seguimento }}</small>
+            <div class="flex-grow-1">
+                <span class="fs-5 fw-bold text-dark d-block">{{ empresa_nome }}</span>
+                <small class="text-muted"><i class="bi bi-briefcase me-1"></i>Empresa Atual</small>
             </div>
         </a>
-        
+
         <ul class="nav nav-pills flex-column mt-3">
+            <!-- NAVEGAÇÃO -->
+            <li class="mb-2">
+                <small class="text-muted text-uppercase fw-bold px-3">Visualizar</small>
+            </li>
             <li class="nav-item">
-                <a href="{{ url_for('user.user_dashboard') }}" 
+                <a href="{{ url_for('user.user_dashboard') }}"
                    class="nav-link {% if request.endpoint == 'user.user_dashboard' %}active{% endif %}">
                     <i class="bi bi-house-fill me-2"></i>
                     <span>Dashboard</span>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="{{ url_for('user.visualizar_dados') }}" 
+                <a href="{{ url_for('user.visualizar_dados') }}"
                    class="nav-link {% if request.endpoint == 'user.visualizar_dados' %}active{% endif %}">
                     <i class="bi bi-table me-2"></i>
                     <span>Dados Detalhados</span>
                 </a>
             </li>
-            <li class="nav-item mt-3">
-                <hr class="dropdown-divider">
+
+            <!-- EMPRESA -->
+            <li class="mb-2 mt-3">
+                <small class="text-muted text-uppercase fw-bold px-3">Empresa</small>
             </li>
             <li class="nav-item">
-                <div class="p-3 bg-light rounded">
-                    <p class="mb-1 text-muted small">Usuário</p>
+                <a href="{{ url_for('user.trocar_empresa') }}" class="nav-link">
+                    <i class="bi bi-arrow-left-right me-2"></i>
+                    <span>Trocar Empresa</span>
+                </a>
+            </li>
+
+            <!-- USUÁRIO -->
+            <li class="mb-2 mt-3">
+                <small class="text-muted text-uppercase fw-bold px-3">Conta</small>
+            </li>
+            <li class="nav-item">
+                <div class="p-3 bg-light rounded mb-2">
+                    <p class="mb-1 text-muted small"><i class="bi bi-person-circle me-1"></i>Usuário</p>
                     <p class="mb-1 fw-semibold">{{ user.nome }}</p>
                     <p class="mb-0 text-muted small">{{ user.email }}</p>
                 </div>
+            </li>
+            <li class="nav-item">
+                <a href="{{ url_for('user.logout') }}" class="nav-link text-danger">
+                    <i class="bi bi-box-arrow-right me-2"></i>
+                    <span>Sair</span>
+                </a>
             </li>
         </ul>
     </div>
@@ -179,11 +202,13 @@
                     <h1 class="h3 fw-bold mb-1">{% block header_title %}Dashboard{% endblock %}</h1>
                     <p class="text-muted mb-0">{% block header_subtitle %}Visão geral do sistema{% endblock %}</p>
                 </div>
-                <div class="d-flex align-items-center">
-                    <span class="me-3 text-muted">{{ user.nome }}</span>
-                    <a href="{{ url_for('user.logout') }}" class="btn btn-outline-secondary rounded-circle" title="Sair">
-                        <i class="bi bi-box-arrow-right"></i>
-                    </a>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-orange text-white px-3 py-2">
+                        <i class="bi bi-building me-1"></i> {{ empresa_nome }}
+                    </span>
+                    <span class="text-muted small">
+                        <i class="bi bi-person-circle me-1"></i> {{ user.nome }}
+                    </span>
                 </div>
             </div>
         </header>
