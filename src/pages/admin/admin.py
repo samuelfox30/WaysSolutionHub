@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, redirect, url_for, request, flash
+from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
 from datetime import datetime
 
 
@@ -313,10 +313,9 @@ def dashboard_empresa(empresa_id):
 def api_dados_empresa(empresa_id, ano):
     """API para retornar dados de uma empresa (acesso admin)"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
-        return json.dumps({"error": "Não autorizado"}), 403
+        return jsonify({"error": "Não autorizado"}), 403
 
     from models.company_manager import CompanyManager
-    import json
 
     company_manager = CompanyManager()
     data_results = company_manager.buscar_dados_empresa(empresa_id, ano)
@@ -375,10 +374,10 @@ def api_dados_empresa(empresa_id, ano):
                     "percentual": 0
                 })
 
-    return json.dumps({
+    return jsonify({
         "ano": ano,
         "dados": dados_organizados
-    }), 200, {'Content-Type': 'application/json'}
+    })
 
 
 # ============================
