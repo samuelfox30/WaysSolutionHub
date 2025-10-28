@@ -169,6 +169,102 @@ def visualizar_dados():
         return redirect(url_for('index.login'))
 
 
+@user_bp.route('/user/api/dados-detalhados/<int:ano>')
+def api_dados_detalhados_ano(ano):
+    """API nova que retorna dados organizados por subgrupo para gráficos específicos"""
+    if 'user_email' in session and session.get('user_role') == 'user':
+        from models.user_manager import UserManager
+        from models.company_manager import CompanyManager
+        import json
+
+        # Verifica se tem empresa selecionada
+        if 'empresa_id' not in session:
+            return json.dumps({"error": "Empresa não selecionada"}), 400
+
+        user_manager = UserManager()
+        user_data = user_manager.find_user_by_email(session.get('user_email'))
+        user_manager.close()
+
+        if not user_data:
+            return json.dumps({"error": "Usuário não encontrado"}), 404
+
+        empresa_id = session.get('empresa_id')
+
+        company_manager = CompanyManager()
+        data_results = company_manager.buscar_dados_empresa(
+            empresa_id,
+            ano
+        )
+        company_manager.close()
+
+        # Organizar dados por SUBGRUPO dentro de cada grupo de viabilidade
+        dados_organizados = {}
+
+        # Processar TbItens
+        if data_results and data_results.get('TbItens'):
+            for item in data_results['TbItens']:
+                grupo = item[0]  # 'Viabilidade Real', 'Viabilidade PE', ou 'Viabilidade Ideal'
+                subgrupo = item[1]  # 'Geral', 'Receita', 'Controle', etc
+                descricao = item[2]
+                percentual = float(item[3]) if item[3] else 0
+                valor = float(item[4]) if item[4] else 0
+
+                # Inicializar estrutura se não existir
+                if grupo not in dados_organizados:
+                    dados_organizados[grupo] = {}
+
+                if subgrupo not in dados_organizados[grupo]:
+                    dados_organizados[grupo][subgrupo] = []
+
+                # Adicionar item com descrição, valor e percentual
+                dados_organizados[grupo][subgrupo].append({
+                    "descricao": descricao,
+                    "valor": valor,
+                    "percentual": percentual
+                })
+
+        # Processar outras tabelas
+        for tabela in ['TbItensInvestimentos', 'TbItensDividas', 'TbItensInvestimentoGeral', 'TbItensGastosOperacionais']:
+            if data_results and data_results.get(tabela):
+                for item in data_results[tabela]:
+                    grupo = item[0]
+                    subgrupo = item[1]
+                    descricao = item[2]
+
+                    # Pegar o valor adequado dependendo da tabela
+                    if tabela in ['TbItensInvestimentos', 'TbItensDividas']:
+                        valor_parcela = float(item[3]) if len(item) > 3 and item[3] else 0
+                        valor_juros = float(item[4]) if len(item) > 4 and item[4] else 0
+                        valor = float(item[5]) if len(item) > 5 and item[5] else 0  # valor_total_parc
+                    elif tabela == 'TbItensInvestimentoGeral':
+                        valor = float(item[3]) if len(item) > 3 and item[3] else 0
+                    elif tabela == 'TbItensGastosOperacionais':
+                        valor = float(item[4]) if len(item) > 4 and item[4] else 0  # valor_mensal
+                    else:
+                        continue
+
+                    # Inicializar estrutura se não existir
+                    if grupo not in dados_organizados:
+                        dados_organizados[grupo] = {}
+
+                    if subgrupo not in dados_organizados[grupo]:
+                        dados_organizados[grupo][subgrupo] = []
+
+                    # Adicionar item
+                    dados_organizados[grupo][subgrupo].append({
+                        "descricao": descricao,
+                        "valor": valor,
+                        "percentual": 0  # Essas tabelas não têm percentual
+                    })
+
+        return json.dumps({
+            "ano": ano,
+            "dados": dados_organizados
+        }), 200, {'Content-Type': 'application/json'}
+
+    return json.dumps({"error": "Não autorizado"}), 403
+
+
 @user_bp.route('/user/api/dados/<int:ano>')
 def api_dados_ano(ano):
     """API para retornar dados de um ano específico organizados por grupo de viabilidade"""
