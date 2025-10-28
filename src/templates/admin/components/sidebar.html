@@ -5,32 +5,54 @@
         </div>
         <span class="fs-4 fw-bold text-dark">Admin Panel</span>
     </a>
+
     <ul class="nav nav-pills flex-column mt-3">
+        <!-- GERENCIAMENTO -->
+        <li class="mb-2">
+            <small class="text-muted text-uppercase fw-bold px-3">Gerenciamento</small>
+        </li>
         <li class="nav-item">
-            <a href="{{ url_for('admin.admin_dashboard') }}" 
+            <a href="{{ url_for('admin.admin_dashboard') }}"
                class="nav-link {% if request.endpoint == 'admin.admin_dashboard' %}active{% endif %}">
                 <i class="bi bi-people-fill me-2"></i>
-                <span>Gerenciar de Usuários</span>
+                <span>Usuários</span>
             </a>
         </li>
         <li class="nav-item">
-            <a href="{{ url_for('admin.dados_empresas') }}" 
-               class="nav-link {% if request.endpoint == 'admin.dados_empresas' %}active{% endif %}">
-                <i class="bi bi-upload me-2"></i>
-                <span>Upload de Dados</span>
+            <a href="{{ url_for('admin.gerenciar_empresas') }}"
+               class="nav-link {% if request.endpoint == 'admin.gerenciar_empresas' %}active{% endif %}">
+                <i class="bi bi-building me-2"></i>
+                <span>Empresas</span>
             </a>
         </li>
         <li class="nav-item">
-            <a href="{{ url_for('admin.consultar_dados_page') }}" 
-               class="nav-link {% if request.endpoint == 'admin.consultar_dados_page' %}active{% endif %}">
+            <a href="{{ url_for('admin.gerenciar_vinculos') }}"
+               class="nav-link {% if request.endpoint == 'admin.gerenciar_vinculos' %}active{% endif %}">
+                <i class="bi bi-link-45deg me-2"></i>
+                <span>Vínculos User-Empresa</span>
+            </a>
+        </li>
+
+        <!-- DADOS -->
+        <li class="mb-2 mt-3">
+            <small class="text-muted text-uppercase fw-bold px-3">Dados Financeiros</small>
+        </li>
+        <li class="nav-item">
+            <a href="{{ url_for('admin.consultar_dados') }}"
+               class="nav-link {% if request.endpoint == 'admin.consultar_dados' %}active{% endif %}">
                 <i class="bi bi-table me-2"></i>
-                <span>Visualizar Dados</span>
+                <span>Consultar Dados</span>
             </a>
         </li>
+
+        <!-- SISTEMA -->
+        <li class="mb-2 mt-3">
+            <small class="text-muted text-uppercase fw-bold px-3">Sistema</small>
+        </li>
         <li class="nav-item">
-            <a href="#" class="nav-link">
-                <i class="bi bi-gear-fill me-2"></i>
-                <span>Configurações</span>
+            <a href="{{ url_for('admin.logout') }}" class="nav-link text-danger">
+                <i class="bi bi-box-arrow-right me-2"></i>
+                <span>Sair</span>
             </a>
         </li>
     </ul>

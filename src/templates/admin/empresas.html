@@ -1,8 +1,8 @@
 {% extends "admin/base.html" %}
 
-{% block header_title %}Upload de Dados Anuais e Consulta{% endblock %}
+{% block header_title %}Gerenciamento de Empresas{% endblock %}
 
-{% block header_subtitle %}Envie e visualize os dados anuais vinculados às empresas cadastradas{% endblock %}
+{% block header_subtitle %}Cadastre empresas, faça upload e gerencie dados financeiros{% endblock %}
 
 {% block content %}
     <div id="loading-overlay" class="loading-overlay">
@@ -11,95 +11,103 @@
         </div>
         <p class="text-light mt-3 fw-semibold">Processando dados, por favor, aguarde...</p>
     </div>
-    
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="alert-container mb-4">
                 {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alerta-{{ category }} mt-4" role="alert">
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
                         <i class="bi bi-info-circle-fill me-2"></i>
                         {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                     </div>
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
+    <!-- LISTAGEM DE EMPRESAS -->
     <div class="bg-white rounded-3 shadow p-4 mb-4">
-        <h2 class="h5 fw-semibold text-dark mb-4">Importar Dados Anuais</h2>
-        <form id="upload-form" action="{{ url_for('admin.upload_dados') }}" method="post" enctype="multipart/form-data" class="row g-3">
-            <div class="col-md-6">
-                <label for="empresaSelect" class="form-label">Empresa</label>
-                <select class="form-select" id="empresaSelect" name="empresa" required>
-                    <option selected disabled value="">Selecione a empresa...</option>
-                    {% for user in users %}
-                        <option value="{{ user.empresa }}">{{ user.empresa }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="col-md-6">
-                <label for="anoInput" class="form-label">Ano</label>
-                <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="{{ current_year|default(2025) }}" required>
-            </div>
-            <div class="col-md-12">
-                <label for="arquivoEmpresas" class="form-label">Arquivo (.csv ou .xlsx)</label>
-                <input class="form-control" type="file" id="arquivoEmpresas" name="arquivo" accept=".csv,.xlsx" required>
-            </div>
-            <div class="col-12 mt-4">
-                <button type="submit" id="submit-button" class="btn btn-orange">
-                    <i class="bi bi-upload me-2"></i> Enviar Dados
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <div class="bg-white rounded-3 shadow p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">
-            <h2 class="h5 fw-semibold text-dark mb-0">Uploads Realizados</h2>
+            <div>
+                <h2 class="h5 fw-semibold text-dark mb-1">
+                    <i class="bi bi-building-fill text-orange me-2"></i>
+                    Empresas Cadastradas
+                </h2>
+                <p class="text-muted small mb-0">Total de {{ empresas|length }} empresa(s) cadastrada(s)</p>
+            </div>
+            <button class="btn btn-orange shadow-sm" data-bs-toggle="modal" data-bs-target="#addEmpresaModal">
+                <i class="bi bi-plus-circle me-2"></i>
+                Nova Empresa
+            </button>
         </div>
 
-        <div class="table-responsive" style="max-width: 100%; overflow-x: auto;">
+        <div class="table-responsive">
             <table class="table table-hover align-middle">
-                <thead>
-                    <tr class="table-light">
-                        <th scope="col" class="text-start">Empresa</th>
-                        <th scope="col" class="text-center">Anos com Dados</th>
-                        <th scope="col" class="text-center">Ações</th>
+                <thead class="table-light">
+                    <tr>
+                        <th scope="col" class="fw-semibold"><i class="bi bi-building me-1"></i>Nome</th>
+                        <th scope="col" class="fw-semibold"><i class="bi bi-credit-card me-1"></i>CNPJ</th>
+                        <th scope="col" class="fw-semibold"><i class="bi bi-tag me-1"></i>Seguimento</th>
+                        <th scope="col" class="fw-semibold text-center"><i class="bi bi-calendar-check me-1"></i>Anos com Dados</th>
+                        <th scope="col" class="fw-semibold text-center"><i class="bi bi-gear me-1"></i>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for user in users %}
+                    {% for empresa in empresas %}
                     <tr>
-                        <td class="fw-semibold text-start">{{ user.empresa }}</td>
+                        <td class="fw-medium">{{ empresa.nome }}</td>
+                        <td class="text-muted">{{ empresa.cnpj }}</td>
+                        <td>
+                            <span class="badge bg-light text-dark border">
+                                <i class="bi bi-briefcase-fill me-1"></i>
+                                {{ empresa.seguimento }}
+                            </span>
+                        </td>
                         <td class="text-center">
-                            {% set anos = uploads.get(user.empresa, []) %}
+                            {% set anos = uploads.get(empresa.id, []) %}
                             {% if anos %}
-                                <div class="d-flex flex-wrap justify-content-center gap-2">
+                                <div class="d-flex flex-wrap justify-content-center gap-1">
                                     {% for ano in anos|sort(reverse=True) %}
                                         <span class="badge bg-success">{{ ano }}</span>
                                     {% endfor %}
                                 </div>
                             {% else %}
-                                <span class="text-muted">Nenhum dado cadastrado</span>
+                                <span class="text-muted small">Nenhum dado</span>
                             {% endif %}
                         </td>
                         <td class="text-center">
-                            {% if anos %}
-                                <button type="button" 
-                                        class="btn btn-sm btn-primary" 
-                                        onclick="abrirPopup('{{ user.empresa }}', {{ anos|tojson }})">
-                                    <i class="bi bi-gear-fill me-1"></i> Gerenciar
+                            <div class="btn-group" role="group">
+                                <button class="btn btn-sm btn-outline-info"
+                                        onclick="abrirUploadModal({{ empresa.id }}, '{{ empresa.nome }}')"
+                                        title="Upload de dados">
+                                    <i class="bi bi-upload"></i>
                                 </button>
-                            {% else %}
-                                <button type="button" class="btn btn-sm btn-secondary" disabled>
-                                    <i class="bi bi-x-circle me-1"></i> Sem Dados
+                                <button class="btn btn-sm btn-outline-warning"
+                                        onclick="abrirGerenciarDados({{ empresa.id }}, '{{ empresa.nome }}', {{ anos|tojson }})"
+                                        title="Gerenciar dados">
+                                    <i class="bi bi-folder-open"></i>
                                 </button>
-                            {% endif %}
+                                <button class="btn btn-sm btn-outline-primary"
+                                        onclick="showEditEmpresaModal({{ empresa|tojson|safe }})"
+                                        title="Editar empresa">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-danger"
+                                        onclick="showDeleteEmpresaModal({{ empresa.id }}, '{{ empresa.nome }}')"
+                                        title="Excluir empresa">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="3" class="text-center">Nenhuma empresa cadastrada.</td>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-inbox display-4 d-block mb-3"></i>
+                            <p class="mb-0">Nenhuma empresa cadastrada ainda.</p>
+                            <small>Clique em "Nova Empresa" para adicionar a primeira empresa.</small>
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -107,189 +115,322 @@
         </div>
     </div>
 
-    <!-- Modal/Popup -->
-    <div class="modal fade" id="popupDados" tabindex="-1" aria-labelledby="popupDadosLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header border-0">
-                    <h5 class="modal-title fw-semibold" id="popupDadosLabel">Gerenciar Dados</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- MODAL ADICIONAR EMPRESA -->
+<div class="modal fade" id="addEmpresaModal" tabindex="-1" aria-labelledby="addEmpresaModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" method="post" action="{{ url_for('admin.cadastrar_empresa') }}">
+            <div class="modal-header bg-orange text-white">
+                <h5 class="modal-title" id="addEmpresaModalLabel">
+                    <i class="bi bi-building-fill-add me-2"></i>
+                    Cadastrar Nova Empresa
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label for="nome" class="form-label">Nome da Empresa *</label>
+                        <input type="text" class="form-control" id="nome" name="nome" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cnpj" class="form-label">CNPJ *</label>
+                        <input type="text" class="form-control" id="cnpj" name="cnpj" placeholder="XX.XXX.XXX/XXXX-XX" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="telefone" class="form-label">Telefone *</label>
+                        <input type="tel" class="form-control" id="telefone" name="telefone" placeholder="(XX) XXXXX-XXXX" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" name="email" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="cep" class="form-label">CEP *</label>
+                        <input type="text" class="form-control" id="cep" name="cep" placeholder="XXXXX-XXX" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="seguimento" class="form-label">Seguimento *</label>
+                        <input type="text" class="form-control" id="seguimento" name="seguimento" placeholder="Ex: Varejo" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="website" class="form-label">Website</label>
+                        <input type="url" class="form-control" id="website" name="website" placeholder="https://">
+                    </div>
+                    <div class="col-12">
+                        <label for="complemento" class="form-label">Complemento de Endereço</label>
+                        <textarea class="form-control" id="complemento" name="complemento" rows="2"></textarea>
+                    </div>
                 </div>
-                <div class="modal-body">
-                    <p class="mb-3">
-                        <strong>Empresa:</strong> <span id="popup-empresa"></span>
-                    </p>
-                    
-                    <div class="mb-3">
-                        <label for="anoSelect" class="form-label fw-semibold">Selecione o Ano:</label>
-                        <select class="form-select" id="anoSelect" onchange="atualizarFormsAno()">
-                            <option value="">-- Selecione um ano --</option>
-                        </select>
-                    </div>
-                    
-                    <div class="d-grid gap-2">
-                        <!-- Form para Ver Dados -->
-                        <form method="POST" action="{{ url_for('admin.consultar_dados_page') }}" class="mb-2">
-                            <input type="hidden" name="empresa" id="form-ver-empresa">
-                            <input type="hidden" name="ano" id="form-ver-ano">
-                            <button type="submit" class="btn btn-primary w-100" id="btn-ver-dados" disabled>
-                                <i class="bi bi-eye me-2"></i> Ver Dados
-                            </button>
-                        </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cancelar
+                </button>
+                <button type="submit" class="btn btn-orange">
+                    <i class="bi bi-check-circle me-1"></i>Cadastrar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 
-                        <!-- Form para Excluir Dados -->
-                        <form method="POST" action="{{ url_for('admin.deletar_dados_empresa') }}" 
-                              onsubmit="return confirm('Tem certeza que deseja excluir estes dados? Esta ação não pode ser desfeita.');">
-                            <input type="hidden" name="empresa" id="form-excluir-empresa">
-                            <input type="hidden" name="ano" id="form-excluir-ano">
-                            <button type="submit" class="btn btn-danger w-100" id="btn-excluir-dados" disabled>
-                                <i class="bi bi-trash me-2"></i> Excluir Dados
-                            </button>
-                        </form>
+<!-- MODAL EDITAR EMPRESA -->
+<div class="modal fade" id="editEmpresaModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <form class="modal-content" method="post" action="{{ url_for('admin.editar_empresa') }}">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar Empresa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editEmpresaId" name="id">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label for="editNome" class="form-label">Nome da Empresa *</label>
+                        <input type="text" class="form-control" id="editNome" name="nome" required>
                     </div>
+                    <div class="col-md-4">
+                        <label for="editCnpj" class="form-label">CNPJ *</label>
+                        <input type="text" class="form-control" id="editCnpj" name="cnpj" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="editTelefone" class="form-label">Telefone *</label>
+                        <input type="tel" class="form-control" id="editTelefone" name="telefone" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="editEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="editEmail" name="email" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="editCep" class="form-label">CEP *</label>
+                        <input type="text" class="form-control" id="editCep" name="cep" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="editSeguimento" class="form-label">Seguimento *</label>
+                        <input type="text" class="form-control" id="editSeguimento" name="seguimento" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="editWebsite" class="form-label">Website</label>
+                        <input type="url" class="form-control" id="editWebsite" name="website">
+                    </div>
+                    <div class="col-12">
+                        <label for="editComplemento" class="form-label">Complemento</label>
+                        <textarea class="form-control" id="editComplemento" name="complemento" rows="2"></textarea>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" class="btn btn-primary">Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL DELETE EMPRESA -->
+<div class="modal fade" id="deleteEmpresaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="bi bi-exclamation-triangle me-2"></i>Confirmar Exclusão</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Tem certeza que deseja excluir a empresa <strong id="deleteEmpresaNome"></strong>?</p>
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Atenção:</strong> Todos os dados financeiros vinculados a esta empresa serão excluídos permanentemente!
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <a href="#" id="confirmDeleteEmpresaButton" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Excluir
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL UPLOAD DADOS -->
+<div class="modal fade" id="uploadDadosModal" tabindex="-1">
+    <div class="modal-dialog">
+        <form class="modal-content" id="upload-form" method="post" action="{{ url_for('admin.upload_dados') }}" enctype="multipart/form-data">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Upload de Dados</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Empresa: <strong id="uploadEmpresaNome"></strong></p>
+                <input type="hidden" id="uploadEmpresaId" name="empresa_id">
+                <div class="mb-3">
+                    <label for="anoInput" class="form-label">Ano *</label>
+                    <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="2025" required>
+                </div>
+                <div class="mb-3">
+                    <label for="arquivoUpload" class="form-label">Arquivo Excel *</label>
+                    <input type="file" class="form-control" id="arquivoUpload" name="arquivo" accept=".xlsx,.xls" required>
+                    <div class="form-text">Formatos aceitos: .xlsx, .xls</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="submit" id="submit-button" class="btn btn-info">
+                    <i class="bi bi-upload me-1"></i>Enviar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL GERENCIAR DADOS -->
+<div class="modal fade" id="gerenciarDadosModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title"><i class="bi bi-folder-open me-2"></i>Gerenciar Dados</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Empresa: <strong id="gerenciarEmpresaNome"></strong></p>
+                <div class="mb-3">
+                    <label for="anoSelectGerenciar" class="form-label">Selecione o Ano:</label>
+                    <select class="form-select" id="anoSelectGerenciar" onchange="atualizarFormsAno()">
+                        <option value="">-- Selecione um ano --</option>
+                    </select>
+                </div>
+                <div class="d-grid gap-2">
+                    <form method="POST" action="{{ url_for('admin.consultar_dados') }}">
+                        <input type="hidden" name="empresa_id" id="formVerEmpresaId">
+                        <input type="hidden" name="ano" id="formVerAno">
+                        <button type="submit" class="btn btn-primary w-100" id="btnVerDados" disabled>
+                            <i class="bi bi-eye me-2"></i>Ver Dados
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin.deletar_dados_empresa') }}"
+                          onsubmit="return confirm('Tem certeza que deseja excluir estes dados? Esta ação não pode ser desfeita.');">
+                        <input type="hidden" name="empresa_id" id="formExcluirEmpresaId">
+                        <input type="hidden" name="ano" id="formExcluirAno">
+                        <button type="submit" class="btn btn-danger w-100" id="btnExcluirDados" disabled>
+                            <i class="bi bi-trash me-2"></i>Excluir Dados
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
-   
-    <style>
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.85);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-            visibility: hidden;
-            opacity: 0;
-            transition: opacity 0.4s ease;
-        }
+</div>
 
-        .loading-overlay.active {
-            visibility: visible;
-            opacity: 1;
-        }
-       
-        .spinner-border {
-            width: 3.5rem;
-            height: 3.5rem;
-            color: #ff9900 !important;
-        }
-       
-        .text-orange {
-            color: #ff9900 !important;
-        }
+<style>
+    .loading-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.85);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        visibility: hidden;
+        opacity: 0;
+        transition: opacity 0.4s ease;
+    }
 
-        /* Ajustes no modal */
-        .modal-content {
-            border: none;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-        }
+    .loading-overlay.active {
+        visibility: visible;
+        opacity: 1;
+    }
 
-        .modal-header {
-            padding: 1.5rem;
-        }
+    .spinner-border {
+        width: 3.5rem;
+        height: 3.5rem;
+    }
 
-        .modal-body {
-            padding: 1.5rem;
-        }
+    .text-orange {
+        color: #ff9900 !important;
+    }
+</style>
 
-        /* Badge para anos */
-        .badge {
-            font-size: 0.875rem;
-            padding: 0.4rem 0.8rem;
-            border-radius: 6px;
-        }
+<script>
+function showEditEmpresaModal(empresa) {
+    const modal = new bootstrap.Modal(document.getElementById('editEmpresaModal'));
+    document.getElementById('editEmpresaId').value = empresa.id;
+    document.getElementById('editNome').value = empresa.nome;
+    document.getElementById('editCnpj').value = empresa.cnpj;
+    document.getElementById('editTelefone').value = empresa.telefone;
+    document.getElementById('editEmail').value = empresa.email;
+    document.getElementById('editCep').value = empresa.cep;
+    document.getElementById('editSeguimento').value = empresa.seguimento;
+    document.getElementById('editWebsite').value = empresa.website || '';
+    document.getElementById('editComplemento').value = empresa.complemento || '';
+    modal.show();
+}
 
-        /* Estilos de botões */
-        .btn-orange {
-            background-color: #ff9900;
-            border-color: #ff9900;
-            color: white;
-        }
+function showDeleteEmpresaModal(id, nome) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteEmpresaModal'));
+    document.getElementById('deleteEmpresaNome').textContent = nome;
+    document.getElementById('confirmDeleteEmpresaButton').href = `/admin/deletar_empresa/${id}`;
+    modal.show();
+}
 
-        .btn-orange:hover {
-            background-color: #e68a00;
-            border-color: #e68a00;
-            color: white;
-        }
-    </style>
-   
-    <script>
-        let empresaAtual = '';
-        let anosDisponiveis = [];
+function abrirUploadModal(empresaId, empresaNome) {
+    const modal = new bootstrap.Modal(document.getElementById('uploadDadosModal'));
+    document.getElementById('uploadEmpresaId').value = empresaId;
+    document.getElementById('uploadEmpresaNome').textContent = empresaNome;
+    modal.show();
+}
 
-        function abrirPopup(empresa, anos) {
-            empresaAtual = empresa;
-            anosDisponiveis = anos;
+function abrirGerenciarDados(empresaId, empresaNome, anos) {
+    const modal = new bootstrap.Modal(document.getElementById('gerenciarDadosModal'));
+    document.getElementById('gerenciarEmpresaNome').textContent = empresaNome;
 
-            document.getElementById('popup-empresa').textContent = empresa;
+    const select = document.getElementById('anoSelectGerenciar');
+    select.innerHTML = '<option value="">-- Selecione um ano --</option>';
 
-            // Preencher o select de anos
-            const anoSelect = document.getElementById('anoSelect');
-            anoSelect.innerHTML = '<option value="">-- Selecione um ano --</option>';
-            
-            anos.sort((a, b) => b - a); // Ordenar em ordem decrescente
-            anos.forEach(ano => {
-                const option = document.createElement('option');
-                option.value = ano;
-                option.textContent = ano;
-                anoSelect.appendChild(option);
-            });
-
-            // Preencher os campos hidden com a empresa
-            document.getElementById('form-ver-empresa').value = empresa;
-            document.getElementById('form-excluir-empresa').value = empresa;
-
-            // Desabilitar botões até que um ano seja selecionado
-            document.getElementById('btn-ver-dados').disabled = true;
-            document.getElementById('btn-excluir-dados').disabled = true;
-
-            const modal = new bootstrap.Modal(document.getElementById('popupDados'));
-            modal.show();
-        }
-
-        function atualizarFormsAno() {
-            const anoSelecionado = document.getElementById('anoSelect').value;
-            
-            if (anoSelecionado) {
-                // Atualizar os campos hidden
-                document.getElementById('form-ver-ano').value = anoSelecionado;
-                document.getElementById('form-excluir-ano').value = anoSelecionado;
-
-                // Habilitar os botões
-                document.getElementById('btn-ver-dados').disabled = false;
-                document.getElementById('btn-excluir-dados').disabled = false;
-            } else {
-                // Desabilitar os botões se nenhum ano foi selecionado
-                document.getElementById('btn-ver-dados').disabled = true;
-                document.getElementById('btn-excluir-dados').disabled = true;
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const uploadForm = document.getElementById('upload-form');
-            const loadingOverlay = document.getElementById('loading-overlay');
-            const submitButton = document.getElementById('submit-button');
-            const fileInput = document.getElementById('arquivoEmpresas');
-           
-            if (uploadForm && loadingOverlay && submitButton) {
-                uploadForm.addEventListener('submit', function(event) {
-                    if (fileInput.files.length === 0) {
-                        return;
-                    }
-
-                    loadingOverlay.classList.add('active');
-                    submitButton.disabled = true;
-                    submitButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span> Processando...';
-                });
-            }
+    if (anos && anos.length > 0) {
+        anos.sort((a, b) => b - a);
+        anos.forEach(ano => {
+            const option = document.createElement('option');
+            option.value = ano;
+            option.textContent = ano;
+            select.appendChild(option);
         });
-    </script>
+    }
+
+    document.getElementById('formVerEmpresaId').value = empresaId;
+    document.getElementById('formExcluirEmpresaId').value = empresaId;
+    document.getElementById('btnVerDados').disabled = true;
+    document.getElementById('btnExcluirDados').disabled = true;
+
+    modal.show();
+}
+
+function atualizarFormsAno() {
+    const anoSelecionado = document.getElementById('anoSelectGerenciar').value;
+
+    if (anoSelecionado) {
+        document.getElementById('formVerAno').value = anoSelecionado;
+        document.getElementById('formExcluirAno').value = anoSelecionado;
+        document.getElementById('btnVerDados').disabled = false;
+        document.getElementById('btnExcluirDados').disabled = false;
+    } else {
+        document.getElementById('btnVerDados').disabled = true;
+        document.getElementById('btnExcluirDados').disabled = true;
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('upload-form');
+    const loadingOverlay = document.getElementById('loading-overlay');
+
+    if (uploadForm && loadingOverlay) {
+        uploadForm.addEventListener('submit', function() {
+            loadingOverlay.classList.add('active');
+        });
+    }
+});
+</script>
 {% endblock %}

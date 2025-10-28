@@ -1,0 +1,124 @@
+{% extends "admin/base.html" %}
+
+{% block header_title %}Vínculos Usuário-Empresa{% endblock %}
+
+{% block header_subtitle %}Gerencie os relacionamentos entre usuários e empresas{% endblock %}
+
+{% block content %}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="alert-container mb-4">
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- ADICIONAR VÍNCULO -->
+    <div class="bg-white rounded-3 shadow p-4 mb-4">
+        <h2 class="h5 fw-semibold text-dark mb-4">
+            <i class="bi bi-link-45deg text-orange me-2"></i>
+            Criar Novo Vínculo
+        </h2>
+        <form method="post" action="{{ url_for('admin.vincular_user_empresa') }}" class="row g-3">
+            <div class="col-md-5">
+                <label for="user_id" class="form-label">Usuário</label>
+                <select class="form-select" id="user_id" name="user_id" required>
+                    <option selected disabled value="">Selecione um usuário...</option>
+                    {% for user in users %}
+                        <option value="{{ user.id }}">{{ user.nome }} ({{ user.email }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-5">
+                <label for="empresa_id" class="form-label">Empresa</label>
+                <select class="form-select" id="empresa_id" name="empresa_id" required>
+                    <option selected disabled value="">Selecione uma empresa...</option>
+                    {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}">{{ empresa.nome }} ({{ empresa.cnpj }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-orange w-100">
+                    <i class="bi bi-plus-circle me-1"></i>
+                    Vincular
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- VÍNCULOS POR USUÁRIO -->
+    <div class="bg-white rounded-3 shadow p-4">
+        <h2 class="h5 fw-semibold text-dark mb-4">
+            <i class="bi bi-people-fill text-orange me-2"></i>
+            Vínculos por Usuário
+        </h2>
+
+        {% for user in users %}
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <i class="bi bi-person-circle text-primary me-2"></i>
+                        <strong>{{ user.nome }}</strong>
+                        <span class="text-muted ms-2">({{ user.email }})</span>
+                        {% if user.role == 'admin' %}
+                            <span class="badge bg-warning text-dark ms-2">Admin</span>
+                        {% else %}
+                            <span class="badge bg-success ms-2">Cliente</span>
+                        {% endif %}
+                    </div>
+                    <span class="badge bg-primary">
+                        {{ user_empresas.get(user.id, [])|length }} empresa(s) vinculada(s)
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                {% set empresas_vinculadas = user_empresas.get(user.id, []) %}
+                {% if empresas_vinculadas %}
+                    <div class="row g-2">
+                        {% for empresa in empresas_vinculadas %}
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-between align-items-center p-3 border rounded bg-light">
+                                <div>
+                                    <i class="bi bi-building text-success me-2"></i>
+                                    <strong>{{ empresa.nome }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ empresa.cnpj }}</small>
+                                </div>
+                                <form method="post" action="{{ url_for('admin.desvincular_user_empresa') }}"
+                                      onsubmit="return confirm('Tem certeza que deseja remover este vínculo?');"
+                                      class="d-inline">
+                                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                                    <input type="hidden" name="empresa_id" value="{{ empresa.id }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Remover vínculo">
+                                        <i class="bi bi-x-circle"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning mb-0">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Nenhuma empresa vinculada a este usuário.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="alert alert-info">
+            <i class="bi bi-info-circle me-2"></i>
+            Nenhum usuário cadastrado no sistema.
+        </div>
+        {% endfor %}
+    </div>
+
+{% endblock %}
