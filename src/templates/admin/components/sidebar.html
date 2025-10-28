@@ -38,13 +38,6 @@
             <small class="text-muted text-uppercase fw-bold px-3">Dados Financeiros</small>
         </li>
         <li class="nav-item">
-            <a href="{{ url_for('admin.gerenciar_empresas') }}"
-               class="nav-link {% if request.endpoint == 'admin.gerenciar_empresas' %}active{% endif %}">
-                <i class="bi bi-upload me-2"></i>
-                <span>Upload de Dados</span>
-            </a>
-        </li>
-        <li class="nav-item">
             <a href="{{ url_for('admin.consultar_dados') }}"
                class="nav-link {% if request.endpoint == 'admin.consultar_dados' %}active{% endif %}">
                 <i class="bi bi-table me-2"></i>

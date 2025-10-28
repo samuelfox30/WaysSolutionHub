@@ -4,6 +4,24 @@
 {% block header_subtitle %}Visualize e filtre seus dados financeiros anuais{% endblock %}
 
 {% block content %}
+<!-- Banner Empresa Selecionada -->
+<div class="alert alert-info mb-4" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #ff9900; border-radius: 8px;">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-1" style="color: #92400e;">
+                <i class="bi bi-building-fill me-2"></i>
+                Visualizando dados de: <strong>{{ empresa_nome }}</strong>
+            </h5>
+            <p class="mb-0 small" style="color: #92400e;">
+                Você está acessando os dados financeiros desta empresa. Para trocar de empresa, use o menu lateral.
+            </p>
+        </div>
+        <a href="{{ url_for('user.trocar_empresa') }}" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-arrow-left-right me-1"></i> Trocar Empresa
+        </a>
+    </div>
+</div>
+
 <style>
     :root {
         --orange-primary: #ff9900;
