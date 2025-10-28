@@ -553,8 +553,8 @@ function atualizarGraficos(dadosGrupo) {
     // 2. CONTROLE (Despesas por natureza sintética - Pizza)
     if (dadosGrupo['Controle'] && dadosGrupo['Controle'].length > 0) {
         chartsHTML += `
-            <div class="row mb-4">
-                <div class="col-12">
+            <div class="row mb-4 justify-content-center">
+                <div class="col-md-6">
                     <div class="chart-container">
                         <div class="chart-header">
                             <h3 class="chart-title">
@@ -562,7 +562,9 @@ function atualizarGraficos(dadosGrupo) {
                                 Controle de Despesas por Natureza Sintética
                             </h3>
                         </div>
-                        <canvas id="controleChart" height="80"></canvas>
+                        <div style="max-width: 450px; margin: 0 auto;">
+                            <canvas id="controleChart"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -581,7 +583,9 @@ function atualizarGraficos(dadosGrupo) {
                                 Obrigações (Primeiros 3)
                             </h3>
                         </div>
-                        <canvas id="obrigacoesPizzaChart" height="80"></canvas>
+                        <div style="max-width: 450px; margin: 0 auto;">
+                            <canvas id="obrigacoesPizzaChart"></canvas>
+                        </div>
                     </div>
                 </div>
                 <div class="col-md-6">

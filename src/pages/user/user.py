@@ -216,11 +216,11 @@ def api_dados_detalhados_ano(ano):
                 if subgrupo not in dados_organizados[grupo]:
                     dados_organizados[grupo][subgrupo] = []
 
-                # Adicionar item com descrição, valor e percentual
+                # Adicionar item (mantendo ordem: descricao, percentual, valor)
                 dados_organizados[grupo][subgrupo].append({
                     "descricao": descricao,
-                    "valor": valor,
-                    "percentual": percentual
+                    "percentual": percentual,
+                    "valor": valor
                 })
 
         # Processar outras tabelas
