@@ -603,9 +603,16 @@ function atualizarGraficos(dadosGrupo) {
         `;
     }
 
-    // 4-9. Outros subgrupos em barras
-    const subgruposBarras = ['Gastos ADM', 'Matéria Prima', 'Gastos Operacionais', 'Pessoal', 'Dividas', 'Investimentos'];
-    subgruposBarras.forEach(subgrupo => {
+    // 4-9. Outros subgrupos em barras (todos os demais, exceto os já exibidos)
+    // Pegar TODOS os subgrupos do dadosGrupo, exceto os que já foram mostrados
+    const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigações', 'Geral', 'Investimento Geral'];
+
+    Object.keys(dadosGrupo).forEach(subgrupo => {
+        // Pular subgrupos já exibidos e "Investimento Geral"
+        if (subgruposJaExibidos.includes(subgrupo)) {
+            return;
+        }
+
         if (dadosGrupo[subgrupo] && dadosGrupo[subgrupo].length > 0) {
             const chartId = subgrupo.replace(/ /g, '');
             chartsHTML += `
@@ -654,9 +661,13 @@ function atualizarGraficos(dadosGrupo) {
             }
         }
 
-        // 4-9. Outros subgrupos
-        subgruposBarras.forEach(subgrupo => {
-            if (dadosGrupo[subgrupo]) {
+        // 4-9. Outros subgrupos (todos os demais)
+        Object.keys(dadosGrupo).forEach(subgrupo => {
+            if (subgruposJaExibidos.includes(subgrupo)) {
+                return;
+            }
+
+            if (dadosGrupo[subgrupo] && dadosGrupo[subgrupo].length > 0) {
                 const chartId = subgrupo.replace(/ /g, '');
                 const temPercentual = dadosGrupo[subgrupo].some(item => item.percentual !== 0);
 
