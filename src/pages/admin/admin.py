@@ -342,8 +342,8 @@ def api_dados_empresa(empresa_id, ano):
 
             dados_organizados[grupo][subgrupo].append({
                 "descricao": descricao,
-                "valor": valor,
-                "percentual": percentual
+                "percentual": percentual,
+                "valor": valor
             })
 
     # Processar outras tabelas
