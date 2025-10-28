@@ -1,6 +1,6 @@
-{% extends "user/base.html" %}
+{% extends "admin/base.html" %}
 
-{% block header_title %}Dashboard Financeiro{% endblock %}
+{% block header_title %}Dashboard Financeiro - {{ empresa_nome }}{% endblock %}
 {% block header_subtitle %}Análise completa de viabilidade e performance{% endblock %}
 
 {% block content %}
@@ -13,11 +13,11 @@
                 Visualizando dados de: <strong>{{ empresa_nome }}</strong>
             </h5>
             <p class="mb-0 small" style="color: #92400e;">
-                Você está acessando os dados financeiros desta empresa. Para trocar de empresa, use o menu lateral.
+                Visualização administrativa dos dados financeiros da empresa.
             </p>
         </div>
-        <a href="{{ url_for('user.trocar_empresa') }}" class="btn btn-sm btn-outline-warning">
-            <i class="bi bi-arrow-left-right me-1"></i> Trocar Empresa
+        <a href="{{ url_for('admin.gerenciar_empresas') }}" class="btn btn-sm btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Voltar para Empresas
         </a>
     </div>
 </div>
@@ -411,8 +411,9 @@ async function selecionarGrupoViabilidade(grupo, buttonElement) {
 
 async function carregarDadosGrupo() {
     try {
-        // Fazer requisição dos dados
-        const response = await fetch(`/user/api/dados-detalhados/${anoSelecionado}`);
+        // Fazer requisição dos dados (rota admin com empresa_id)
+        const empresaId = {{ empresa_id }};
+        const response = await fetch(`/admin/api/dados-empresa/${empresaId}/${anoSelecionado}`);
         const dados = await response.json();
 
         if (dados.error) {

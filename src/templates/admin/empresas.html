@@ -78,6 +78,11 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
+                                <a href="{{ url_for('admin.dashboard_empresa', empresa_id=empresa.id) }}"
+                                   class="btn btn-sm btn-outline-success"
+                                   title="Ver Dashboard">
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                </a>
                                 <button class="btn btn-sm btn-outline-info"
                                         onclick="abrirUploadModal({{ empresa.id }}, '{{ empresa.nome }}')"
                                         title="Upload de dados">
@@ -88,8 +93,16 @@
                                         title="Gerenciar dados">
                                     <i class="bi bi-database"></i>
                                 </button>
-                                <button class="btn btn-sm btn-outline-primary"
-                                        onclick="showEditEmpresaModal({{ empresa|tojson|safe }})"
+                                <button class="btn btn-sm btn-outline-primary btn-edit-empresa"
+                                        data-id="{{ empresa.id }}"
+                                        data-nome="{{ empresa.nome }}"
+                                        data-cnpj="{{ empresa.cnpj }}"
+                                        data-telefone="{{ empresa.telefone }}"
+                                        data-email="{{ empresa.email }}"
+                                        data-cep="{{ empresa.cep }}"
+                                        data-seguimento="{{ empresa.seguimento }}"
+                                        data-website="{{ empresa.website or '' }}"
+                                        data-complemento="{{ empresa.complemento or '' }}"
                                         title="Editar empresa">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
@@ -355,6 +368,91 @@
 </style>
 
 <script>
+// ===== MÁSCARAS E VALIDAÇÕES =====
+
+// Máscara para CNPJ: XX.XXX.XXX/XXXX-XX
+function maskCNPJ(value) {
+    return value
+        .replace(/\D/g, '')
+        .replace(/^(\d{2})(\d)/, '$1.$2')
+        .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+        .replace(/\.(\d{3})(\d)/, '.$1/$2')
+        .replace(/(\d{4})(\d)/, '$1-$2')
+        .substring(0, 18);
+}
+
+// Máscara para telefone: (XX) XXXXX-XXXX
+function maskTelefone(value) {
+    return value
+        .replace(/\D/g, '')
+        .replace(/^(\d{2})(\d)/, '($1) $2')
+        .replace(/(\d{5})(\d)/, '$1-$2')
+        .substring(0, 15);
+}
+
+// Máscara para CEP: XXXXX-XXX
+function maskCEP(value) {
+    return value
+        .replace(/\D/g, '')
+        .replace(/^(\d{5})(\d)/, '$1-$2')
+        .substring(0, 9);
+}
+
+// Validação de CNPJ
+function validarCNPJ(cnpj) {
+    cnpj = cnpj.replace(/\D/g, '');
+
+    if (cnpj.length !== 14) return false;
+    if (/^(\d)\1+$/.test(cnpj)) return false; // Todos dígitos iguais
+
+    let tamanho = cnpj.length - 2;
+    let numeros = cnpj.substring(0, tamanho);
+    let digitos = cnpj.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+        soma += numeros.charAt(tamanho - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+
+    let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado != digitos.charAt(0)) return false;
+
+    tamanho = tamanho + 1;
+    numeros = cnpj.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+
+    for (let i = tamanho; i >= 1; i--) {
+        soma += numeros.charAt(tamanho - i) * pos--;
+        if (pos < 2) pos = 9;
+    }
+
+    resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado != digitos.charAt(1)) return false;
+
+    return true;
+}
+
+// Validação de telefone
+function validarTelefone(telefone) {
+    const numeros = telefone.replace(/\D/g, '');
+    return numeros.length === 10 || numeros.length === 11;
+}
+
+// Validação de CEP
+function validarCEP(cep) {
+    const numeros = cep.replace(/\D/g, '');
+    return numeros.length === 8;
+}
+
+// Validação de email
+function validarEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
 function showEditEmpresaModal(empresa) {
     const modal = new bootstrap.Modal(document.getElementById('editEmpresaModal'));
     document.getElementById('editEmpresaId').value = empresa.id;
@@ -429,6 +527,190 @@ document.addEventListener('DOMContentLoaded', function() {
     if (uploadForm && loadingOverlay) {
         uploadForm.addEventListener('submit', function() {
             loadingOverlay.classList.add('active');
+        });
+    }
+
+    // Event delegation para botões de editar empresa
+    document.querySelectorAll('.btn-edit-empresa').forEach(button => {
+        button.addEventListener('click', function() {
+            const empresa = {
+                id: this.dataset.id,
+                nome: this.dataset.nome,
+                cnpj: this.dataset.cnpj,
+                telefone: this.dataset.telefone,
+                email: this.dataset.email,
+                cep: this.dataset.cep,
+                seguimento: this.dataset.seguimento,
+                website: this.dataset.website,
+                complemento: this.dataset.complemento
+            };
+            showEditEmpresaModal(empresa);
+        });
+    });
+
+    // ===== APLICAR MÁSCARAS NO FORMULÁRIO DE ADICIONAR EMPRESA =====
+    const cnpjInput = document.getElementById('cnpj');
+    const telefoneInput = document.getElementById('telefone');
+    const cepInput = document.getElementById('cep');
+    const emailInput = document.getElementById('email');
+
+    // Máscara CNPJ
+    if (cnpjInput) {
+        cnpjInput.addEventListener('input', function(e) {
+            e.target.value = maskCNPJ(e.target.value);
+        });
+    }
+
+    // Máscara Telefone
+    if (telefoneInput) {
+        telefoneInput.addEventListener('input', function(e) {
+            e.target.value = maskTelefone(e.target.value);
+        });
+    }
+
+    // Máscara CEP
+    if (cepInput) {
+        cepInput.addEventListener('input', function(e) {
+            e.target.value = maskCEP(e.target.value);
+        });
+    }
+
+    // ===== MÁSCARAS NO FORMULÁRIO DE EDITAR EMPRESA =====
+    const editCnpjInput = document.getElementById('editCnpj');
+    const editTelefoneInput = document.getElementById('editTelefone');
+    const editCepInput = document.getElementById('editCep');
+
+    if (editCnpjInput) {
+        editCnpjInput.addEventListener('input', function(e) {
+            e.target.value = maskCNPJ(e.target.value);
+        });
+    }
+
+    if (editTelefoneInput) {
+        editTelefoneInput.addEventListener('input', function(e) {
+            e.target.value = maskTelefone(e.target.value);
+        });
+    }
+
+    if (editCepInput) {
+        editCepInput.addEventListener('input', function(e) {
+            e.target.value = maskCEP(e.target.value);
+        });
+    }
+
+    // ===== VALIDAÇÃO NO SUBMIT DO FORMULÁRIO DE ADICIONAR EMPRESA =====
+    const addEmpresaForm = document.querySelector('#addEmpresaModal form');
+    if (addEmpresaForm) {
+        addEmpresaForm.addEventListener('submit', function(e) {
+            const nome = document.getElementById('nome').value.trim();
+            const cnpj = document.getElementById('cnpj').value;
+            const telefone = document.getElementById('telefone').value;
+            const email = document.getElementById('email').value.trim();
+            const cep = document.getElementById('cep').value;
+            const seguimento = document.getElementById('seguimento').value.trim();
+
+            // Validar campos obrigatórios
+            if (!nome) {
+                e.preventDefault();
+                alert('Por favor, preencha o nome da empresa.');
+                return false;
+            }
+
+            // Validar CNPJ
+            if (!validarCNPJ(cnpj)) {
+                e.preventDefault();
+                alert('CNPJ inválido. Por favor, verifique o número digitado.');
+                document.getElementById('cnpj').focus();
+                return false;
+            }
+
+            // Validar telefone
+            if (!validarTelefone(telefone)) {
+                e.preventDefault();
+                alert('Telefone inválido. Use o formato (XX) XXXXX-XXXX.');
+                document.getElementById('telefone').focus();
+                return false;
+            }
+
+            // Validar email
+            if (!validarEmail(email)) {
+                e.preventDefault();
+                alert('Email inválido. Por favor, verifique o endereço de email.');
+                document.getElementById('email').focus();
+                return false;
+            }
+
+            // Validar CEP
+            if (!validarCEP(cep)) {
+                e.preventDefault();
+                alert('CEP inválido. Use o formato XXXXX-XXX.');
+                document.getElementById('cep').focus();
+                return false;
+            }
+
+            // Validar seguimento
+            if (!seguimento) {
+                e.preventDefault();
+                alert('Por favor, preencha o seguimento da empresa.');
+                return false;
+            }
+
+            return true;
+        });
+    }
+
+    // ===== VALIDAÇÃO NO SUBMIT DO FORMULÁRIO DE EDITAR EMPRESA =====
+    const editEmpresaForm = document.querySelector('#editEmpresaModal form');
+    if (editEmpresaForm) {
+        editEmpresaForm.addEventListener('submit', function(e) {
+            const nome = document.getElementById('editNome').value.trim();
+            const cnpj = document.getElementById('editCnpj').value;
+            const telefone = document.getElementById('editTelefone').value;
+            const email = document.getElementById('editEmail').value.trim();
+            const cep = document.getElementById('editCep').value;
+            const seguimento = document.getElementById('editSeguimento').value.trim();
+
+            if (!nome) {
+                e.preventDefault();
+                alert('Por favor, preencha o nome da empresa.');
+                return false;
+            }
+
+            if (!validarCNPJ(cnpj)) {
+                e.preventDefault();
+                alert('CNPJ inválido. Por favor, verifique o número digitado.');
+                document.getElementById('editCnpj').focus();
+                return false;
+            }
+
+            if (!validarTelefone(telefone)) {
+                e.preventDefault();
+                alert('Telefone inválido. Use o formato (XX) XXXXX-XXXX.');
+                document.getElementById('editTelefone').focus();
+                return false;
+            }
+
+            if (!validarEmail(email)) {
+                e.preventDefault();
+                alert('Email inválido. Por favor, verifique o endereço de email.');
+                document.getElementById('editEmail').focus();
+                return false;
+            }
+
+            if (!validarCEP(cep)) {
+                e.preventDefault();
+                alert('CEP inválido. Use o formato XXXXX-XXX.');
+                document.getElementById('editCep').focus();
+                return false;
+            }
+
+            if (!seguimento) {
+                e.preventDefault();
+                alert('Por favor, preencha o seguimento da empresa.');
+                return false;
+            }
+
+            return true;
         });
     }
 });

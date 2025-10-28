@@ -258,6 +258,156 @@
 
         editModal.show();
     }
+
+    // ===== FUNÇÕES DE MÁSCARA E VALIDAÇÃO =====
+
+    // Máscara para telefone: (XX) XXXXX-XXXX
+    function maskTelefone(value) {
+        return value
+            .replace(/\D/g, '')
+            .replace(/^(\d{2})(\d)/, '($1) $2')
+            .replace(/(\d{5})(\d)/, '$1-$2')
+            .substring(0, 15);
+    }
+
+    // Validação de telefone
+    function validarTelefone(telefone) {
+        const numeros = telefone.replace(/\D/g, '');
+        return numeros.length === 10 || numeros.length === 11;
+    }
+
+    // Validação de email
+    function validarEmail(email) {
+        const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return regex.test(email);
+    }
+
+    // Validação de senha forte
+    function validarSenha(senha) {
+        // Mínimo 8 caracteres, pelo menos 1 maiúscula, 1 minúscula, 1 número e 1 símbolo
+        if (senha.length < 8) return false;
+
+        const temMaiuscula = /[A-Z]/.test(senha);
+        const temMinuscula = /[a-z]/.test(senha);
+        const temNumero = /[0-9]/.test(senha);
+        const temSimbolo = /[!@#$%^&*(),.?":{}|<>]/.test(senha);
+
+        return temMaiuscula && temMinuscula && temNumero && temSimbolo;
+    }
+
+    // ===== APLICAR MÁSCARAS E VALIDAÇÕES =====
+    document.addEventListener('DOMContentLoaded', function() {
+        // Máscara para telefone no formulário de adicionar
+        const telefoneInput = document.getElementById('telefone');
+        if (telefoneInput) {
+            telefoneInput.addEventListener('input', function(e) {
+                e.target.value = maskTelefone(e.target.value);
+            });
+        }
+
+        // Máscara para telefone no formulário de editar
+        const editTelefoneInput = document.getElementById('editUserTelefone');
+        if (editTelefoneInput) {
+            editTelefoneInput.addEventListener('input', function(e) {
+                e.target.value = maskTelefone(e.target.value);
+            });
+        }
+
+        // Validação do formulário de adicionar usuário
+        const addUserForm = document.querySelector('#addUserModal form');
+        if (addUserForm) {
+            addUserForm.addEventListener('submit', function(e) {
+                const nome = document.getElementById('fullName').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const telefone = document.getElementById('telefone').value;
+                const senha = document.getElementById('password').value;
+                const perfil = document.getElementById('profile').value;
+
+                // Validar nome
+                if (!nome || nome.length < 3) {
+                    e.preventDefault();
+                    alert('Por favor, insira um nome completo válido (mínimo 3 caracteres).');
+                    document.getElementById('fullName').focus();
+                    return false;
+                }
+
+                // Validar email
+                if (!validarEmail(email)) {
+                    e.preventDefault();
+                    alert('Por favor, insira um email válido.');
+                    document.getElementById('email').focus();
+                    return false;
+                }
+
+                // Validar telefone
+                if (!validarTelefone(telefone)) {
+                    e.preventDefault();
+                    alert('Telefone inválido. Use o formato (XX) XXXXX-XXXX.');
+                    document.getElementById('telefone').focus();
+                    return false;
+                }
+
+                // Validar senha
+                if (!validarSenha(senha)) {
+                    e.preventDefault();
+                    alert('A senha deve ter no mínimo 8 caracteres e conter pelo menos:\n- 1 letra maiúscula\n- 1 letra minúscula\n- 1 número\n- 1 caractere especial (!@#$%^&* etc.)');
+                    document.getElementById('password').focus();
+                    return false;
+                }
+
+                // Validar perfil
+                if (!perfil) {
+                    e.preventDefault();
+                    alert('Por favor, selecione o perfil do usuário.');
+                    document.getElementById('profile').focus();
+                    return false;
+                }
+
+                return true;
+            });
+        }
+
+        // Validação do formulário de editar usuário
+        const editUserForm = document.querySelector('#editUserModal form');
+        if (editUserForm) {
+            editUserForm.addEventListener('submit', function(e) {
+                const nome = document.getElementById('editUserName').value.trim();
+                const email = document.getElementById('editUserEmail').value.trim();
+                const telefone = document.getElementById('editUserTelefone').value;
+                const perfil = document.getElementById('editUserPerfil').value;
+
+                if (!nome || nome.length < 3) {
+                    e.preventDefault();
+                    alert('Por favor, insira um nome completo válido (mínimo 3 caracteres).');
+                    document.getElementById('editUserName').focus();
+                    return false;
+                }
+
+                if (!validarEmail(email)) {
+                    e.preventDefault();
+                    alert('Por favor, insira um email válido.');
+                    document.getElementById('editUserEmail').focus();
+                    return false;
+                }
+
+                if (!validarTelefone(telefone)) {
+                    e.preventDefault();
+                    alert('Telefone inválido. Use o formato (XX) XXXXX-XXXX.');
+                    document.getElementById('editUserTelefone').focus();
+                    return false;
+                }
+
+                if (!perfil) {
+                    e.preventDefault();
+                    alert('Por favor, selecione o perfil do usuário.');
+                    document.getElementById('editUserPerfil').focus();
+                    return false;
+                }
+
+                return true;
+            });
+        }
+    });
 </script>
 {% endblock %}
 
