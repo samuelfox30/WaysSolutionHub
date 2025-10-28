@@ -272,6 +272,115 @@ def deletar_empresa(empresa_id):
     return redirect(url_for('admin.gerenciar_empresas'))
 
 
+@admin_bp.route('/admin/dashboard-empresa/<int:empresa_id>')
+def dashboard_empresa(empresa_id):
+    """Dashboard de uma empresa específica (acesso admin)"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+
+    company_manager = CompanyManager()
+    empresa = company_manager.buscar_empresa_por_id(empresa_id)
+
+    if not empresa:
+        flash("Empresa não encontrada.", "danger")
+        company_manager.close()
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # Busca anos com dados disponíveis para esta empresa
+    anos_disponiveis = company_manager.get_anos_com_dados(empresa_id)
+    company_manager.close()
+
+    # Busca informações do admin logado (para exibir no header)
+    from models.user_manager import UserManager
+    user_manager = UserManager()
+    user_data = user_manager.find_user_by_email(session.get('user_email'))
+    user_manager.close()
+
+    return render_template(
+        'admin/dashboard_empresa.html',
+        user=user_data,
+        empresa=empresa,
+        empresa_nome=empresa['nome'],
+        empresa_id=empresa_id,
+        anos_disponiveis=anos_disponiveis
+    )
+
+
+@admin_bp.route('/admin/api/dados-empresa/<int:empresa_id>/<int:ano>')
+def api_dados_empresa(empresa_id, ano):
+    """API para retornar dados de uma empresa (acesso admin)"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return json.dumps({"error": "Não autorizado"}), 403
+
+    from models.company_manager import CompanyManager
+    import json
+
+    company_manager = CompanyManager()
+    data_results = company_manager.buscar_dados_empresa(empresa_id, ano)
+    company_manager.close()
+
+    # Organizar dados por SUBGRUPO dentro de cada grupo de viabilidade
+    dados_organizados = {}
+
+    # Processar TbItens
+    if data_results and data_results.get('TbItens'):
+        for item in data_results['TbItens']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            percentual = float(item[3]) if item[3] else 0
+            valor = float(item[4]) if item[4] else 0
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "valor": valor,
+                "percentual": percentual
+            })
+
+    # Processar outras tabelas
+    for tabela in ['TbItensInvestimentos', 'TbItensDividas', 'TbItensInvestimentoGeral', 'TbItensGastosOperacionais']:
+        if data_results and data_results.get(tabela):
+            for item in data_results[tabela]:
+                grupo = item[0]
+                subgrupo = item[1]
+                descricao = item[2]
+
+                if tabela in ['TbItensInvestimentos', 'TbItensDividas']:
+                    valor = float(item[5]) if len(item) > 5 and item[5] else 0
+                elif tabela == 'TbItensInvestimentoGeral':
+                    valor = float(item[3]) if len(item) > 3 and item[3] else 0
+                elif tabela == 'TbItensGastosOperacionais':
+                    valor = float(item[4]) if len(item) > 4 and item[4] else 0
+                else:
+                    continue
+
+                if grupo not in dados_organizados:
+                    dados_organizados[grupo] = {}
+
+                if subgrupo not in dados_organizados[grupo]:
+                    dados_organizados[grupo][subgrupo] = []
+
+                dados_organizados[grupo][subgrupo].append({
+                    "descricao": descricao,
+                    "valor": valor,
+                    "percentual": 0
+                })
+
+    return json.dumps({
+        "ano": ano,
+        "dados": dados_organizados
+    }), 200, {'Content-Type': 'application/json'}
+
+
 # ============================
 # RELACIONAMENTO USER-EMPRESA
 # ============================

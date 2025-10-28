@@ -1,0 +1,931 @@
+{% extends "user/base.html" %}
+
+{% block header_title %}Dashboard Financeiro{% endblock %}
+{% block header_subtitle %}Análise completa de viabilidade e performance{% endblock %}
+
+{% block content %}
+<!-- Banner Empresa Selecionada -->
+<div class="alert alert-info mb-4" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #ff9900; border-radius: 8px;">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-1" style="color: #92400e;">
+                <i class="bi bi-building-fill me-2"></i>
+                Visualizando dados de: <strong>{{ empresa_nome }}</strong>
+            </h5>
+            <p class="mb-0 small" style="color: #92400e;">
+                Você está acessando os dados financeiros desta empresa. Para trocar de empresa, use o menu lateral.
+            </p>
+        </div>
+        <a href="{{ url_for('user.trocar_empresa') }}" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-arrow-left-right me-1"></i> Trocar Empresa
+        </a>
+    </div>
+</div>
+
+<style>
+    :root {
+        --primary-orange: #ff9900;
+        --success-green: #10b981;
+        --danger-red: #ef4444;
+        --warning-yellow: #f59e0b;
+        --info-blue: #3b82f6;
+        --purple: #8b5cf6;
+    }
+
+    .metric-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s ease;
+        border: 1px solid #e2e8f0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-orange), var(--warning-yellow));
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+    }
+    
+    .metric-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .metric-value {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: #1e293b;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metric-label {
+        color: #64748b;
+        font-size: 0.875rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .metric-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        margin-top: 0.75rem;
+    }
+
+    .trend-up {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .trend-down {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    
+    .chart-container {
+        background: white;
+        border-radius: 16px;
+        padding: 1.75rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .chart-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid #f1f5f9;
+    }
+
+    .chart-title {
+        font-size: 1.125rem;
+        font-weight: 700;
+        color: #1e293b;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .chart-title i {
+        color: var(--primary-orange);
+        font-size: 1.25rem;
+    }
+
+    .chart-badge {
+        padding: 0.375rem 0.875rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .year-selector {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .year-btn {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        margin: 0.5rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        font-size: 1.125rem;
+        position: relative;
+        min-width: 120px;
+    }
+    
+    .year-btn:hover:not(:disabled) {
+        border-color: var(--primary-orange);
+        background: #fff7ed;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 6px rgba(255, 153, 0, 0.2);
+    }
+    
+    .year-btn.active {
+        background: linear-gradient(135deg, var(--primary-orange), var(--warning-yellow));
+        color: white;
+        border-color: var(--primary-orange);
+        box-shadow: 0 8px 16px rgba(255, 153, 0, 0.3);
+    }
+    
+    .year-btn.has-data::after {
+        content: '✓';
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        background: var(--success-green);
+        border-radius: 50%;
+        border: 2px solid white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+
+    /* NOVO: Seletor de Grupo de Viabilidade */
+    .viability-selector {
+        background: white;
+        border-radius: 16px;
+        padding: 1.5rem;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 2rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .viability-btn {
+        border: 3px solid transparent;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin: 0.5rem;
+        background: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 700;
+        font-size: 1rem;
+        position: relative;
+        min-width: 200px;
+        text-align: center;
+        display: inline-flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .viability-btn i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .viability-btn:hover:not(.active) {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    .viability-btn.real {
+        border-color: #e5e7eb;
+    }
+
+    .viability-btn.real:hover {
+        border-color: #10b981;
+        background: #f0fdf4;
+    }
+
+    .viability-btn.real.active {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border-color: #10b981;
+        box-shadow: 0 12px 24px rgba(16, 185, 129, 0.4);
+    }
+
+    .viability-btn.pe {
+        border-color: #e5e7eb;
+    }
+
+    .viability-btn.pe:hover {
+        border-color: #f59e0b;
+        background: #fffbeb;
+    }
+
+    .viability-btn.pe.active {
+        background: linear-gradient(135deg, #f59e0b, #d97706);
+        color: white;
+        border-color: #f59e0b;
+        box-shadow: 0 12px 24px rgba(245, 158, 11, 0.4);
+    }
+
+    .viability-btn.ideal {
+        border-color: #e5e7eb;
+    }
+
+    .viability-btn.ideal:hover {
+        border-color: #3b82f6;
+        background: #eff6ff;
+    }
+
+    .viability-btn.ideal.active {
+        background: linear-gradient(135deg, #3b82f6, #2563eb);
+        color: white;
+        border-color: #3b82f6;
+        box-shadow: 0 12px 24px rgba(59, 130, 246, 0.4);
+    }
+
+    .viability-description {
+        font-size: 0.75rem;
+        opacity: 0.9;
+        margin-top: 0.25rem;
+    }
+
+    .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+    }
+
+    .section-title {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .data-summary {
+        background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+        border-radius: 12px;
+        padding: 1rem 1.5rem;
+        border-left: 4px solid var(--primary-orange);
+        margin-bottom: 1.5rem;
+    }
+
+    .data-summary-text {
+        font-size: 0.875rem;
+        color: #92400e;
+        font-weight: 500;
+    }
+
+    /* Tabela de Top Itens */
+    .top-items-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .top-items-table thead th {
+        background: #f8fafc;
+        padding: 0.75rem;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: #64748b;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .top-items-table tbody td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.875rem;
+    }
+
+    .top-items-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .rank-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 0.875rem;
+    }
+
+    .rank-1 { background: linear-gradient(135deg, #ffd700, #ffed4e); color: #92400e; }
+    .rank-2 { background: linear-gradient(135deg, #c0c0c0, #e8e8e8); color: #475569; }
+    .rank-3 { background: linear-gradient(135deg, #cd7f32, #e9a56a); color: white; }
+    .rank-other { background: #f1f5f9; color: #64748b; }
+</style>
+
+<!-- Seletor de Ano -->
+<div class="year-selector">
+    <div class="section-header">
+        <div>
+            <h3 class="section-title mb-1">
+                <i class="bi bi-calendar-range me-2"></i>Selecione o Ano
+            </h3>
+            <p class="text-muted mb-0 small">Escolha um ano para visualizar os dados financeiros</p>
+        </div>
+    </div>
+    
+    {% if anos_disponiveis %}
+        <div class="data-summary mb-3">
+            <p class="data-summary-text mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>{{ anos_disponiveis|length }}</strong> ano(s) com dados disponíveis
+            </p>
+        </div>
+        
+        <div class="d-flex flex-wrap justify-content-center">
+            {% for ano in anos_disponiveis|sort(reverse=True) %}
+                <button 
+                    class="year-btn has-data" 
+                    onclick="selecionarAno({{ ano }}, this)"
+                    data-ano="{{ ano }}">
+                    {{ ano }}
+                </button>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-warning" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>Nenhum dado disponível</strong><br>
+            Entre em contato com o administrador para que os dados sejam carregados.
+        </div>
+    {% endif %}
+</div>
+
+<!-- Seletor de Grupo de Viabilidade -->
+<div id="viability-selector-container" class="viability-selector" style="display: none;">
+    <div class="section-header">
+        <div>
+            <h3 class="section-title mb-1">
+                <i class="bi bi-diagram-3 me-2"></i>Selecione o Grupo de Viabilidade
+            </h3>
+            <p class="text-muted mb-0 small">Escolha o cenário de viabilidade para análise detalhada</p>
+        </div>
+    </div>
+    
+    <div class="d-flex flex-wrap justify-content-center">
+        <button class="viability-btn real" onclick="selecionarGrupoViabilidade('Viabilidade Real', this)">
+            <i class="bi bi-check-circle-fill"></i>
+            <div>
+                <strong>Real</strong>
+                <div class="viability-description">Cenário atual da empresa</div>
+            </div>
+        </button>
+        
+        <button class="viability-btn pe" onclick="selecionarGrupoViabilidade('Viabilidade PE', this)">
+            <i class="bi bi-dash-circle-fill"></i>
+            <div>
+                <strong>Ponto de Equilíbrio</strong>
+                <div class="viability-description">Receita = Despesa</div>
+            </div>
+        </button>
+        
+        <button class="viability-btn ideal" onclick="selecionarGrupoViabilidade('Viabilidade Ideal', this)">
+            <i class="bi bi-star-fill"></i>
+            <div>
+                <strong>Ideal</strong>
+                <div class="viability-description">Cenário otimizado</div>
+            </div>
+        </button>
+    </div>
+</div>
+
+<!-- Cards de Métricas -->
+<div id="metrics-container" class="row g-4 mb-4">
+    <div class="col-12 text-center text-muted">
+        <i class="bi bi-bar-chart display-4"></i>
+        <p class="mt-3">Selecione um ano e um grupo de viabilidade para visualizar as métricas</p>
+    </div>
+</div>
+
+<!-- Gráficos e Tabelas -->
+<div id="charts-container" style="display: none;">
+    <div class="row g-4 mb-4">
+        <!-- Distribuição por Subgrupo -->
+        <div class="col-lg-8">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-pie-chart-fill"></i>
+                        Distribuição por Categoria
+                    </h3>
+                    <span class="chart-badge" id="badge-grupo"></span>
+                </div>
+                <canvas id="distribuicaoChart" height="280"></canvas>
+            </div>
+        </div>
+        
+        <!-- Métricas Rápidas -->
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-speedometer2"></i>
+                        Resumo Financeiro
+                    </h3>
+                </div>
+                <div id="resumo-financeiro"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row g-4 mb-4">
+        <!-- Comparativo Receitas vs Despesas -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-bar-chart-line"></i>
+                        Receitas vs Despesas
+                    </h3>
+                    <span class="chart-badge bg-info text-white">Comparativo</span>
+                </div>
+                <canvas id="receitaDespesaChart" height="300"></canvas>
+            </div>
+        </div>
+        
+        <!-- Top 10 Itens por Valor -->
+        <div class="col-lg-6">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-trophy-fill"></i>
+                        Top 10 Maiores Valores
+                    </h3>
+                    <span class="chart-badge bg-warning text-dark">Ranking</span>
+                </div>
+                <div id="top10-table" style="max-height: 400px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row g-4 mb-4">
+        <!-- Evolução por Subgrupo -->
+        <div class="col-lg-12">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3 class="chart-title">
+                        <i class="bi bi-graph-up-arrow"></i>
+                        Análise por Subgrupo
+                    </h3>
+                    <span class="chart-badge bg-primary text-white">Detalhado</span>
+                </div>
+                <canvas id="subgruposChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let charts = {};
+let dadosAtuais = null;
+let anoSelecionado = null;
+let grupoViabilidadeSelecionado = null;
+
+function selecionarAno(ano, buttonElement = null) {
+    anoSelecionado = ano;
+    grupoViabilidadeSelecionado = null; // Reset grupo ao mudar ano
+    
+    // Atualizar botão ativo
+    document.querySelectorAll('.year-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    const targetButton = buttonElement || document.querySelector(`.year-btn[data-ano="${ano}"]`);
+    if (targetButton) {
+        targetButton.classList.add('active');
+    }
+    
+    // Mostrar seletor de grupo de viabilidade
+    document.getElementById('viability-selector-container').style.display = 'block';
+    
+    // Reset botões de viabilidade
+    document.querySelectorAll('.viability-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Esconder dados até selecionar grupo
+    document.getElementById('metrics-container').innerHTML = `
+        <div class="col-12 text-center text-muted">
+            <i class="bi bi-diagram-3 display-4"></i>
+            <p class="mt-3">Selecione um grupo de viabilidade para continuar</p>
+        </div>
+    `;
+    document.getElementById('charts-container').style.display = 'none';
+}
+
+async function selecionarGrupoViabilidade(grupo, buttonElement) {
+    grupoViabilidadeSelecionado = grupo;
+    
+    // Atualizar botão ativo
+    document.querySelectorAll('.viability-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    buttonElement.classList.add('active');
+    
+    // Carregar dados
+    await carregarDadosGrupo();
+}
+
+async function carregarDadosGrupo() {
+    try {
+        // Fazer requisição dos dados
+        const response = await fetch(`/user/api/dados/${anoSelecionado}`);
+        const dados = await response.json();
+        
+        if (dados.error) {
+            alert('Erro ao carregar dados: ' + dados.error);
+            return;
+        }
+        
+        dadosAtuais = dados;
+        
+        // Filtrar dados apenas do grupo selecionado
+        const dadosFiltrados = filtrarPorGrupo(dados, grupoViabilidadeSelecionado);
+        
+        // Atualizar métricas
+        atualizarMetricas(dadosFiltrados);
+        
+        // Atualizar gráficos
+        atualizarGraficos(dadosFiltrados);
+        
+        // Mostrar container de gráficos
+        document.getElementById('charts-container').style.display = 'block';
+        
+    } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        alert('Erro ao carregar dados do ano ' + anoSelecionado);
+    }
+}
+
+function filtrarPorGrupo(dados, grupoNome) {
+    // Dados já vêm organizados por grupo da API
+    const dadosFiltrados = {
+        ano: dados.ano,
+        grupo: grupoNome,
+        totais: dados.grupos[grupoNome] || {}
+    };
+    
+    return dadosFiltrados;
+}
+
+function atualizarMetricas(dados) {
+    const totais = dados.totais || {};
+    const subgrupos = Object.keys(totais);
+    const valores = Object.values(totais);
+    
+    const totalReceita = valores.filter(v => v > 0).reduce((a, b) => a + b, 0);
+    const totalDespesa = Math.abs(valores.filter(v => v < 0).reduce((a, b) => a + b, 0));
+    const saldo = totalReceita - totalDespesa;
+    const percentualLucro = totalReceita > 0 ? ((saldo / totalReceita) * 100) : 0;
+    
+    // Definir cor do badge baseado no grupo
+    let badgeColor = 'bg-success';
+    if (dados.grupo.includes('PE')) badgeColor = 'bg-warning';
+    if (dados.grupo.includes('Ideal')) badgeColor = 'bg-primary';
+    
+    const metricsHTML = `
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
+                    <i class="bi bi-arrow-up-circle-fill text-white"></i>
+                </div>
+                <div class="metric-value text-success">${formatarMoeda(totalReceita)}</div>
+                <div class="metric-label">Receita Total</div>
+                <span class="metric-trend trend-up">
+                    <i class="bi bi-graph-up"></i> ${dados.grupo}
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
+                    <i class="bi bi-arrow-down-circle-fill text-white"></i>
+                </div>
+                <div class="metric-value text-danger">${formatarMoeda(totalDespesa)}</div>
+                <div class="metric-label">Despesas Totais</div>
+                <span class="metric-trend trend-down">
+                    <i class="bi bi-graph-down"></i> ${dados.grupo}
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #ff9900, #f59e0b);">
+                    <i class="bi bi-cash-coin text-white"></i>
+                </div>
+                <div class="metric-value" style="color: ${saldo >= 0 ? '#10b981' : '#ef4444'}">${formatarMoeda(saldo)}</div>
+                <div class="metric-label">Saldo</div>
+                <span class="metric-trend ${saldo >= 0 ? 'trend-up' : 'trend-down'}">
+                    <i class="bi bi-${saldo >= 0 ? 'arrow-up' : 'arrow-down'}"></i> ${Math.abs(percentualLucro).toFixed(1)}%
+                </span>
+            </div>
+        </div>
+        
+        <div class="col-md-6 col-lg-3">
+            <div class="metric-card">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
+                    <i class="bi bi-pie-chart-fill text-white"></i>
+                </div>
+                <div class="metric-value text-primary">${subgrupos.length}</div>
+                <div class="metric-label">Subgrupos</div>
+                <span class="metric-trend" style="background: #dbeafe; color: #1e40af;">
+                    <i class="bi bi-folder"></i> Ativos
+                </span>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('metrics-container').innerHTML = metricsHTML;
+    
+    // Atualizar badge do grupo
+    const badgeGrupo = document.getElementById('badge-grupo');
+    badgeGrupo.className = `chart-badge ${badgeColor} text-white`;
+    badgeGrupo.textContent = dados.grupo;
+}
+
+function atualizarGraficos(dados) {
+    // Destruir gráficos antigos
+    Object.values(charts).forEach(chart => chart.destroy());
+    charts = {};
+    
+    const totais = dados.totais || {};
+    const subgrupos = Object.keys(totais);
+    const valores = Object.values(totais);
+    
+    // Separar receitas e despesas
+    const receitas = valores.map((v, i) => v > 0 ? {subgrupo: subgrupos[i], valor: v} : null).filter(v => v);
+    const despesas = valores.map((v, i) => v < 0 ? {subgrupo: subgrupos[i], valor: Math.abs(v)} : null).filter(v => v);
+    
+    // 1. Gráfico de Distribuição (Doughnut)
+    charts.distribuicao = new Chart(document.getElementById('distribuicaoChart'), {
+        type: 'doughnut',
+        data: {
+            labels: subgrupos,
+            datasets: [{
+                data: valores.map(v => Math.abs(v)),
+                backgroundColor: [
+                    '#10b981', '#3b82f6', '#ff9900', '#ef4444', 
+                    '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6'
+                ],
+                borderWidth: 3,
+                borderColor: 'white'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: { size: 11 }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label || '';
+                            const value = formatarMoeda(context.parsed);
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+    
+    // 2. Resumo Financeiro (HTML)
+    const totalReceita = receitas.reduce((a, b) => a + b.valor, 0);
+    const totalDespesa = despesas.reduce((a, b) => a + b.valor, 0);
+    const saldo = totalReceita - totalDespesa;
+    
+    document.getElementById('resumo-financeiro').innerHTML = `
+        <div style="padding: 1rem;">
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 600;">RECEITAS</span>
+                    <span style="color: #10b981; font-weight: 700; font-size: 1.25rem;">${formatarMoeda(totalReceita)}</span>
+                </div>
+                <div style="background: #10b981; height: 8px; border-radius: 4px;"></div>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span style="color: #64748b; font-size: 0.875rem; font-weight: 600;">DESPESAS</span>
+                    <span style="color: #ef4444; font-weight: 700; font-size: 1.25rem;">${formatarMoeda(totalDespesa)}</span>
+                </div>
+                <div style="background: #ef4444; height: 8px; border-radius: 4px;"></div>
+            </div>
+            
+            <div style="border-top: 2px solid #e2e8f0; padding-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="color: #1e293b; font-size: 0.875rem; font-weight: 700; text-transform: uppercase;">SALDO</span>
+                    <span style="color: ${saldo >= 0 ? '#10b981' : '#ef4444'}; font-weight: 800; font-size: 1.5rem;">${formatarMoeda(saldo)}</span>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // 3. Receitas vs Despesas (Bar horizontal)
+    charts.receitaDespesa = new Chart(document.getElementById('receitaDespesaChart'), {
+        type: 'bar',
+        data: {
+            labels: subgrupos,
+            datasets: [
+                {
+                    label: 'Receitas',
+                    data: valores.map(v => v > 0 ? v : 0),
+                    backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Despesas',
+                    data: valores.map(v => v < 0 ? Math.abs(v) : 0),
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 15 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => context.dataset.label + ': ' + formatarMoeda(context.parsed.x)
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                },
+                y: { grid: { display: false } }
+            }
+        }
+    });
+    
+    // 4. Top 10 (Tabela)
+    const top10 = valores
+        .map((v, i) => ({ subgrupo: subgrupos[i], valor: Math.abs(v) }))
+        .sort((a, b) => b.valor - a.valor)
+        .slice(0, 10);
+    
+    let tableHTML = '<table class="top-items-table"><thead><tr><th>Rank</th><th>Subgrupo</th><th style="text-align: right;">Valor</th></tr></thead><tbody>';
+    
+    top10.forEach((item, index) => {
+        const rankClass = index === 0 ? 'rank-1' : index === 1 ? 'rank-2' : index === 2 ? 'rank-3' : 'rank-other';
+        tableHTML += `
+            <tr>
+                <td><span class="rank-badge ${rankClass}">${index + 1}</span></td>
+                <td style="font-weight: 600;">${item.subgrupo}</td>
+                <td style="text-align: right; font-weight: 700; color: ${item.valor > 0 ? '#10b981' : '#ef4444'};">${formatarMoeda(item.valor)}</td>
+            </tr>
+        `;
+    });
+    
+    tableHTML += '</tbody></table>';
+    document.getElementById('top10-table').innerHTML = tableHTML;
+    
+    // 5. Análise por Subgrupo (Line)
+    charts.subgrupos = new Chart(document.getElementById('subgruposChart'), {
+        type: 'line',
+        data: {
+            labels: subgrupos,
+            datasets: [{
+                label: 'Valores',
+                data: valores,
+                borderColor: '#ff9900',
+                backgroundColor: 'rgba(255, 153, 0, 0.1)',
+                fill: true,
+                tension: 0.4,
+                borderWidth: 3,
+                pointRadius: 6,
+                pointHoverRadius: 8,
+                pointBackgroundColor: 'white',
+                pointBorderColor: '#ff9900',
+                pointBorderWidth: 3
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => formatarMoeda(context.parsed.y)
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    grid: { color: '#f1f5f9' },
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                },
+                x: { 
+                    grid: { display: false },
+                    ticks: {
+                        maxRotation: 45,
+                        minRotation: 45
+                    }
+                }
+            }
+        }
+    });
+}
+
+function formatarMoeda(valor) {
+    return 'R$ ' + Math.abs(valor).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+// Carregar dados do primeiro ano disponível
+document.addEventListener('DOMContentLoaded', function() {
+    {% if anos_disponiveis %}
+        const primeiroAno = {{ anos_disponiveis|sort(reverse=True)|first }};
+        
+        setTimeout(() => {
+            const primeiroBotao = document.querySelector('.year-btn.has-data:not([disabled])');
+            if (primeiroBotao) {
+                selecionarAno(primeiroAno, primeiroBotao);
+            }
+        }, 100);
+    {% endif %}
+});
+</script>
+{% endblock %}

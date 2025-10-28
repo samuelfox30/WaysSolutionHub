@@ -78,6 +78,11 @@
                         </td>
                         <td class="text-center">
                             <div class="btn-group" role="group">
+                                <a href="{{ url_for('admin.dashboard_empresa', empresa_id=empresa.id) }}"
+                                   class="btn btn-sm btn-outline-success"
+                                   title="Ver Dashboard">
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                </a>
                                 <button class="btn btn-sm btn-outline-info"
                                         onclick="abrirUploadModal({{ empresa.id }}, '{{ empresa.nome }}')"
                                         title="Upload de dados">
