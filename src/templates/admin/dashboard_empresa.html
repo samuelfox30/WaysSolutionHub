@@ -423,10 +423,10 @@ async function carregarDadosGrupo() {
 
         dadosAtuais = dados;
 
-        // Filtrar dados apenas do grupo selecionado
+        // Pegar dados do grupo selecionado - JÁ VEM CALCULADO DO PYTHON
         const dadosGrupo = dados.dados[grupoViabilidadeSelecionado] || {};
 
-        // Atualizar métricas e gráficos
+        // Atualizar métricas e gráficos - SEM FAZER CÁLCULOS
         atualizarMetricas(dadosGrupo);
         atualizarGraficos(dadosGrupo);
 
@@ -440,35 +440,34 @@ async function carregarDadosGrupo() {
 }
 
 function atualizarMetricas(dadosGrupo) {
-    // Calcular métricas
-    let totalReceita = 0;
-    let totalDespesa = 0;
-    let totalDividas = 0;
-    let totalInvestimentos = 0;
+    // Pegar valores diretos do subgrupo "Geral" que já vem calculado
+    const geral = dadosGrupo['Geral'] || [];
+    
+    let receita = 0;
+    let despesa = 0;
+    let lucroBruto = 0;
+    let investimentos = 0;
+    let dividas = 0;
+    let lucroLiquido = 0;
 
-    // Receita
-    if (dadosGrupo['Receita']) {
-        totalReceita = dadosGrupo['Receita'].reduce((sum, item) => sum + item.valor, 0);
-    }
-
-    // Despesas (somando vários subgrupos)
-    const subgruposDespesa = ['Controle', 'Obrigações', 'Gastos ADM', 'Matéria Prima', 'Gastos Operacionais', 'Pessoal'];
-    subgruposDespesa.forEach(subgrupo => {
-        if (dadosGrupo[subgrupo]) {
-            totalDespesa += Math.abs(dadosGrupo[subgrupo].reduce((sum, item) => sum + item.valor, 0));
+    // Pegar cada valor diretamente do array Geral
+    geral.forEach(item => {
+        const desc = item.descricao.toUpperCase();
+        
+        if (desc.includes('RECEITA')) {
+            receita = Math.abs(item.valor);
+        } else if (desc.includes('DESPESA') && !desc.includes('TOTAL')) {
+            despesa = Math.abs(item.valor);
+        } else if (desc.includes('LUCRO BRUTO')) {
+            lucroBruto = item.valor;
+        } else if (desc.includes('INVESTIMENTOS')) {
+            investimentos = Math.abs(item.valor);
+        } else if (desc.includes('DIVIDAS')) {
+            dividas = Math.abs(item.valor);
+        } else if (desc.includes('LUCRO LIQUIDO') || desc.includes('LUCRO LÍQUIDO')) {
+            lucroLiquido = item.valor;
         }
     });
-
-    // Dívidas e Investimentos
-    if (dadosGrupo['Dividas']) {
-        totalDividas = Math.abs(dadosGrupo['Dividas'].reduce((sum, item) => sum + item.valor, 0));
-    }
-    if (dadosGrupo['Investimentos']) {
-        totalInvestimentos = Math.abs(dadosGrupo['Investimentos'].reduce((sum, item) => sum + item.valor, 0));
-    }
-
-    const lucroBruto = totalReceita - totalDespesa;
-    const lucroLiquido = totalReceita - totalDespesa - totalDividas - totalInvestimentos;
 
     const metricsHTML = `
         <div class="col-md-6 col-lg-4 col-xl">
@@ -476,7 +475,7 @@ function atualizarMetricas(dadosGrupo) {
                 <div class="metric-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
                     <i class="bi bi-arrow-up-circle-fill text-white"></i>
                 </div>
-                <div class="metric-value text-success">${formatarMoeda(totalReceita)}</div>
+                <div class="metric-value text-success">${formatarMoeda(receita)}</div>
                 <div class="metric-label">Receita</div>
             </div>
         </div>
@@ -486,7 +485,7 @@ function atualizarMetricas(dadosGrupo) {
                 <div class="metric-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
                     <i class="bi bi-arrow-down-circle-fill text-white"></i>
                 </div>
-                <div class="metric-value text-danger">${formatarMoeda(totalDespesa)}</div>
+                <div class="metric-value text-danger">${formatarMoeda(despesa)}</div>
                 <div class="metric-label">Despesa</div>
             </div>
         </div>
@@ -506,7 +505,7 @@ function atualizarMetricas(dadosGrupo) {
                 <div class="metric-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
                     <i class="bi bi-credit-card-fill text-white"></i>
                 </div>
-                <div class="metric-value text-purple">${formatarMoeda(totalDividas + totalInvestimentos)}</div>
+                <div class="metric-value text-purple">${formatarMoeda(dividas + investimentos)}</div>
                 <div class="metric-label">Dívidas/Investimentos</div>
             </div>
         </div>
@@ -532,161 +531,242 @@ function atualizarGraficos(dadosGrupo) {
 
     let chartsHTML = '';
 
-    // 1. RECEITA (Gráfico de barras com real + %)
+    // Subgrupos a ignorar (não gerar gráficos)
+    const subgruposIgnorar = ['Geral', 'InvestimentosGeral', 'Investimento Geral'];
+
+    // 1. RECEITA (Gráfico de barras com valor real + %)
     if (dadosGrupo['Receita'] && dadosGrupo['Receita'].length > 0) {
-        chartsHTML += `
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <h3 class="chart-title">
-                                <i class="bi bi-graph-up-arrow"></i>
-                                Receita
-                            </h3>
-                        </div>
-                        <canvas id="receitaChart" height="100"></canvas>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // 2. CONTROLE (Despesas por natureza sintética - Pizza)
-    if (dadosGrupo['Controle'] && dadosGrupo['Controle'].length > 0) {
-        chartsHTML += `
-            <div class="row mb-4 justify-content-center">
-                <div class="col-md-6">
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <h3 class="chart-title">
-                                <i class="bi bi-pie-chart-fill"></i>
-                                Controle de Despesas por Natureza Sintética
-                            </h3>
-                        </div>
-                        <div style="max-width: 450px; margin: 0 auto;"><canvas id="controleChart"></canvas></div>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // 3. OBRIGAÇÕES (dividido: 3 primeiros pizza, 4 últimos barras, lado a lado)
-    if (dadosGrupo['Obrigações'] && dadosGrupo['Obrigações'].length > 0) {
-        chartsHTML += `
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <h3 class="chart-title">
-                                <i class="bi bi-file-text-fill"></i>
-                                Obrigações (Primeiros 3)
-                            </h3>
-                        </div>
-                        <div style="max-width: 450px; margin: 0 auto;">
-                            <canvas id="obrigacoesPizzaChart"></canvas>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-6">
-                    <div class="chart-container">
-                        <div class="chart-header">
-                            <h3 class="chart-title">
-                                <i class="bi bi-bar-chart-line"></i>
-                                Obrigações (Outros 4)
-                            </h3>
-                        </div>
-                        <canvas id="obrigacoesBarChart" height="80"></canvas>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-
-    // 4-9. Outros subgrupos em barras (todos os demais, exceto os já exibidos)
-    // Pegar TODOS os subgrupos do dadosGrupo, exceto os que já foram mostrados
-    const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigações', 'Geral', 'Investimento Geral'];
-
-    Object.keys(dadosGrupo).forEach(subgrupo => {
-        // Pular subgrupos já exibidos e "Investimento Geral"
-        if (subgruposJaExibidos.includes(subgrupo)) {
-            return;
-        }
-
-        if (dadosGrupo[subgrupo] && dadosGrupo[subgrupo].length > 0) {
-            const chartId = subgrupo.replace(/ /g, '');
+        // Filtrar apenas itens que não são "TOTAL"
+        const receitaSemTotal = dadosGrupo['Receita'].filter(item => 
+            !item.descricao.toUpperCase().includes('TOTAL')
+        );
+        
+        if (receitaSemTotal.length > 0) {
             chartsHTML += `
                 <div class="row mb-4">
                     <div class="col-12">
                         <div class="chart-container">
                             <div class="chart-header">
                                 <h3 class="chart-title">
-                                    <i class="bi bi-bar-chart-fill"></i>
-                                    ${subgrupo}
+                                    <i class="bi bi-graph-up-arrow"></i>
+                                    Receita
                                 </h3>
                             </div>
-                            <canvas id="${chartId}Chart" height="100"></canvas>
+                            <canvas id="receitaChart" height="100"></canvas>
                         </div>
                     </div>
                 </div>
             `;
         }
+    }
+
+    // 2. CONTROLE (Despesas por natureza sintética - Pizza)
+    if (dadosGrupo['Controle'] && dadosGrupo['Controle'].length > 0) {
+        const controleSemTotal = dadosGrupo['Controle'].filter(item => 
+            !item.descricao.toUpperCase().includes('TOTAL')
+        );
+        console.log("Controle sem total:", controleSemTotal);
+        
+        if (controleSemTotal.length > 0) {
+            chartsHTML += `
+                <div class="row mb-4 justify-content-center">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">
+                                    <i class="bi bi-pie-chart-fill"></i>
+                                    Controle de Despesas
+                                </h3>
+                            </div>
+                            <div style="max-width: 450px; margin: 0 auto;"><canvas id="controleChart"></canvas></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 3. OBRIGAÇÕES (dividido: primeiros 3 pizza, resto barras)
+    if (dadosGrupo['Obrigacoes'] && dadosGrupo['Obrigacoes'].length > 0) {
+        const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item => 
+            !item.descricao.toUpperCase().includes('TOTAL')
+        );
+        
+        if (obrigacoesSemTotal.length > 0) {
+            chartsHTML += `
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">
+                                    <i class="bi bi-file-text-fill"></i>
+                                    Obrigações - Tributação
+                                </h3>
+                            </div>
+                            <div style="max-width: 450px; margin: 0 auto;">
+                                <canvas id="obrigacoesPizzaChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">
+                                    <i class="bi bi-bar-chart-line"></i>
+                                    Obrigações - Despesas
+                                </h3>
+                            </div>
+                            <canvas id="obrigacoesBarChart" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+
+    // 4. Todos os outros subgrupos (exceto os já exibidos e os da lista de ignorar)
+    const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigacoes'];
+    
+    Object.keys(dadosGrupo).forEach(subgrupo => {
+        // Pular subgrupos já exibidos ou que devem ser ignorados
+        if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
+            return;
+        }
+
+        const itensSemTotal = dadosGrupo[subgrupo].filter(item => 
+            !item.descricao.toUpperCase().includes('TOTAL')
+        );
+
+        if (itensSemTotal.length > 0) {
+            const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+            
+            // Verificar se é Investimentos ou Dívidas (tem 3 colunas)
+            if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
+                chartsHTML += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">
+                                        <i class="bi bi-table"></i>
+                                        ${subgrupo}
+                                    </h3>
+                                </div>
+                                <div id="${chartId}Table"></div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                // Gráfico normal
+                chartsHTML += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">
+                                        <i class="bi bi-bar-chart-fill"></i>
+                                        ${subgrupo}
+                                    </h3>
+                                </div>
+                                <canvas id="${chartId}Chart" height="100"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
     });
 
     document.getElementById('charts-container').innerHTML = chartsHTML;
 
-    // Criar os gráficos
+    // Criar os gráficos após inserir o HTML
     setTimeout(() => {
-        // 1. Receita (barras com real + %)
+        // 1. Receita (barras duplas: valor + %)
         if (dadosGrupo['Receita']) {
-            criarGraficoBarrasDuplas('receitaChart', dadosGrupo['Receita'], 'Receita');
+            const receitaSemTotal = dadosGrupo['Receita'].filter(item => 
+                !item.descricao.toUpperCase().includes('TOTAL')
+            );
+            if (receitaSemTotal.length > 0) {
+                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal);
+            }
         }
 
-        // 2. Controle (pizza)
+        // 2. Controle (pizza) - AJUSTE ESPECÍFICO PARA MULTIPLICAR PERCENTUAL POR 100
         if (dadosGrupo['Controle']) {
-            criarGraficoPizza('controleChart', dadosGrupo['Controle']);
-        }
-
-        // 3. Obrigações
-        if (dadosGrupo['Obrigações']) {
-            const obrigacoes = dadosGrupo['Obrigações'];
-            const primeiros3 = obrigacoes.slice(0, 3);
-            const outros4 = obrigacoes.slice(3, 7);
-
-            if (primeiros3.length > 0) {
-                criarGraficoPizza('obrigacoesPizzaChart', primeiros3);
-            }
-            if (outros4.length > 0) {
-                criarGraficoBarrasSimples('obrigacoesBarChart', outros4);
+            const controleSemTotal = dadosGrupo['Controle'].filter(item => 
+                !item.descricao.toUpperCase().includes('TOTAL')
+            );
+            if (controleSemTotal.length > 0) {
+                // MULTIPLICAR PERCENTUAL POR 100 APENAS PARA CONTROLE
+                const controleAjustado = controleSemTotal.map(item => ({
+                    ...item,
+                    percentual: (item.percentual || 0) * 100
+                }));
+                criarGraficoPizza('controleChart', controleAjustado);
             }
         }
 
-        // 4-9. Outros subgrupos (todos os demais)
+        // 3. Obrigações (dividido)
+        if (dadosGrupo['Obrigacoes']) {
+            const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item => 
+                !item.descricao.toUpperCase().includes('TOTAL')
+            );
+            
+            if (obrigacoesSemTotal.length > 0) {
+                const primeiros3 = obrigacoesSemTotal.slice(0, 3);
+                const resto = obrigacoesSemTotal.slice(3);
+
+                if (primeiros3.length > 0) {
+                    criarGraficoPizzaPercentual('obrigacoesPizzaChart', primeiros3); // Usa versão com percentual
+                }
+                if (resto.length > 0) {
+                    criarGraficoBarrasSimples('obrigacoesBarChart', resto);
+                }
+            }
+        }
+
+        // 4. Outros subgrupos
         Object.keys(dadosGrupo).forEach(subgrupo => {
-            if (subgruposJaExibidos.includes(subgrupo)) {
+            const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigacoes'];
+            
+            if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
                 return;
             }
 
-            if (dadosGrupo[subgrupo] && dadosGrupo[subgrupo].length > 0) {
-                const chartId = subgrupo.replace(/ /g, '');
-                const temPercentual = dadosGrupo[subgrupo].some(item => item.percentual !== 0);
+            const itensSemTotal = dadosGrupo[subgrupo].filter(item => 
+                !item.descricao.toUpperCase().includes('TOTAL')
+            );
 
-                if (temPercentual) {
-                    criarGraficoBarrasDuplas(chartId + 'Chart', dadosGrupo[subgrupo], subgrupo);
+            if (itensSemTotal.length > 0) {
+                const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+                
+                // Criar TABELA para Investimentos e Dívidas
+                if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
+                    criarTabela(chartId + 'Table', itensSemTotal, subgrupo);
                 } else {
-                    criarGraficoBarrasSimples(chartId + 'Chart', dadosGrupo[subgrupo]);
+                    // Criar GRÁFICO para outros subgrupos
+                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
+                    
+                    if (temPercentual) {
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal);
+                    } else {
+                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+                    }
                 }
             }
         });
     }, 100);
 }
 
-function criarGraficoBarrasDuplas(canvasId, dados, titulo) {
+function criarGraficoBarrasDuplas(canvasId, dados) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
+    // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
     const labels = dados.map(item => item.descricao);
     const valores = dados.map(item => item.valor);
-    const percentuais = dados.map(item => item.percentual);
+    const percentuais = dados.map(item => (item.percentual || 0) / 1); // Porcentagem
 
     charts[canvasId] = new Chart(ctx, {
         type: 'bar',
@@ -755,7 +835,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, titulo) {
                         drawOnChartArea: false
                     },
                     ticks: {
-                        callback: v => v.toFixed(1) + '%'
+                        callback: v => v.toFixed(2) + '%'
                     }
                 }
             }
@@ -767,6 +847,7 @@ function criarGraficoBarrasSimples(canvasId, dados) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
+    // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
     const labels = dados.map(item => item.descricao);
     const valores = dados.map(item => Math.abs(item.valor));
 
@@ -809,6 +890,7 @@ function criarGraficoPizza(canvasId, dados) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
+    // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
     const labels = dados.map(item => item.descricao);
     const valores = dados.map(item => Math.abs(item.valor));
 
@@ -854,6 +936,167 @@ function criarGraficoPizza(canvasId, dados) {
             }
         }
     });
+}
+
+function criarGraficoPizzaPercentual(canvasId, dados) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Para obrigações: mostrar percentual na pizza, valor no tooltip
+    const labels = dados.map(item => item.descricao);
+    const percentuais = dados.map(item => Math.abs((item.percentual || 0) / 1)); // Porcentagem
+    const valores = dados.map(item => Math.abs(item.valor));
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: percentuais, // Exibe percentual na pizza
+                backgroundColor: [
+                    '#10b981', '#3b82f6', '#ff9900', '#ef4444',
+                    '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6'
+                ],
+                borderWidth: 3,
+                borderColor: 'white'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: { size: 11 },
+                        generateLabels: (chart) => {
+                            const datasets = chart.data.datasets;
+                            return chart.data.labels.map((label, i) => ({
+                                text: `${label}: ${percentuais[i].toFixed(2)}%`,
+                                fillStyle: datasets[0].backgroundColor[i],
+                                hidden: false,
+                                index: i
+                            }));
+                        }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => {
+                            const index = context.dataIndex;
+                            const label = context.label || '';
+                            const percentual = percentuais[index].toFixed(2);
+                            const valor = formatarMoeda(valores[index]);
+                            return [
+                                `${label}`,
+                                `Percentual: ${percentual}%`,
+                                `Valor: ${valor}`
+                            ];
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function criarTabela(elementId, dados, tipo) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+
+    let tableHTML = `
+        <style>
+            .financial-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.9rem;
+            }
+            .financial-table thead th {
+                background: linear-gradient(135deg, #ff9900, #ffb347);
+                color: white;
+                padding: 0.75rem;
+                text-align: left;
+                font-weight: 600;
+                text-transform: uppercase;
+                font-size: 0.75rem;
+                letter-spacing: 0.5px;
+            }
+            .financial-table thead th:not(:first-child) {
+                text-align: right;
+            }
+            .financial-table tbody tr {
+                border-bottom: 1px solid #f1f5f9;
+                transition: all 0.2s;
+            }
+            .financial-table tbody tr:hover {
+                background: #fff7ed;
+            }
+            .financial-table tbody td {
+                padding: 0.75rem;
+            }
+            .financial-table tbody td:first-child {
+                font-weight: 600;
+                color: #1e293b;
+            }
+            .financial-table tbody td:not(:first-child) {
+                text-align: right;
+                font-weight: 600;
+            }
+            .valor-positivo {
+                color: #10b981;
+            }
+            .valor-negativo {
+                color: #ef4444;
+            }
+        </style>
+        <table class="financial-table">
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th>Parcela</th>
+                    <th>Juros</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    dados.forEach(item => {
+        const parcela = item.parcela || 0;
+        const juros = item.juros || 0;
+        const total = item.valor || 0;
+
+        tableHTML += `
+            <tr>
+                <td>${item.descricao}</td>
+                <td class="valor-negativo">${formatarMoeda(parcela)}</td>
+                <td class="valor-negativo">${formatarMoeda(juros)}</td>
+                <td class="valor-negativo">${formatarMoeda(total)}</td>
+            </tr>
+        `;
+    });
+
+    // Calcular totais
+    const totalParcela = dados.reduce((sum, item) => sum + (item.parcela || 0), 0);
+    const totalJuros = dados.reduce((sum, item) => sum + (item.juros || 0), 0);
+    const totalGeral = dados.reduce((sum, item) => sum + (item.valor || 0), 0);
+
+    tableHTML += `
+            <tr style="background: #f8fafc; font-weight: 700;">
+                <td style="text-transform: uppercase;">Total</td>
+                <td class="valor-negativo">${formatarMoeda(totalParcela)}</td>
+                <td class="valor-negativo">${formatarMoeda(totalJuros)}</td>
+                <td class="valor-negativo">${formatarMoeda(totalGeral)}</td>
+            </tr>
+        </tbody>
+    </table>
+    `;
+
+    element.innerHTML = tableHTML;
 }
 
 function formatarMoeda(valor) {

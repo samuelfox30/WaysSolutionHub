@@ -345,34 +345,100 @@ def api_dados_empresa(empresa_id, ano):
                 "valor": valor
             })
 
-    # Processar outras tabelas
-    for tabela in ['TbItensInvestimentos', 'TbItensDividas', 'TbItensInvestimentoGeral', 'TbItensGastosOperacionais']:
-        if data_results and data_results.get(tabela):
-            for item in data_results[tabela]:
-                grupo = item[0]
-                subgrupo = item[1]
-                descricao = item[2]
+    # Processar Investimentos (TODOS OS CAMPOS)
+    if data_results and data_results.get('TbItensInvestimentos'):
+        for item in data_results['TbItensInvestimentos']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            parcela = float(item[3]) if len(item) > 3 and item[3] else 0
+            juros = float(item[4]) if len(item) > 4 and item[4] else 0
+            total = float(item[5]) if len(item) > 5 and item[5] else 0
 
-                if tabela in ['TbItensInvestimentos', 'TbItensDividas']:
-                    valor = float(item[5]) if len(item) > 5 and item[5] else 0
-                elif tabela == 'TbItensInvestimentoGeral':
-                    valor = float(item[3]) if len(item) > 3 and item[3] else 0
-                elif tabela == 'TbItensGastosOperacionais':
-                    valor = float(item[4]) if len(item) > 4 and item[4] else 0
-                else:
-                    continue
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
 
-                if grupo not in dados_organizados:
-                    dados_organizados[grupo] = {}
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
 
-                if subgrupo not in dados_organizados[grupo]:
-                    dados_organizados[grupo][subgrupo] = []
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "parcela": parcela,
+                "juros": juros,
+                "valor": total,
+                "percentual": 0
+            })
 
-                dados_organizados[grupo][subgrupo].append({
-                    "descricao": descricao,
-                    "valor": valor,
-                    "percentual": 0
-                })
+    # Processar Dívidas (TODOS OS CAMPOS)
+    if data_results and data_results.get('TbItensDividas'):
+        for item in data_results['TbItensDividas']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            parcela = float(item[3]) if len(item) > 3 and item[3] else 0
+            juros = float(item[4]) if len(item) > 4 and item[4] else 0
+            total = float(item[5]) if len(item) > 5 and item[5] else 0
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "parcela": parcela,
+                "juros": juros,
+                "valor": total,
+                "percentual": 0
+            })
+
+    # Processar Investimento Geral
+    if data_results and data_results.get('TbItensInvestimentoGeral'):
+        for item in data_results['TbItensInvestimentoGeral']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            valor = float(item[3]) if len(item) > 3 and item[3] else 0
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "valor": valor,
+                "percentual": 0
+            })
+
+    # Processar Gastos Operacionais (COM NOME DIFERENCIADO)
+    if data_results and data_results.get('TbItensGastosOperacionais'):
+        for item in data_results['TbItensGastosOperacionais']:
+            grupo = item[0]
+            subgrupo_original = item[1]  # Pode ser "GastosOperacionais"
+            descricao = item[2]
+            custo_km = float(item[3]) if len(item) > 3 and item[3] else 0
+            custo_mensal = float(item[4]) if len(item) > 4 and item[4] else 0
+
+            # Renomear subgrupo para "Gastos Operacionais Veículos" para diferenciar
+            subgrupo = 'Gastos Operacionais Veículos'
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "custo_km": custo_km,
+                "valor": custo_mensal,
+                "percentual": 0
+            })
+
+    print("Dados organizados para API:", dados_organizados)
 
     return jsonify({
         "ano": ano,
