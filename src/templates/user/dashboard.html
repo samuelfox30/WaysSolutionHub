@@ -1217,13 +1217,15 @@ function criarGraficoGastosOperacionais(canvasId, dados) {
                     label: 'Custo por KM (R$)',
                     data: custosKm,
                     backgroundColor: 'rgba(59, 130, 246, 0.8)',
-                    borderRadius: 6
+                    borderRadius: 6,
+                    yAxisID: 'y'
                 },
                 {
                     label: 'Custo Mensal (R$)',
                     data: custosMensais,
                     backgroundColor: 'rgba(255, 153, 0, 0.8)',
-                    borderRadius: 6
+                    borderRadius: 6,
+                    yAxisID: 'y1'
                 }
             ]
         },
@@ -1239,13 +1241,36 @@ function criarGraficoGastosOperacionais(canvasId, dados) {
                     callbacks: {
                         label: (context) => {
                             const label = context.dataset.label || '';
-                            return label + ': ' + formatarMoeda(context.parsed.y);
+                            const value = context.parsed.y;
+                            return label + ': ' + formatarMoeda(value);
                         }
                     }
                 }
             },
             scales: {
                 y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Custo por KM (R$)'
+                    },
+                    ticks: {
+                        callback: v => 'R$ ' + v.toFixed(2)
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Custo Mensal (R$)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    },
                     ticks: {
                         callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
                     }
