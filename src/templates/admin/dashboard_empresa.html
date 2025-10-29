@@ -57,6 +57,7 @@
     .metric-card.lucro-bruto::before { background: linear-gradient(90deg, var(--primary-orange), var(--warning-yellow)); }
     .metric-card.dividas-invest::before { background: linear-gradient(90deg, var(--purple), #7c3aed); }
     .metric-card.lucro-liquido::before { background: linear-gradient(90deg, var(--info-blue), #2563eb); }
+    .metric-card.previsao-lucro::before { background: linear-gradient(90deg, #14b8a6, #0d9488); }
 
     .metric-card:hover {
         transform: translateY(-8px);
@@ -442,81 +443,107 @@ async function carregarDadosGrupo() {
 function atualizarMetricas(dadosGrupo) {
     // Pegar valores diretos do subgrupo "Geral" que já vem calculado
     const geral = dadosGrupo['Geral'] || [];
-    
+
     let receita = 0;
     let despesa = 0;
     let lucroBruto = 0;
     let investimentos = 0;
     let dividas = 0;
     let lucroLiquido = 0;
+    let receitaPerc = 0;
+    let despesaPerc = 0;
+    let lucroBrutoPerc = 0;
+    let dividasInvestPerc = 0;
+    let lucroLiquidoPerc = 0;
 
     // Pegar cada valor diretamente do array Geral
     geral.forEach(item => {
         const desc = item.descricao.toUpperCase();
-        
+
         if (desc.includes('RECEITA')) {
             receita = Math.abs(item.valor);
+            receitaPerc = item.percentual || 0;
         } else if (desc.includes('DESPESA') && !desc.includes('TOTAL')) {
             despesa = Math.abs(item.valor);
+            despesaPerc = item.percentual || 0;
         } else if (desc.includes('LUCRO BRUTO')) {
             lucroBruto = item.valor;
+            lucroBrutoPerc = item.percentual || 0;
         } else if (desc.includes('INVESTIMENTOS')) {
             investimentos = Math.abs(item.valor);
         } else if (desc.includes('DIVIDAS')) {
             dividas = Math.abs(item.valor);
         } else if (desc.includes('LUCRO LIQUIDO') || desc.includes('LUCRO LÍQUIDO')) {
             lucroLiquido = item.valor;
+            lucroLiquidoPerc = item.percentual || 0;
         }
     });
 
+    // Calcular percentual de Dívidas/Investimentos em relação à receita
+    dividasInvestPerc = receita > 0 ? ((dividas + investimentos) / receita * 100) : 0;
+
+    // Calcular Previsão Lucro Anual (Lucro Líquido * 12)
+    const previsaoLucroAnual = lucroLiquido * 12;
+    const previsaoLucroAnualPerc = lucroLiquidoPerc; // Mesma % do lucro líquido
+
     const metricsHTML = `
-        <div class="col-md-6 col-lg-4 col-xl">
+        <div class="col-md-6 col-lg-4 col-xl-2">
             <div class="metric-card receita">
                 <div class="metric-icon" style="background: linear-gradient(135deg, #10b981, #059669);">
                     <i class="bi bi-arrow-up-circle-fill text-white"></i>
                 </div>
                 <div class="metric-value text-success">${formatarMoeda(receita)}</div>
-                <div class="metric-label">Receita</div>
+                <div class="metric-label">Receita <span class="text-muted small">(${receitaPerc.toFixed(2)}%)</span></div>
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-4 col-xl">
+        <div class="col-md-6 col-lg-4 col-xl-2">
             <div class="metric-card despesa">
                 <div class="metric-icon" style="background: linear-gradient(135deg, #ef4444, #dc2626);">
                     <i class="bi bi-arrow-down-circle-fill text-white"></i>
                 </div>
                 <div class="metric-value text-danger">${formatarMoeda(despesa)}</div>
-                <div class="metric-label">Despesa</div>
+                <div class="metric-label">Despesa <span class="text-muted small">(${despesaPerc.toFixed(2)}%)</span></div>
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-4 col-xl">
+        <div class="col-md-6 col-lg-4 col-xl-2">
             <div class="metric-card lucro-bruto">
                 <div class="metric-icon" style="background: linear-gradient(135deg, #ff9900, #f59e0b);">
                     <i class="bi bi-cash-coin text-white"></i>
                 </div>
                 <div class="metric-value" style="color: ${lucroBruto >= 0 ? '#10b981' : '#ef4444'}">${formatarMoeda(lucroBruto)}</div>
-                <div class="metric-label">Lucro Bruto</div>
+                <div class="metric-label">Lucro Bruto <span class="text-muted small">(${lucroBrutoPerc.toFixed(2)}%)</span></div>
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-4 col-xl">
+        <div class="col-md-6 col-lg-4 col-xl-2">
             <div class="metric-card dividas-invest">
                 <div class="metric-icon" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
                     <i class="bi bi-credit-card-fill text-white"></i>
                 </div>
                 <div class="metric-value text-purple">${formatarMoeda(dividas + investimentos)}</div>
-                <div class="metric-label">Dívidas/Investimentos</div>
+                <div class="metric-label">Dívidas/Investimentos <span class="text-muted small">(${dividasInvestPerc.toFixed(2)}%)</span></div>
             </div>
         </div>
 
-        <div class="col-md-6 col-lg-4 col-xl">
+        <div class="col-md-6 col-lg-4 col-xl-2">
             <div class="metric-card lucro-liquido">
                 <div class="metric-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb);">
                     <i class="bi bi-trophy-fill text-white"></i>
                 </div>
                 <div class="metric-value" style="color: ${lucroLiquido >= 0 ? '#10b981' : '#ef4444'}">${formatarMoeda(lucroLiquido)}</div>
-                <div class="metric-label">Lucro Líquido</div>
+                <div class="metric-label">Lucro Líquido <span class="text-muted small">(${lucroLiquidoPerc.toFixed(2)}%)</span></div>
+            </div>
+        </div>
+
+        <div class="col-md-6 col-lg-4 col-xl-2">
+            <div class="metric-card previsao-lucro">
+                <div class="metric-icon" style="background: linear-gradient(135deg, #14b8a6, #0d9488);">
+                    <i class="bi bi-graph-up text-white"></i>
+                </div>
+                <div class="metric-value" style="color: ${previsaoLucroAnual >= 0 ? '#10b981' : '#ef4444'}">${formatarMoeda(previsaoLucroAnual)}</div>
+                <div class="metric-label">Previsão Lucro Anual <span class="text-muted small">(${previsaoLucroAnualPerc.toFixed(2)}%)</span></div>
             </div>
         </div>
     `;
@@ -639,42 +666,23 @@ function atualizarGraficos(dadosGrupo) {
 
         if (itensSemTotal.length > 0) {
             const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
-            
-            // Verificar se é Investimentos ou Dívidas (tem 3 colunas)
-            if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
-                chartsHTML += `
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="chart-container">
-                                <div class="chart-header">
-                                    <h3 class="chart-title">
-                                        <i class="bi bi-table"></i>
-                                        ${subgrupo}
-                                    </h3>
-                                </div>
-                                <div id="${chartId}Table"></div>
+
+            // Todos os subgrupos agora são gráficos (incluindo Investimentos e Dívidas)
+            chartsHTML += `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">
+                                    <i class="bi bi-bar-chart-fill"></i>
+                                    ${subgrupo}
+                                </h3>
                             </div>
+                            <canvas id="${chartId}Chart" height="100"></canvas>
                         </div>
                     </div>
-                `;
-            } else {
-                // Gráfico normal
-                chartsHTML += `
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="chart-container">
-                                <div class="chart-header">
-                                    <h3 class="chart-title">
-                                        <i class="bi bi-bar-chart-fill"></i>
-                                        ${subgrupo}
-                                    </h3>
-                                </div>
-                                <canvas id="${chartId}Chart" height="100"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
+                </div>
+            `;
         }
     });
 
@@ -682,19 +690,19 @@ function atualizarGraficos(dadosGrupo) {
 
     // Criar os gráficos após inserir o HTML
     setTimeout(() => {
-        // 1. Receita (barras duplas: valor + %)
+        // 1. Receita (barras duplas: valor + %) - HORIZONTAL
         if (dadosGrupo['Receita']) {
-            const receitaSemTotal = dadosGrupo['Receita'].filter(item => 
+            const receitaSemTotal = dadosGrupo['Receita'].filter(item =>
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
             if (receitaSemTotal.length > 0) {
-                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal);
+                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal, true, false); // horizontal=true
             }
         }
 
-        // 2. Controle (pizza) - AJUSTE ESPECÍFICO PARA MULTIPLICAR PERCENTUAL POR 100
+        // 2. Controle (pizza) - MOSTRAR % NA LEGENDA
         if (dadosGrupo['Controle']) {
-            const controleSemTotal = dadosGrupo['Controle'].filter(item => 
+            const controleSemTotal = dadosGrupo['Controle'].filter(item =>
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
             if (controleSemTotal.length > 0) {
@@ -703,22 +711,23 @@ function atualizarGraficos(dadosGrupo) {
                     ...item,
                     percentual: (item.percentual || 0) * 100
                 }));
-                criarGraficoPizza('controleChart', controleAjustado);
+                criarGraficoPizza('controleChart', controleAjustado, true, false); // mostrarPercNaLegenda=true
             }
         }
 
-        // 3. Obrigações (dividido)
+        // 3. Obrigações (dividido) - MOSTRAR R$ NA LEGENDA
         if (dadosGrupo['Obrigacoes']) {
-            const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item => 
+            const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item =>
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
-            
+
             if (obrigacoesSemTotal.length > 0) {
                 const primeiros3 = obrigacoesSemTotal.slice(0, 3);
                 const resto = obrigacoesSemTotal.slice(3);
 
                 if (primeiros3.length > 0) {
-                    criarGraficoPizzaPercentual('obrigacoesPizzaChart', primeiros3); // Usa versão com percentual
+                    // Criar versão customizada que mostra R$ na legenda
+                    criarGraficoPizzaComValorLegenda('obrigacoesPizzaChart', primeiros3);
                 }
                 if (resto.length > 0) {
                     criarGraficoBarrasSimples('obrigacoesBarChart', resto);
@@ -729,25 +738,57 @@ function atualizarGraficos(dadosGrupo) {
         // 4. Outros subgrupos
         Object.keys(dadosGrupo).forEach(subgrupo => {
             const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigacoes'];
-            
+
             if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
                 return;
             }
 
-            const itensSemTotal = dadosGrupo[subgrupo].filter(item => 
+            const itensSemTotal = dadosGrupo[subgrupo].filter(item =>
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
 
             if (itensSemTotal.length > 0) {
                 const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
-                
-                // Criar TABELA para Investimentos e Dívidas
+
+                // Criar GRÁFICO DE BARRAS EMPILHADAS para Investimentos e Dívidas
                 if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
-                    criarTabela(chartId + 'Table', itensSemTotal, subgrupo);
-                } else {
-                    // Criar GRÁFICO para outros subgrupos
+                    criarGraficoBarrasEmpilhadas(chartId + 'Chart', itensSemTotal);
+                }
+                // Gastos ADM - HORIZONTAL com % no hover
+                else if (subgrupo === 'Gastos ADM') {
                     const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
-                    
+                    if (temPercentual) {
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, true); // horizontal=true, mostrarPercHover=true
+                    } else {
+                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+                    }
+                }
+                // Matéria Prima - HORIZONTAL com % no hover
+                else if (subgrupo === 'Materia Prima') {
+                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
+                    if (temPercentual) {
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, true); // horizontal=true, mostrarPercHover=true
+                    } else {
+                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+                    }
+                }
+                // Gastos Operacionais - valor R$ no gráfico, % no hover
+                else if (subgrupo === 'Gastos Operacionais') {
+                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
+                    if (temPercentual) {
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, false, true); // mostrarPercHover=true
+                    } else {
+                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+                    }
+                }
+                // Pessoal (Pizza) - valor R$ no gráfico, % no hover
+                else if (subgrupo === 'Pessoal') {
+                    criarGraficoPizza(chartId + 'Chart', itensSemTotal, false, true); // mostrarPercHover=true
+                }
+                // Outros subgrupos
+                else {
+                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
+
                     if (temPercentual) {
                         criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal);
                     } else {
@@ -759,7 +800,7 @@ function atualizarGraficos(dadosGrupo) {
     }, 100);
 }
 
-function criarGraficoBarrasDuplas(canvasId, dados) {
+function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPercHover = false) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
@@ -768,28 +809,36 @@ function criarGraficoBarrasDuplas(canvasId, dados) {
     const valores = dados.map(item => item.valor);
     const percentuais = dados.map(item => (item.percentual || 0) / 1); // Porcentagem
 
-    charts[canvasId] = new Chart(ctx, {
+    const config = {
         type: 'bar',
         data: {
             labels: labels,
-            datasets: [
+            datasets: mostrarPercHover ? [
+                {
+                    label: 'Valor (R$)',
+                    data: valores,
+                    backgroundColor: 'rgba(255, 153, 0, 0.8)',
+                    borderRadius: 6
+                }
+            ] : [
                 {
                     label: 'Valor Real (R$)',
                     data: valores,
                     backgroundColor: 'rgba(255, 153, 0, 0.8)',
                     borderRadius: 6,
-                    yAxisID: 'y'
+                    yAxisID: horizontal ? 'x' : 'y'
                 },
                 {
                     label: 'Percentual (%)',
                     data: percentuais,
                     backgroundColor: 'rgba(59, 130, 246, 0.8)',
                     borderRadius: 6,
-                    yAxisID: 'y1'
+                    yAxisID: horizontal ? 'x1' : 'y1'
                 }
             ]
         },
         options: {
+            indexAxis: horizontal ? 'y' : 'x',
             responsive: true,
             plugins: {
                 legend: {
@@ -801,16 +850,62 @@ function criarGraficoBarrasDuplas(canvasId, dados) {
                     callbacks: {
                         label: (context) => {
                             const label = context.dataset.label || '';
-                            if (label.includes('Real')) {
-                                return label + ': ' + formatarMoeda(context.parsed.y);
+                            const index = context.dataIndex;
+                            if (mostrarPercHover) {
+                                return [
+                                    'Valor: ' + formatarMoeda(valores[index]),
+                                    'Percentual: ' + percentuais[index].toFixed(2) + '%'
+                                ];
+                            } else if (label.includes('Real') || label.includes('Valor')) {
+                                return label + ': ' + formatarMoeda(horizontal ? context.parsed.x : context.parsed.y);
                             } else {
-                                return label + ': ' + context.parsed.y.toFixed(2) + '%';
+                                return label + ': ' + (horizontal ? context.parsed.x : context.parsed.y).toFixed(2) + '%';
                             }
                         }
                     }
                 }
             },
-            scales: {
+            scales: mostrarPercHover ? (horizontal ? {
+                x: {
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                }
+            } : {
+                y: {
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                }
+            }) : (horizontal ? {
+                x: {
+                    type: 'linear',
+                    display: true,
+                    position: 'bottom',
+                    title: {
+                        display: true,
+                        text: 'Valor (R$)'
+                    },
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                },
+                x1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'top',
+                    title: {
+                        display: true,
+                        text: 'Percentual (%)'
+                    },
+                    grid: {
+                        drawOnChartArea: false
+                    },
+                    ticks: {
+                        callback: v => v.toFixed(2) + '%'
+                    }
+                }
+            } : {
                 y: {
                     type: 'linear',
                     display: true,
@@ -838,9 +933,11 @@ function criarGraficoBarrasDuplas(canvasId, dados) {
                         callback: v => v.toFixed(2) + '%'
                     }
                 }
-            }
+            })
         }
-    });
+    };
+
+    charts[canvasId] = new Chart(ctx, config);
 }
 
 function criarGraficoBarrasSimples(canvasId, dados) {
@@ -886,11 +983,84 @@ function criarGraficoBarrasSimples(canvasId, dados) {
     });
 }
 
-function criarGraficoPizza(canvasId, dados) {
+function criarGraficoPizza(canvasId, dados, mostrarPercNaLegenda = false, mostrarPercHover = false) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
     // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
+    const labels = dados.map(item => item.descricao);
+    const valores = dados.map(item => Math.abs(item.valor));
+    const percentuais = dados.map(item => (item.percentual || 0) / 1);
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: [
+                    '#10b981', '#3b82f6', '#ff9900', '#ef4444',
+                    '#8b5cf6', '#f59e0b', '#ec4899', '#14b8a6'
+                ],
+                borderWidth: 3,
+                borderColor: 'white'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        padding: 15,
+                        usePointStyle: true,
+                        pointStyle: 'circle',
+                        font: { size: 11 },
+                        generateLabels: mostrarPercNaLegenda ? (chart) => {
+                            const datasets = chart.data.datasets;
+                            return chart.data.labels.map((label, i) => {
+                                const total = datasets[0].data.reduce((a, b) => a + b, 0);
+                                const percentage = ((valores[i] / total) * 100).toFixed(2);
+                                return {
+                                    text: `${label}: ${percentage}%`,
+                                    fillStyle: datasets[0].backgroundColor[i],
+                                    hidden: false,
+                                    index: i
+                                };
+                            });
+                        } : undefined
+                    }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.label || '';
+                            const value = formatarMoeda(context.parsed);
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            if (mostrarPercHover) {
+                                return [
+                                    `${label}`,
+                                    `Valor: ${value}`,
+                                    `Percentual: ${percentage}%`
+                                ];
+                            }
+                            return `${label}: ${value} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function criarGraficoPizzaComValorLegenda(canvasId, dados) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Para obrigações: mostrar R$ na legenda
     const labels = dados.map(item => item.descricao);
     const valores = dados.map(item => Math.abs(item.valor));
 
@@ -918,7 +1088,16 @@ function criarGraficoPizza(canvasId, dados) {
                         padding: 15,
                         usePointStyle: true,
                         pointStyle: 'circle',
-                        font: { size: 11 }
+                        font: { size: 11 },
+                        generateLabels: (chart) => {
+                            const datasets = chart.data.datasets;
+                            return chart.data.labels.map((label, i) => ({
+                                text: `${label}: ${formatarMoeda(valores[i])}`,
+                                fillStyle: datasets[0].backgroundColor[i],
+                                hidden: false,
+                                index: i
+                            }));
+                        }
                     }
                 },
                 tooltip: {
@@ -929,7 +1108,11 @@ function criarGraficoPizza(canvasId, dados) {
                             const value = formatarMoeda(context.parsed);
                             const total = context.dataset.data.reduce((a, b) => a + b, 0);
                             const percentage = ((context.parsed / total) * 100).toFixed(1);
-                            return `${label}: ${value} (${percentage}%)`;
+                            return [
+                                `${label}`,
+                                `Valor: ${value}`,
+                                `Percentual: ${percentage}%`
+                            ];
                         }
                     }
                 }
@@ -997,6 +1180,73 @@ function criarGraficoPizzaPercentual(canvasId, dados) {
                                 `Valor: ${valor}`
                             ];
                         }
+                    }
+                }
+            }
+        }
+    });
+}
+
+function criarGraficoBarrasEmpilhadas(canvasId, dados) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Extrair dados
+    const labels = dados.map(item => item.descricao);
+    const parcelas = dados.map(item => Math.abs(item.parcela || 0));
+    const juros = dados.map(item => Math.abs(item.juros || 0));
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Valor Total',
+                    data: parcelas,
+                    backgroundColor: 'rgba(255, 153, 0, 0.8)',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+                },
+                {
+                    label: 'Juros',
+                    data: juros,
+                    backgroundColor: 'rgba(239, 68, 68, 0.8)',
+                    borderRadius: { topLeft: 6, topRight: 6, bottomLeft: 0, bottomRight: 0 }
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 15 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.dataset.label || '';
+                            return label + ': ' + formatarMoeda(context.parsed.y);
+                        },
+                        footer: (tooltipItems) => {
+                            let total = 0;
+                            tooltipItems.forEach(item => {
+                                total += item.parsed.y;
+                            });
+                            return 'Total: ' + formatarMoeda(total);
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    stacked: true
+                },
+                y: {
+                    stacked: true,
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
                     }
                 }
             }
