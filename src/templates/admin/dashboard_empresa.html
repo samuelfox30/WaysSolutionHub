@@ -1341,10 +1341,20 @@ function criarGraficoGastosOperacionais(canvasId, dados) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
+    console.log("====== DEBUG GASTOS OPERACIONAIS ======");
+    console.log("Dados recebidos:", dados);
+    console.log("Exemplo do primeiro item:", dados[0]);
+    console.log("Campos disponíveis:", dados[0] ? Object.keys(dados[0]) : 'nenhum');
+
     // Extrair dados - Gastos Operacionais tem custo_km e valor (custo mensal)
     const labels = dados.map(item => item.descricao);
     const custosKm = dados.map(item => Math.abs(item.custo_km || 0));
     const custosMensais = dados.map(item => Math.abs(item.valor || 0));
+
+    console.log("Labels:", labels);
+    console.log("Custos KM:", custosKm);
+    console.log("Custos Mensais:", custosMensais);
+    console.log("======================================");
 
     charts[canvasId] = new Chart(ctx, {
         type: 'bar',
