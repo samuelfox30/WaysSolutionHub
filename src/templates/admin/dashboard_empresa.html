@@ -826,7 +826,7 @@ function atualizarGraficos(dadosGrupo) {
                     }
                 }
                 // Gastos Operacionais Veículos - gráfico especial com custo_km e custo_mensal
-                else if (subgrupo === 'Gastos Operacionais Veículos' || subgrupo === 'Gastos Operacionais' || subgrupo === 'GastosOperacionais') {
+                else if (subgrupo === 'Gastos Operacionais Veículos') {
                     criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
                 }
                 // Pessoal (Pizza) - valor R$ no gráfico, % no hover
