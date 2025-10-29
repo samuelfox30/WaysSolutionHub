@@ -887,14 +887,16 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     data: valores,
                     backgroundColor: 'rgba(255, 153, 0, 0.8)',
                     borderRadius: 6,
-                    yAxisID: horizontal ? 'x' : 'y'
+                    xAxisID: horizontal ? 'x' : undefined,
+                    yAxisID: horizontal ? undefined : 'y'
                 },
                 {
                     label: 'Percentual (%)',
                     data: percentuais,
                     backgroundColor: 'rgba(59, 130, 246, 0.8)',
                     borderRadius: 6,
-                    yAxisID: horizontal ? 'x1' : 'y1'
+                    xAxisID: horizontal ? 'x1' : undefined,
+                    yAxisID: horizontal ? undefined : 'y1'
                 }
             ]
         },
@@ -912,15 +914,17 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                         label: (context) => {
                             const label = context.dataset.label || '';
                             const index = context.dataIndex;
+                            const value = horizontal ? context.parsed.x : context.parsed.y;
+
                             if (mostrarPercHover) {
                                 return [
                                     'Valor: ' + formatarMoeda(valores[index]),
                                     'Percentual: ' + percentuais[index].toFixed(2) + '%'
                                 ];
                             } else if (label.includes('Real') || label.includes('Valor')) {
-                                return label + ': ' + formatarMoeda(horizontal ? context.parsed.x : context.parsed.y);
+                                return label + ': ' + formatarMoeda(value);
                             } else {
-                                return label + ': ' + (horizontal ? context.parsed.x : context.parsed.y).toFixed(2) + '%';
+                                return label + ': ' + value.toFixed(2) + '%';
                             }
                         }
                     }
@@ -930,6 +934,11 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                 x: {
                     ticks: {
                         callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                },
+                y: {
+                    ticks: {
+                        autoSkip: false
                     }
                 }
             } : {
@@ -964,6 +973,11 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     },
                     ticks: {
                         callback: v => v.toFixed(2) + '%'
+                    }
+                },
+                y: {
+                    ticks: {
+                        autoSkip: false
                     }
                 }
             } : {
