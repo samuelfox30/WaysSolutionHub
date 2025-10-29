@@ -640,22 +640,44 @@ function atualizarGraficos(dadosGrupo) {
         }
 
         if (dadosGrupo[subgrupo] && dadosGrupo[subgrupo].length > 0) {
-            const chartId = subgrupo.replace(/ /g, '');
-            chartsHTML += `
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="chart-container">
-                            <div class="chart-header">
-                                <h3 class="chart-title">
-                                    <i class="bi bi-bar-chart-fill"></i>
-                                    ${subgrupo}
-                                </h3>
+            const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+
+            // Se for Pessoal (pizza), centralizar e limitar largura
+            if (subgrupo === 'Pessoal') {
+                chartsHTML += `
+                    <div class="row mb-4 justify-content-center">
+                        <div class="col-md-6">
+                            <div class="chart-container">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">
+                                        <i class="bi bi-pie-chart-fill"></i>
+                                        ${subgrupo}
+                                    </h3>
+                                </div>
+                                <div style="max-width: 450px; margin: 0 auto;">
+                                    <canvas id="${chartId}Chart"></canvas>
+                                </div>
                             </div>
-                            <canvas id="${chartId}Chart" height="100"></canvas>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
+            } else {
+                chartsHTML += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">
+                                        <i class="bi bi-bar-chart-fill"></i>
+                                        ${subgrupo}
+                                    </h3>
+                                </div>
+                                <canvas id="${chartId}Chart" height="100"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
         }
     });
 
@@ -748,14 +770,9 @@ function atualizarGraficos(dadosGrupo) {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
                 }
-                // Gastos Operacionais - valor R$ no gráfico, % no hover
-                else if (subgrupo === 'Gastos Operacionais') {
-                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
-                    if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, false, true); // mostrarPercHover=true
-                    } else {
-                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
-                    }
+                // Gastos Operacionais Veículos - gráfico especial com custo_km e custo_mensal
+                else if (subgrupo === 'Gastos Operacionais Veículos' || subgrupo === 'Gastos Operacionais') {
+                    criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
                 }
                 // Pessoal (Pizza) - valor R$ no gráfico, % no hover
                 else if (subgrupo === 'Pessoal') {
@@ -1154,6 +1171,62 @@ function criarGraficoBarrasEmpilhadas(canvasId, dados) {
                 },
                 y: {
                     stacked: true,
+                    ticks: {
+                        callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function criarGraficoGastosOperacionais(canvasId, dados) {
+    const ctx = document.getElementById(canvasId);
+    if (!ctx) return;
+
+    // Extrair dados - Gastos Operacionais tem custo_km e valor (custo mensal)
+    const labels = dados.map(item => item.descricao);
+    const custosKm = dados.map(item => Math.abs(item.custo_km || 0));
+    const custosMensais = dados.map(item => Math.abs(item.valor || 0));
+
+    charts[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: 'Custo por KM (R$)',
+                    data: custosKm,
+                    backgroundColor: 'rgba(59, 130, 246, 0.8)',
+                    borderRadius: 6
+                },
+                {
+                    label: 'Custo Mensal (R$)',
+                    data: custosMensais,
+                    backgroundColor: 'rgba(255, 153, 0, 0.8)',
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 15 }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                    callbacks: {
+                        label: (context) => {
+                            const label = context.dataset.label || '';
+                            return label + ': ' + formatarMoeda(context.parsed.y);
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
                     ticks: {
                         callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
                     }
