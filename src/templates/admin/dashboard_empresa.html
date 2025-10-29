@@ -729,14 +729,29 @@ function atualizarGraficos(dadosGrupo) {
     // Criar os gráficos após inserir o HTML
     setTimeout(() => {
         // 1. Receita (barras duplas: valor + %) - HORIZONTAL
+        console.log("====== CRIANDO GRÁFICO RECEITA ======");
+        console.log("dadosGrupo['Receita']:", dadosGrupo['Receita']);
+
         if (dadosGrupo['Receita']) {
             const receitaSemTotal = dadosGrupo['Receita'].filter(item =>
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
+
+            console.log("Receita sem total para criar gráfico:", receitaSemTotal);
+            console.log("Quantidade:", receitaSemTotal.length);
+            console.log("Canvas #receitaChart existe?", !!document.getElementById('receitaChart'));
+
             if (receitaSemTotal.length > 0) {
+                console.log("CHAMANDO criarGraficoBarrasDuplas...");
                 criarGraficoBarrasDuplas('receitaChart', receitaSemTotal, true, false); // horizontal=true
+                console.log("Gráfico criado!");
+            } else {
+                console.log("NENHUM ITEM APÓS FILTRO!");
             }
+        } else {
+            console.log("dadosGrupo['Receita'] não existe!");
         }
+        console.log("=====================================");
 
         // 2. Controle (pizza) - MOSTRAR % NA LEGENDA
         if (dadosGrupo['Controle']) {
@@ -834,13 +849,26 @@ function atualizarGraficos(dadosGrupo) {
 }
 
 function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPercHover = false) {
+    console.log(`[criarGraficoBarrasDuplas] Iniciando para ${canvasId}`);
+    console.log(`[criarGraficoBarrasDuplas] Dados recebidos:`, dados);
+    console.log(`[criarGraficoBarrasDuplas] horizontal=${horizontal}, mostrarPercHover=${mostrarPercHover}`);
+
     const ctx = document.getElementById(canvasId);
-    if (!ctx) return;
+    console.log(`[criarGraficoBarrasDuplas] Canvas encontrado:`, !!ctx);
+
+    if (!ctx) {
+        console.error(`[criarGraficoBarrasDuplas] ERRO: Canvas #${canvasId} não encontrado!`);
+        return;
+    }
 
     // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
     const labels = dados.map(item => item.descricao);
     const valores = dados.map(item => item.valor);
     const percentuais = dados.map(item => (item.percentual || 0) / 1); // Porcentagem
+
+    console.log(`[criarGraficoBarrasDuplas] Labels:`, labels);
+    console.log(`[criarGraficoBarrasDuplas] Valores:`, valores);
+    console.log(`[criarGraficoBarrasDuplas] Percentuais:`, percentuais);
 
     const config = {
         type: 'bar',
@@ -970,7 +998,15 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
         }
     };
 
-    charts[canvasId] = new Chart(ctx, config);
+    console.log(`[criarGraficoBarrasDuplas] Configuração do gráfico:`, config);
+    console.log(`[criarGraficoBarrasDuplas] Criando Chart...`);
+
+    try {
+        charts[canvasId] = new Chart(ctx, config);
+        console.log(`[criarGraficoBarrasDuplas] ✓ Gráfico ${canvasId} criado com sucesso!`);
+    } catch (error) {
+        console.error(`[criarGraficoBarrasDuplas] ✗ ERRO ao criar gráfico ${canvasId}:`, error);
+    }
 }
 
 function criarGraficoBarrasSimples(canvasId, dados) {
