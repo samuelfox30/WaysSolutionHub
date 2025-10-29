@@ -606,15 +606,15 @@ function atualizarGraficos(dadosGrupo) {
 
     // 2. CONTROLE (Despesas por natureza sintética - Pizza)
     if (dadosGrupo['Controle'] && dadosGrupo['Controle'].length > 0) {
-        const controleSemTotal = dadosGrupo['Controle'].filter(item => 
+        const controleSemTotal = dadosGrupo['Controle'].filter(item =>
             !item.descricao.toUpperCase().includes('TOTAL')
         );
         console.log("Controle sem total:", controleSemTotal);
-        
+
         if (controleSemTotal.length > 0) {
             chartsHTML += `
-                <div class="row mb-4 justify-content-center">
-                    <div class="col-md-6">
+                <div class="row mb-4">
+                    <div class="col-12">
                         <div class="chart-container">
                             <div class="chart-header">
                                 <h3 class="chart-title">
@@ -632,15 +632,15 @@ function atualizarGraficos(dadosGrupo) {
 
     // 3. OBRIGAÇÕES (dividido: primeiros 3 pizza, resto barras)
     if (dadosGrupo['Obrigacoes'] && dadosGrupo['Obrigacoes'].length > 0) {
-        const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item => 
+        const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item =>
             !item.descricao.toUpperCase().includes('TOTAL')
         );
-        
+
         if (obrigacoesSemTotal.length > 0) {
             chartsHTML += `
                 <div class="row mb-4">
                     <div class="col-md-6">
-                        <div class="chart-container">
+                        <div class="chart-container h-100">
                             <div class="chart-header">
                                 <h3 class="chart-title">
                                     <i class="bi bi-file-text-fill"></i>
@@ -653,7 +653,7 @@ function atualizarGraficos(dadosGrupo) {
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="chart-container">
+                        <div class="chart-container h-100">
                             <div class="chart-header">
                                 <h3 class="chart-title">
                                     <i class="bi bi-bar-chart-line"></i>
@@ -688,8 +688,8 @@ function atualizarGraficos(dadosGrupo) {
             // Se for Pessoal (pizza), centralizar e limitar largura
             if (subgrupo === 'Pessoal') {
                 chartsHTML += `
-                    <div class="row mb-4 justify-content-center">
-                        <div class="col-md-6">
+                    <div class="row mb-4">
+                        <div class="col-12">
                             <div class="chart-container">
                                 <div class="chart-header">
                                     <h3 class="chart-title">
