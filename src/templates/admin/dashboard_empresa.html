@@ -556,19 +556,31 @@ function atualizarGraficos(dadosGrupo) {
     Object.values(charts).forEach(chart => chart.destroy());
     charts = {};
 
+    console.log("====== DEBUG DADOS GRUPO ======");
+    console.log("Dados completos do grupo:", dadosGrupo);
+    console.log("Chaves disponíveis:", Object.keys(dadosGrupo));
+    console.log("===============================");
+
     let chartsHTML = '';
 
     // Subgrupos a ignorar (não gerar gráficos)
     const subgruposIgnorar = ['Geral', 'InvestimentosGeral', 'Investimento Geral'];
 
     // 1. RECEITA (Gráfico de barras com valor real + %)
+    console.log("====== PROCESSANDO RECEITA ======");
+    console.log("dadosGrupo['Receita'] existe?", !!dadosGrupo['Receita']);
+    console.log("Conteúdo de dadosGrupo['Receita']:", dadosGrupo['Receita']);
+
     if (dadosGrupo['Receita'] && dadosGrupo['Receita'].length > 0) {
+        console.log("Receita encontrada com", dadosGrupo['Receita'].length, "itens");
+
         // Filtrar apenas itens que não são "TOTAL"
         const receitaSemTotal = dadosGrupo['Receita'].filter(item =>
             !item.descricao.toUpperCase().includes('TOTAL')
         );
 
         console.log("Receita sem total:", receitaSemTotal);
+        console.log("Quantidade após filtro:", receitaSemTotal.length);
 
         if (receitaSemTotal.length > 0) {
             chartsHTML += `
@@ -587,7 +599,10 @@ function atualizarGraficos(dadosGrupo) {
                 </div>
             `;
         }
+    } else {
+        console.log("RECEITA NÃO ENCONTRADA OU VAZIA!");
     }
+    console.log("=================================");
 
     // 2. CONTROLE (Despesas por natureza sintética - Pizza)
     if (dadosGrupo['Controle'] && dadosGrupo['Controle'].length > 0) {
