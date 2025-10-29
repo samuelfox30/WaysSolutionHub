@@ -543,7 +543,7 @@ function atualizarMetricas(dadosGrupo) {
                     <i class="bi bi-graph-up text-white"></i>
                 </div>
                 <div class="metric-value" style="color: ${previsaoLucroAnual >= 0 ? '#10b981' : '#ef4444'}">${formatarMoeda(previsaoLucroAnual)}</div>
-                <div class="metric-label">Previsão Lucro Anual <span class="text-muted small">(${previsaoLucroAnualPerc.toFixed(2)}%)</span></div>
+                <div class="metric-label">Previsão Lucro Anual</div>
             </div>
         </div>
     `;
@@ -816,11 +816,11 @@ function atualizarGraficos(dadosGrupo) {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
                 }
-                // Matéria Prima - HORIZONTAL com % no hover
-                else if (subgrupo === 'Materia Prima') {
+                // Matéria Prima - HORIZONTAL
+                else if (subgrupo === 'Materia Prima' || subgrupo === 'MateriaPrima') {
                     const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
                     if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, true); // horizontal=true, mostrarPercHover=true
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false); // horizontal=true, mostrarPercHover=false
                     } else {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
