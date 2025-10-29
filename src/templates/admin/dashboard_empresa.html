@@ -808,10 +808,10 @@ function atualizarGraficos(dadosGrupo) {
                     criarGraficoBarrasEmpilhadas(chartId + 'Chart', itensSemTotal);
                 }
                 // Gastos ADM - HORIZONTAL com % no hover
-                else if (subgrupo === 'Gastos ADM') {
+                else if (subgrupo === 'Gastos ADM' || subgrupo === 'GastosAdm') {
                     const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
                     if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, true); // horizontal=true, mostrarPercHover=true
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false); // horizontal=true, mostrarPercHover=false
                     } else {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
