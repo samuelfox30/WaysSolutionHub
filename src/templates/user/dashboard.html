@@ -555,6 +555,11 @@ function atualizarGraficos(dadosGrupo) {
     Object.values(charts).forEach(chart => chart.destroy());
     charts = {};
 
+    console.log("====== DEBUG DADOS GRUPO ======");
+    console.log("Dados completos do grupo:", dadosGrupo);
+    console.log("Chaves disponíveis:", Object.keys(dadosGrupo));
+    console.log("===============================");
+
     let chartsHTML = '';
 
     // 1. RECEITA (Gráfico de barras com real + %)
