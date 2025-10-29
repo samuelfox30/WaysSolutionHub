@@ -584,8 +584,8 @@ function atualizarGraficos(dadosGrupo) {
     // 2. CONTROLE (Despesas por natureza sintética - Pizza)
     if (dadosGrupo['Controle'] && dadosGrupo['Controle'].length > 0) {
         chartsHTML += `
-            <div class="row mb-4 justify-content-center">
-                <div class="col-md-6">
+            <div class="row mb-4">
+                <div class="col-12">
                     <div class="chart-container">
                         <div class="chart-header">
                             <h3 class="chart-title">
@@ -607,7 +607,7 @@ function atualizarGraficos(dadosGrupo) {
         chartsHTML += `
             <div class="row mb-4">
                 <div class="col-md-6">
-                    <div class="chart-container">
+                    <div class="chart-container h-100">
                         <div class="chart-header">
                             <h3 class="chart-title">
                                 <i class="bi bi-file-text-fill"></i>
@@ -620,7 +620,7 @@ function atualizarGraficos(dadosGrupo) {
                     </div>
                 </div>
                 <div class="col-md-6">
-                    <div class="chart-container">
+                    <div class="chart-container h-100">
                         <div class="chart-header">
                             <h3 class="chart-title">
                                 <i class="bi bi-bar-chart-line"></i>
@@ -650,8 +650,8 @@ function atualizarGraficos(dadosGrupo) {
             // Se for Pessoal (pizza), centralizar e limitar largura
             if (subgrupo === 'Pessoal') {
                 chartsHTML += `
-                    <div class="row mb-4 justify-content-center">
-                        <div class="col-md-6">
+                    <div class="row mb-4">
+                        <div class="col-12">
                             <div class="chart-container">
                                 <div class="chart-header">
                                     <h3 class="chart-title">
