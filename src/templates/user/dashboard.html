@@ -759,20 +759,20 @@ function atualizarGraficos(dadosGrupo) {
                 if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
                     criarGraficoBarrasEmpilhadas(chartId + 'Chart', itensSemTotal);
                 }
-                // Gastos ADM - HORIZONTAL com % no hover
+                // Gastos ADM - HORIZONTAL invertido
                 else if (subgrupo === 'Gastos ADM' || subgrupo === 'GastosAdm') {
                     const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
                     if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false); // horizontal=true, mostrarPercHover=false
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false, true); // horizontal=true, mostrarPercHover=false, reverseAxis=true
                     } else {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
                 }
-                // Matéria Prima - HORIZONTAL
+                // Matéria Prima - HORIZONTAL invertido
                 else if (subgrupo === 'Materia Prima' || subgrupo === 'MateriaPrima') {
                     const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
                     if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false); // horizontal=true, mostrarPercHover=false
+                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false, true); // horizontal=true, mostrarPercHover=false, reverseAxis=true
                     } else {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
@@ -804,7 +804,7 @@ function atualizarGraficos(dadosGrupo) {
     }, 100);
 }
 
-function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPercHover = false) {
+function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPercHover = false, reverseAxis = false) {
     const ctx = document.getElementById(canvasId);
     if (!ctx) return;
 
@@ -875,7 +875,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
             },
             scales: mostrarPercHover ? (horizontal ? {
                 x: {
-                    reverse: true,
+                    reverse: reverseAxis,
                     ticks: {
                         callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
                     }
@@ -896,7 +896,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     type: 'linear',
                     display: true,
                     position: 'bottom',
-                    reverse: true,
+                    reverse: reverseAxis,
                     title: {
                         display: true,
                         text: 'Valor (R$)'
@@ -909,7 +909,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     type: 'linear',
                     display: true,
                     position: 'top',
-                    reverse: true,
+                    reverse: reverseAxis,
                     title: {
                         display: true,
                         text: 'Percentual (%)'
