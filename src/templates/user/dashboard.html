@@ -875,7 +875,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
             },
             scales: mostrarPercHover ? (horizontal ? {
                 x: {
-                    ...(reverseAxis && { reverse: true }),
+                    reverse: !!reverseAxis,
                     ticks: {
                         callback: v => 'R$ ' + (v/1000).toFixed(0) + 'k'
                     }
@@ -896,7 +896,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     type: 'linear',
                     display: true,
                     position: 'bottom',
-                    ...(reverseAxis && { reverse: true }),
+                    reverse: !!reverseAxis,
                     title: {
                         display: true,
                         text: 'Valor (R$)'
@@ -909,7 +909,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     type: 'linear',
                     display: true,
                     position: 'top',
-                    ...(reverseAxis && { reverse: true }),
+                    reverse: !!reverseAxis,
                     title: {
                         display: true,
                         text: 'Percentual (%)'
