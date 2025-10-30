@@ -701,7 +701,7 @@ function atualizarGraficos(dadosGrupo) {
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
             if (receitaSemTotal.length > 0) {
-                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal, true, false); // horizontal=true
+                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal, true, false, false); // horizontal=true, mostrarPercHover=false, reverseAxis=false
             }
         }
 
