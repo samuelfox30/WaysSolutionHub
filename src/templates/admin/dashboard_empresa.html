@@ -598,7 +598,7 @@ function atualizarGraficos(dadosGrupo) {
                                     Receita
                                 </h3>
                             </div>
-                            <canvas id="receitaChart" height="100"></canvas>
+                            <canvas id="receitaChart" key="${Date.now()}" height="100"></canvas>
                         </div>
                     </div>
                 </div>
@@ -875,8 +875,8 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
 
     // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
     const labels = dados.map(item => item.descricao);
-    const valores = dados.map(item => item.valor);
-    const percentuais = dados.map(item => (item.percentual || 0) / 1); // Porcentagem
+    const valores = dados.map(item => Math.abs(item.valor)); // Usar valores absolutos
+    const percentuais = dados.map(item => Math.abs((item.percentual || 0) / 1)); // Porcentagem absoluta
 
     console.log(`[criarGraficoBarrasDuplas] Labels:`, labels);
     console.log(`[criarGraficoBarrasDuplas] Valores:`, valores);
