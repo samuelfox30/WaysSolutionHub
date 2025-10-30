@@ -593,7 +593,7 @@ function atualizarGraficos(dadosGrupo) {
                                 Controle de Despesas por Natureza Sintética
                             </h3>
                         </div>
-                        <div style="max-width: 450px; margin: 0 auto;">
+                        <div style="max-width: 600px; margin: 0 auto;">
                             <canvas id="controleChart"></canvas>
                         </div>
                     </div>
@@ -614,7 +614,7 @@ function atualizarGraficos(dadosGrupo) {
                                 Obrigações (Primeiros 3)
                             </h3>
                         </div>
-                        <div style="max-width: 450px; margin: 0 auto;">
+                        <div style="max-width: 600px; margin: 0 auto;">
                             <canvas id="obrigacoesPizzaChart"></canvas>
                         </div>
                     </div>
@@ -627,7 +627,9 @@ function atualizarGraficos(dadosGrupo) {
                                 Obrigações (Outros 4)
                             </h3>
                         </div>
-                        <canvas id="obrigacoesBarChart" height="80"></canvas>
+                        <div style="max-width: 600px; margin: 0 auto;">
+                            <canvas id="obrigacoesBarChart" height="80"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -659,7 +661,7 @@ function atualizarGraficos(dadosGrupo) {
                                         ${subgrupo}
                                     </h3>
                                 </div>
-                                <div style="max-width: 450px; margin: 0 auto;">
+                                <div style="max-width: 600px; margin: 0 auto;">
                                     <canvas id="${chartId}Chart"></canvas>
                                 </div>
                             </div>
@@ -775,13 +777,17 @@ function atualizarGraficos(dadosGrupo) {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
                 }
+                // Gastos Operacionais (normal, sem Veículos) - apenas valor R$
+                else if (subgrupo === 'GastosOperacionais') {
+                    criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+                }
                 // Gastos Operacionais Veículos - gráfico especial com custo_km e custo_mensal
                 else if (subgrupo === 'Gastos Operacionais Veículos') {
                     criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
                 }
-                // Pessoal (Pizza) - valor R$ no gráfico, % no hover
+                // Pessoal (Pizza) - valor R$ na legenda
                 else if (subgrupo === 'Pessoal') {
-                    criarGraficoPizza(chartId + 'Chart', itensSemTotal, false, true); // mostrarPercHover=true
+                    criarGraficoPizzaComValorLegenda(chartId + 'Chart', itensSemTotal);
                 }
                 // Outros subgrupos
                 else {
@@ -874,6 +880,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     }
                 },
                 y: {
+                    reverse: true,
                     ticks: {
                         autoSkip: false
                     }
@@ -913,6 +920,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     }
                 },
                 y: {
+                    reverse: true,
                     ticks: {
                         autoSkip: false
                     }
