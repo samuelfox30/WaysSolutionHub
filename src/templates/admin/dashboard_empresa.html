@@ -745,7 +745,7 @@ function atualizarGraficos(dadosGrupo) {
 
             if (receitaSemTotal.length > 0) {
                 console.log("CHAMANDO criarGraficoBarrasDuplas...");
-                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal, true, false); // horizontal=true
+                criarGraficoBarrasDuplas('receitaChart', receitaSemTotal, true, false, false); // horizontal=true, mostrarPercHover=false, reverseAxis=false
                 console.log("Gráfico criado!");
             } else {
                 console.log("NENHUM ITEM APÓS FILTRO!");
