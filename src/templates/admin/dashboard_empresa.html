@@ -552,9 +552,14 @@ function atualizarMetricas(dadosGrupo) {
 }
 
 function atualizarGraficos(dadosGrupo) {
+    console.log("🔄 ATUALIZANDO GRÁFICOS - Destruindo gráficos antigos...");
+    console.log("Gráficos existentes:", Object.keys(charts));
+
     // Destruir gráficos antigos
     Object.values(charts).forEach(chart => chart.destroy());
     charts = {};
+
+    console.log("✓ Gráficos destruídos. Iniciando recriação...");
 
     console.log("====== DEBUG DADOS GRUPO ======");
     console.log("Dados completos do grupo:", dadosGrupo);
@@ -855,9 +860,10 @@ function atualizarGraficos(dadosGrupo) {
 }
 
 function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPercHover = false, reverseAxis = false) {
-    console.log(`[criarGraficoBarrasDuplas] Iniciando para ${canvasId}`);
+    console.log(`[criarGraficoBarrasDuplas] ========== INICIANDO ${canvasId} ==========`);
     console.log(`[criarGraficoBarrasDuplas] Dados recebidos:`, dados);
-    console.log(`[criarGraficoBarrasDuplas] horizontal=${horizontal}, mostrarPercHover=${mostrarPercHover}, reverseAxis=${reverseAxis}`);
+    console.log(`[criarGraficoBarrasDuplas] PARÂMETROS: horizontal=${horizontal}, mostrarPercHover=${mostrarPercHover}, reverseAxis=${reverseAxis}`);
+    console.log(`[criarGraficoBarrasDuplas] Valor de reverse que será aplicado: ${!!reverseAxis}`);
 
     const ctx = document.getElementById(canvasId);
     console.log(`[criarGraficoBarrasDuplas] Canvas encontrado:`, !!ctx);
@@ -1020,6 +1026,14 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
             })
         }
     };
+
+    // Log específico dos eixos para debug
+    if (horizontal && config.options.scales) {
+        console.log(`[criarGraficoBarrasDuplas] ⚠️  ATENÇÃO - Configuração dos eixos X:`, {
+            x_reverse: config.options.scales.x?.reverse,
+            x1_reverse: config.options.scales.x1?.reverse
+        });
+    }
 
     console.log(`[criarGraficoBarrasDuplas] Configuração do gráfico:`, config);
     console.log(`[criarGraficoBarrasDuplas] Criando Chart...`);
