@@ -1,0 +1,275 @@
+{% extends "admin/base.html" %}
+
+{% block header_title %}Consultar Dados BPO Financeiro{% endblock %}
+{% block header_subtitle %}Visualize e analise os dados mensais de BPO (Business Process Outsourcing) das empresas{% endblock %}
+
+{% block content %}
+
+<style>
+    :root {
+        --orange-primary: #ff9900;
+        --orange-light: #ffb347;
+        --orange-dark: #cc7a00;
+        --success-color: #28a745;
+    }
+
+    .btn-primary {
+        background-color: var(--orange-primary) !important;
+        border-color: var(--orange-dark) !important;
+    }
+
+    .btn-primary:hover {
+        background-color: var(--orange-dark) !important;
+    }
+
+    .filter-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+    }
+
+    .result-card {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
+        margin-top: 2rem;
+    }
+
+    .result-header {
+        background: linear-gradient(135deg, var(--success-color) 0%, #20c997 100%);
+        color: white;
+        padding: 1.25rem 1.5rem;
+        border-radius: 12px 12px 0 0;
+        font-weight: 600;
+    }
+
+    .info-badge {
+        background-color: #17a2b8;
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #6c757d;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: #dee2e6;
+        margin-bottom: 1rem;
+    }
+
+    .month-badge {
+        background-color: var(--orange-primary);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+</style>
+
+<div class="container-fluid px-4">
+
+    <!-- CARD DE FILTROS -->
+    <div class="filter-card p-4 mb-4">
+        <h5 class="fw-semibold mb-3">
+            <i class="bi bi-funnel-fill text-orange me-2"></i>
+            Filtros de Consulta
+        </h5>
+
+        <form method="POST" action="{{ url_for('admin.consultar_dados_bpo') }}">
+            <div class="row g-3">
+                <!-- Selecionar Empresa -->
+                <div class="col-md-6">
+                    <label for="empresa_id" class="form-label fw-semibold">
+                        <i class="bi bi-building me-1"></i>Empresa *
+                    </label>
+                    <select class="form-select" id="empresa_id" name="empresa_id" required>
+                        <option value="">Selecione uma empresa...</option>
+                        {% for empresa in empresas %}
+                        <option value="{{ empresa.id }}"
+                                {% if empresa_selecionada == empresa.id %}selected{% endif %}>
+                            {{ empresa.nome }} ({{ empresa.cnpj }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Selecionar Ano -->
+                <div class="col-md-3">
+                    <label for="ano" class="form-label fw-semibold">
+                        <i class="bi bi-calendar4 me-1"></i>Ano *
+                    </label>
+                    <input type="number" class="form-control" id="ano" name="ano"
+                           min="2000" max="2100" value="{{ ano_selecionado or 2025 }}" required>
+                </div>
+
+                <!-- Selecionar Mês -->
+                <div class="col-md-3">
+                    <label for="mes" class="form-label fw-semibold">
+                        <i class="bi bi-calendar3 me-1"></i>Mês *
+                    </label>
+                    <select class="form-select" id="mes" name="mes" required>
+                        <option value="">Selecione...</option>
+                        <option value="1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
+                        <option value="2" {% if mes_selecionado == 2 %}selected{% endif %}>Fevereiro</option>
+                        <option value="3" {% if mes_selecionado == 3 %}selected{% endif %}>Março</option>
+                        <option value="4" {% if mes_selecionado == 4 %}selected{% endif %}>Abril</option>
+                        <option value="5" {% if mes_selecionado == 5 %}selected{% endif %}>Maio</option>
+                        <option value="6" {% if mes_selecionado == 6 %}selected{% endif %}>Junho</option>
+                        <option value="7" {% if mes_selecionado == 7 %}selected{% endif %}>Julho</option>
+                        <option value="8" {% if mes_selecionado == 8 %}selected{% endif %}>Agosto</option>
+                        <option value="9" {% if mes_selecionado == 9 %}selected{% endif %}>Setembro</option>
+                        <option value="10" {% if mes_selecionado == 10 %}selected{% endif %}>Outubro</option>
+                        <option value="11" {% if mes_selecionado == 11 %}selected{% endif %}>Novembro</option>
+                        <option value="12" {% if mes_selecionado == 12 %}selected{% endif %}>Dezembro</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-search me-2"></i>Consultar Dados BPO
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- RESULTADOS -->
+    {% if data_results %}
+    <div class="result-card">
+        <div class="result-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <i class="bi bi-file-earmark-text-fill me-2"></i>
+                    Dados BPO Financeiro
+                </div>
+                <div>
+                    <span class="month-badge">
+                        <i class="bi bi-calendar-month me-1"></i>
+                        Mês {{ mes_selecionado }}/{{ ano_selecionado }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-4">
+            <!-- INFORMAÇÃO DE DESENVOLVIMENTO -->
+            <div class="alert alert-info border-0 shadow-sm">
+                <div class="d-flex align-items-start">
+                    <i class="bi bi-info-circle-fill fs-3 me-3"></i>
+                    <div>
+                        <h5 class="alert-heading mb-2">Funcionalidade em Desenvolvimento</h5>
+                        <p class="mb-2">
+                            A consulta de dados BPO Financeiro está estruturada e pronta para receber implementação.
+                        </p>
+                        <hr>
+                        <p class="mb-0 small">
+                            <strong>Status atual:</strong>
+                            {{ data_results.mensagem or 'Aguardando implementação da função de busca no banco de dados' }}
+                        </p>
+                        {% if data_results.empresa_id %}
+                        <p class="mb-0 small mt-2">
+                            <strong>Parâmetros recebidos:</strong><br>
+                            • Empresa ID: {{ data_results.empresa_id }}<br>
+                            • Período: {{ data_results.mes }}/{{ data_results.ano }}
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRÓXIMOS PASSOS -->
+            <div class="alert alert-light border">
+                <h6 class="fw-semibold mb-3">
+                    <i class="bi bi-list-check me-2"></i>
+                    Próximos Passos para Implementação
+                </h6>
+                <ol class="mb-0">
+                    <li class="mb-2">
+                        <strong>Implementar processamento de planilha BPO</strong> em
+                        <code>bpo_file_processing.py</code>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Criar tabelas no banco de dados</strong> para armazenar dados BPO mensais
+                    </li>
+                    <li class="mb-2">
+                        <strong>Implementar função de salvamento</strong> em <code>CompanyManager</code>:
+                        <code>salvar_dados_bpo_empresa()</code>
+                    </li>
+                    <li class="mb-2">
+                        <strong>Implementar função de busca</strong> em <code>CompanyManager</code>:
+                        <code>buscar_dados_bpo_empresa()</code>
+                    </li>
+                    <li class="mb-0">
+                        <strong>Descomentar código nas rotas</strong> <code>admin.py</code> para
+                        conectar ao banco de dados
+                    </li>
+                </ol>
+            </div>
+
+            <!-- MOCKUP DE VISUALIZAÇÃO FUTURA -->
+            <div class="mt-4">
+                <h6 class="fw-semibold text-muted mb-3">
+                    <i class="bi bi-eye me-2"></i>
+                    Preview de Visualização (Mockup)
+                </h6>
+                <div class="alert alert-secondary">
+                    <p class="small mb-2">
+                        <strong>Quando implementado, esta área exibirá:</strong>
+                    </p>
+                    <ul class="small mb-0">
+                        <li>Tabelas com categorias e subcategorias dos dados BPO</li>
+                        <li>Valores financeiros organizados por categoria</li>
+                        <li>Gráficos de análise mensal</li>
+                        <li>Comparação entre meses diferentes</li>
+                        <li>Resumo executivo dos dados</li>
+                        <li>Opções de exportação (PDF, Excel)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- EMPTY STATE (quando nenhuma consulta foi feita) -->
+    {% if not data_results %}
+    <div class="result-card">
+        <div class="empty-state">
+            <i class="bi bi-search"></i>
+            <h5 class="fw-semibold mt-3 mb-2">Nenhuma consulta realizada</h5>
+            <p class="text-muted">
+                Selecione uma empresa, ano e mês acima e clique em "Consultar Dados BPO"
+                para visualizar os dados financeiros mensais.
+            </p>
+            <div class="mt-4">
+                <div class="info-badge">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    Os dados BPO são organizados mensalmente, diferente da viabilidade financeira que é anual
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-focus no select de empresa ao carregar a página
+    const empresaSelect = document.getElementById('empresa_id');
+    if (empresaSelect && empresaSelect.value === '') {
+        empresaSelect.focus();
+    }
+});
+</script>
+
+{% endblock %}

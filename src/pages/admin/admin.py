@@ -577,9 +577,65 @@ def upload_dados():
     return redirect(url_for('admin.gerenciar_empresas'))
 
 
+@admin_bp.route('/admin/upload_bpo', methods=['POST'])
+def upload_dados_bpo():
+    """Recebe upload de arquivo Excel com dados MENSAIS de BPO Financeiro"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    empresa_id = request.form.get('empresa_id')
+    ano = request.form.get('ano')
+    mes = request.form.get('mes')
+    arquivo = request.files.get('arquivo')
+
+    # Validação básica
+    if not empresa_id or not ano or not mes or not arquivo:
+        flash("Todos os campos são obrigatórios para upload de BPO.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    try:
+        # Importar função de processamento de BPO
+        from controllers.data_processing.bpo_file_processing import process_bpo_file
+        from models.company_manager import CompanyManager
+
+        # Processar arquivo Excel de BPO
+        dados_bpo = process_bpo_file(arquivo)
+
+        print("="*80)
+        print(f"UPLOAD BPO - Empresa: {empresa_id} | Ano: {ano} | Mês: {mes}")
+        print(f"Dados processados: {dados_bpo}")
+        print("="*80)
+
+        # ===================================================================
+        # TODO: IMPLEMENTAR SALVAMENTO NO BANCO DE DADOS
+        # ===================================================================
+        # Quando a função de salvamento estiver pronta no CompanyManager,
+        # descomente e ajuste as linhas abaixo:
+        #
+        # company_manager = CompanyManager()
+        # company_manager.salvar_dados_bpo_empresa(
+        #     empresa_id=int(empresa_id),
+        #     ano=int(ano),
+        #     mes=int(mes),
+        #     dados_bpo=dados_bpo
+        # )
+        # company_manager.close()
+        # ===================================================================
+
+        flash(f"Dados de BPO Financeiro (mês {mes}/{ano}) processados com sucesso! "
+              f"Aguardando implementação final do banco de dados.", "info")
+
+    except Exception as e:
+        print(f"Erro ao processar arquivo BPO: {e}")
+        flash(f"Erro ao processar o arquivo BPO: {str(e)}", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
 @admin_bp.route('/admin/consultar', methods=['GET', 'POST'])
 def consultar_dados():
-    """Consulta dados de uma empresa para um ano específico"""
+    """Consulta dados de VIABILIDADE FINANCEIRA de uma empresa para um ano específico"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
@@ -615,9 +671,66 @@ def consultar_dados():
     )
 
 
+@admin_bp.route('/admin/consultar_bpo', methods=['GET', 'POST'])
+def consultar_dados_bpo():
+    """Consulta dados de BPO FINANCEIRO de uma empresa para um período específico"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+
+    company_manager = CompanyManager()
+    empresas = company_manager.listar_todas_empresas()
+
+    data_results = None
+    empresa_selecionada = None
+    ano_selecionado = None
+    mes_selecionado = None
+
+    if request.method == 'POST':
+        empresa_id = request.form.get('empresa_id')
+        ano_selecionado = request.form.get('ano')
+        mes_selecionado = request.form.get('mes')
+
+        if empresa_id and ano_selecionado and mes_selecionado:
+            # ===================================================================
+            # TODO: IMPLEMENTAR BUSCA DE DADOS BPO NO BANCO
+            # ===================================================================
+            # Quando a função de busca estiver pronta no CompanyManager,
+            # descomente e ajuste as linhas abaixo:
+            #
+            # data_results = company_manager.buscar_dados_bpo_empresa(
+            #     int(empresa_id),
+            #     int(ano_selecionado),
+            #     int(mes_selecionado)
+            # )
+            # ===================================================================
+
+            # Dados mockados temporariamente para não dar erro
+            data_results = {
+                'mensagem': 'Busca de dados BPO ainda não implementada',
+                'empresa_id': empresa_id,
+                'ano': ano_selecionado,
+                'mes': mes_selecionado
+            }
+            empresa_selecionada = int(empresa_id)
+
+    company_manager.close()
+
+    return render_template(
+        'admin/consultar_bpo.html',
+        empresas=empresas,
+        data_results=data_results,
+        empresa_selecionada=empresa_selecionada,
+        ano_selecionado=ano_selecionado,
+        mes_selecionado=mes_selecionado
+    )
+
+
 @admin_bp.route('/admin/deletar_dados', methods=['POST'])
 def deletar_dados_empresa():
-    """Exclui todos os dados de uma empresa para um ano específico"""
+    """Exclui todos os dados de VIABILIDADE de uma empresa para um ano específico"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         flash("Acesso negado. Você precisa ser um administrador.", "danger")
         return redirect(url_for('index.login'))
@@ -635,8 +748,43 @@ def deletar_dados_empresa():
     company_manager.close()
 
     if ok:
-        flash(f"Dados da empresa para o ano {ano} foram excluídos com sucesso.", "success")
+        flash(f"Dados de Viabilidade da empresa para o ano {ano} foram excluídos com sucesso.", "success")
     else:
-        flash(f"Erro ao excluir dados da empresa para o ano {ano}.", "danger")
+        flash(f"Erro ao excluir dados de Viabilidade da empresa para o ano {ano}.", "danger")
 
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/deletar_dados_bpo', methods=['POST'])
+def deletar_dados_bpo_empresa():
+    """Exclui todos os dados de BPO de uma empresa para um período específico"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    empresa_id = request.form.get('empresa_id')
+    ano = request.form.get('ano', type=int)
+    mes = request.form.get('mes', type=int)
+
+    if not empresa_id or not ano or not mes:
+        flash("Parâmetros inválidos para exclusão de dados BPO.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # ===================================================================
+    # TODO: IMPLEMENTAR EXCLUSÃO DE DADOS BPO NO BANCO
+    # ===================================================================
+    # Quando a função estiver pronta no CompanyManager, descomente:
+    #
+    # from models.company_manager import CompanyManager
+    # company_manager = CompanyManager()
+    # ok = company_manager.excluir_dados_bpo_empresa(int(empresa_id), ano, mes)
+    # company_manager.close()
+    #
+    # if ok:
+    #     flash(f"Dados de BPO para {mes}/{ano} foram excluídos com sucesso.", "success")
+    # else:
+    #     flash(f"Erro ao excluir dados de BPO para {mes}/{ano}.", "danger")
+    # ===================================================================
+
+    flash(f"Função de exclusão de dados BPO ainda não implementada (Empresa {empresa_id}, {mes}/{ano}).", "info")
     return redirect(url_for('admin.gerenciar_empresas'))

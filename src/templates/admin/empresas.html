@@ -265,34 +265,170 @@
     </div>
 </div>
 
-<!-- MODAL UPLOAD DADOS -->
+<!-- MODAL UPLOAD DADOS - COM TABS PARA VIABILIDADE E BPO -->
 <div class="modal fade" id="uploadDadosModal" tabindex="-1">
-    <div class="modal-dialog">
-        <form class="modal-content" id="upload-form" method="post" action="{{ url_for('admin.upload_dados') }}" enctype="multipart/form-data">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Upload de Dados</h5>
+                <h5 class="modal-title">
+                    <i class="bi bi-upload me-2"></i>Upload de Dados Financeiros
+                </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Empresa: <strong id="uploadEmpresaNome"></strong></p>
-                <input type="hidden" id="uploadEmpresaId" name="empresa_id">
                 <div class="mb-3">
-                    <label for="anoInput" class="form-label">Ano *</label>
-                    <input type="number" class="form-control" id="anoInput" name="ano" min="2000" max="2100" value="2025" required>
+                    <p class="mb-2">Empresa: <strong id="uploadEmpresaNome"></strong></p>
+                    <div class="alert alert-info py-2 px-3 mb-0">
+                        <small>
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Viabilidade:</strong> Dados anuais | <strong>BPO:</strong> Dados mensais
+                        </small>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label for="arquivoUpload" class="form-label">Arquivo Excel *</label>
-                    <input type="file" class="form-control" id="arquivoUpload" name="arquivo" accept=".xlsx,.xls" required>
-                    <div class="form-text">Formatos aceitos: .xlsx, .xls</div>
+
+                <!-- TABS DE NAVEGAÇÃO -->
+                <ul class="nav nav-tabs mb-3" id="uploadTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="viabilidade-tab" data-bs-toggle="tab"
+                                data-bs-target="#viabilidade-content" type="button" role="tab">
+                            <i class="bi bi-graph-up me-1"></i>
+                            Viabilidade Financeira
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bpo-tab" data-bs-toggle="tab"
+                                data-bs-target="#bpo-content" type="button" role="tab">
+                            <i class="bi bi-calendar-month me-1"></i>
+                            BPO Financeiro
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- CONTEÚDO DAS TABS -->
+                <div class="tab-content" id="uploadTabsContent">
+
+                    <!-- TAB 1: VIABILIDADE FINANCEIRA (ANUAL) -->
+                    <div class="tab-pane fade show active" id="viabilidade-content" role="tabpanel">
+                        <form id="upload-form-viabilidade" method="post"
+                              action="{{ url_for('admin.upload_dados') }}"
+                              enctype="multipart/form-data">
+                            <input type="hidden" id="uploadEmpresaIdViabilidade" name="empresa_id">
+
+                            <div class="alert alert-light border">
+                                <h6 class="fw-semibold mb-2">
+                                    <i class="bi bi-bar-chart-line text-primary me-1"></i>
+                                    Dados de Viabilidade Financeira
+                                </h6>
+                                <p class="small text-muted mb-0">
+                                    Upload de dados anuais de viabilidade financeira da empresa.
+                                    Os dados são processados por cenários (Real, Ponto de Equilíbrio, Ideal).
+                                </p>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="anoInputViabilidade" class="form-label">
+                                    <i class="bi bi-calendar4 me-1"></i>Ano *
+                                </label>
+                                <input type="number" class="form-control" id="anoInputViabilidade"
+                                       name="ano" min="2000" max="2100" value="2025" required>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="arquivoUploadViabilidade" class="form-label">
+                                    <i class="bi bi-file-earmark-excel me-1"></i>Arquivo Excel *
+                                </label>
+                                <input type="file" class="form-control" id="arquivoUploadViabilidade"
+                                       name="arquivo" accept=".xlsx,.xls" required>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Formatos aceitos: .xlsx, .xls
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-upload me-2"></i>Enviar Dados de Viabilidade
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- TAB 2: BPO FINANCEIRO (MENSAL) -->
+                    <div class="tab-pane fade" id="bpo-content" role="tabpanel">
+                        <form id="upload-form-bpo" method="post"
+                              action="{{ url_for('admin.upload_dados_bpo') }}"
+                              enctype="multipart/form-data">
+                            <input type="hidden" id="uploadEmpresaIdBpo" name="empresa_id">
+
+                            <div class="alert alert-light border">
+                                <h6 class="fw-semibold mb-2">
+                                    <i class="bi bi-calendar-range text-success me-1"></i>
+                                    Dados de BPO Financeiro
+                                </h6>
+                                <p class="small text-muted mb-0">
+                                    Upload de dados mensais de BPO (Business Process Outsourcing) financeiro.
+                                    Selecione o mês e ano correspondente aos dados.
+                                </p>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-4">
+                                    <label for="mesInputBpo" class="form-label">
+                                        <i class="bi bi-calendar3 me-1"></i>Mês *
+                                    </label>
+                                    <select class="form-select" id="mesInputBpo" name="mes" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="1">Janeiro</option>
+                                        <option value="2">Fevereiro</option>
+                                        <option value="3">Março</option>
+                                        <option value="4">Abril</option>
+                                        <option value="5">Maio</option>
+                                        <option value="6">Junho</option>
+                                        <option value="7">Julho</option>
+                                        <option value="8">Agosto</option>
+                                        <option value="9">Setembro</option>
+                                        <option value="10">Outubro</option>
+                                        <option value="11">Novembro</option>
+                                        <option value="12">Dezembro</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-8">
+                                    <label for="anoInputBpo" class="form-label">
+                                        <i class="bi bi-calendar4 me-1"></i>Ano *
+                                    </label>
+                                    <input type="number" class="form-control" id="anoInputBpo"
+                                           name="ano" min="2000" max="2100" value="2025" required>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="arquivoUploadBpo" class="form-label">
+                                    <i class="bi bi-file-earmark-excel me-1"></i>Arquivo Excel *
+                                </label>
+                                <input type="file" class="form-control" id="arquivoUploadBpo"
+                                       name="arquivo" accept=".xlsx,.xls" required>
+                                <div class="form-text">
+                                    <i class="bi bi-info-circle me-1"></i>
+                                    Formatos aceitos: .xlsx, .xls
+                                </div>
+                            </div>
+
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="bi bi-upload me-2"></i>Enviar Dados de BPO
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="submit" id="submit-button" class="btn btn-info">
-                    <i class="bi bi-upload me-1"></i>Enviar
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Fechar
                 </button>
             </div>
-        </form>
+        </div>
     </div>
 </div>
 
@@ -476,8 +612,23 @@ function showDeleteEmpresaModal(id, nome) {
 
 function abrirUploadModal(empresaId, empresaNome) {
     const modal = new bootstrap.Modal(document.getElementById('uploadDadosModal'));
-    document.getElementById('uploadEmpresaId').value = empresaId;
+
+    // Preencher nome da empresa
     document.getElementById('uploadEmpresaNome').textContent = empresaNome;
+
+    // Preencher empresa_id nos dois formulários (Viabilidade e BPO)
+    document.getElementById('uploadEmpresaIdViabilidade').value = empresaId;
+    document.getElementById('uploadEmpresaIdBpo').value = empresaId;
+
+    // Reset para a primeira tab (Viabilidade)
+    const viabilidadeTab = document.getElementById('viabilidade-tab');
+    const viabilidadeContent = document.getElementById('viabilidade-content');
+    const bpoContent = document.getElementById('bpo-content');
+
+    viabilidadeTab.classList.add('active');
+    viabilidadeContent.classList.add('show', 'active');
+    bpoContent.classList.remove('show', 'active');
+
     modal.show();
 }
 
@@ -521,11 +672,21 @@ function atualizarFormsAno() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const uploadForm = document.getElementById('upload-form');
+    // Loading overlay para AMBOS os formulários de upload
+    const uploadFormViabilidade = document.getElementById('upload-form-viabilidade');
+    const uploadFormBpo = document.getElementById('upload-form-bpo');
     const loadingOverlay = document.getElementById('loading-overlay');
 
-    if (uploadForm && loadingOverlay) {
-        uploadForm.addEventListener('submit', function() {
+    // Adicionar loading ao form de Viabilidade
+    if (uploadFormViabilidade && loadingOverlay) {
+        uploadFormViabilidade.addEventListener('submit', function() {
+            loadingOverlay.classList.add('active');
+        });
+    }
+
+    // Adicionar loading ao form de BPO
+    if (uploadFormBpo && loadingOverlay) {
+        uploadFormBpo.addEventListener('submit', function() {
             loadingOverlay.classList.add('active');
         });
     }
