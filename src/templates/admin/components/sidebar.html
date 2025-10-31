@@ -33,15 +33,22 @@
             </a>
         </li>
 
-        <!-- DADOS -->
+        <!-- DADOS FINANCEIROS -->
         <li class="mb-2 mt-3">
             <small class="text-muted text-uppercase fw-bold px-3">Dados Financeiros</small>
         </li>
         <li class="nav-item">
             <a href="{{ url_for('admin.consultar_dados') }}"
                class="nav-link {% if request.endpoint == 'admin.consultar_dados' %}active{% endif %}">
-                <i class="bi bi-table me-2"></i>
-                <span>Consultar Dados</span>
+                <i class="bi bi-graph-up-arrow me-2"></i>
+                <span>Viabilidade Financeira</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ url_for('admin.consultar_dados_bpo') }}"
+               class="nav-link {% if request.endpoint == 'admin.consultar_dados_bpo' %}active{% endif %}">
+                <i class="bi bi-calendar-check me-2"></i>
+                <span>BPO Financeiro</span>
             </a>
         </li>
 
