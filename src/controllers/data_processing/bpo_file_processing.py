@@ -190,44 +190,150 @@ def converter_valor(valor):
 
 def exibir_resumo_processamento(dados):
     """
-    Exibe um resumo visual dos dados processados
+    Exibe um resumo visual dos dados processados de forma bem legível
     """
-    print("\n" + "="*80)
-    print("RESUMO DO PROCESSAMENTO")
-    print("="*80)
+    print("\n" + "="*100)
+    print(" "*40 + "RESUMO DO PROCESSAMENTO")
+    print("="*100)
 
     # Metadados
     meta = dados.get('metadados', {})
     print(f"\n📊 METADADOS:")
-    print(f"   • Total de colunas: {meta.get('total_colunas')}")
-    print(f"   • Número de meses: {meta.get('num_meses')}")
-    print(f"   • Meses: {', '.join(meta.get('meses', []))}")
+    print(f"   • Total de colunas na planilha: {meta.get('total_colunas')}")
+    print(f"   • Número de meses detectados: {meta.get('num_meses')}")
+    print(f"   • Meses processados: {', '.join(meta.get('meses', []))}")
     print(f"   • Total de itens hierárquicos: {meta.get('total_itens')}")
     print(f"   • Total de linhas de resultados: {meta.get('total_resultados')}")
 
-    # Primeiros 5 itens hierárquicos
+    # ========================================================================
+    # EXIBIR ITENS HIERÁRQUICOS (ESTILO TABELA)
+    # ========================================================================
     itens = dados.get('itens_hierarquicos', [])
-    print(f"\n📋 PRIMEIROS 5 ITENS HIERÁRQUICOS:")
-    for i, item in enumerate(itens[:5]):
-        indent = "  " * item['nivel_hierarquia']
-        print(f"   {i+1}. {indent}[{item['codigo']}] {item['nome']}")
-        print(f"      {indent}└─ Viabilidade: {item['viabilidade']['percentual']}% | R$ {item['viabilidade']['valor']}")
 
-    # Resumo da seção de resultados
+    print("\n" + "="*100)
+    print("📋 ITENS HIERÁRQUICOS (Primeiras 10 linhas comparadas com Excel)")
+    print("="*100)
+
+    num_meses = meta.get('num_meses', 0)
+
+    for i, item in enumerate(itens[:10]):
+        linha_excel = item['linha']
+        codigo = item['codigo']
+        nome = item['nome']
+        nivel = item['nivel_hierarquia']
+
+        # Indentação visual conforme hierarquia
+        indent = "  " * nivel
+
+        print(f"\n{'─'*100}")
+        print(f"LINHA {linha_excel} (Excel) | Nível {nivel} | Código: {codigo}")
+        print(f"{'─'*100}")
+        print(f"{indent}📌 NOME: {nome}")
+
+        # Viabilidade
+        viab = item['viabilidade']
+        print(f"{indent}├─ VIABILIDADE:")
+        print(f"{indent}│  • Percentual: {formatar_numero(viab['percentual'])}%")
+        print(f"{indent}│  • Valor: R$ {formatar_numero(viab['valor'])}")
+
+        # Dados mensais
+        if num_meses > 0:
+            print(f"{indent}├─ DADOS MENSAIS:")
+            for mes_data in item['dados_mensais']:
+                mes_nome = mes_data['mes_nome']
+                print(f"{indent}│  └─ {mes_nome}:")
+                print(f"{indent}│     • % Realizado: {formatar_numero(mes_data['perc_realizado'])}%")
+                print(f"{indent}│     • Valor Realizado: R$ {formatar_numero(mes_data['valor_realizado'])}")
+                print(f"{indent}│     • % Atingido: {formatar_numero(mes_data['perc_atingido'])}%")
+                print(f"{indent}│     • Valor Diferença: R$ {formatar_numero(mes_data['valor_diferenca'])}")
+
+        # Resultados totais
+        res = item['resultados_totais']
+        print(f"{indent}└─ RESULTADOS TOTAIS:")
+        print(f"{indent}   • Previsão Total: R$ {formatar_numero(res['previsao_total'])}")
+        print(f"{indent}   • Total Realizado: R$ {formatar_numero(res['total_realizado'])}")
+        print(f"{indent}   • Diferença Total: R$ {formatar_numero(res['diferenca_total'])}")
+        print(f"{indent}   • Média % Realizado: {formatar_numero(res['media_perc_realizado'])}%")
+        print(f"{indent}   • Média Valor Realizado: R$ {formatar_numero(res['media_valor_realizado'])}")
+        print(f"{indent}   • Média % Diferença: {formatar_numero(res['media_perc_diferenca'])}%")
+        print(f"{indent}   • Média Valor Diferença: R$ {formatar_numero(res['media_valor_diferenca'])}")
+
+    if len(itens) > 10:
+        print(f"\n... (e mais {len(itens) - 10} itens não exibidos)")
+
+    # ========================================================================
+    # EXIBIR SEÇÃO RESULTADO POR FLUXO DE CAIXA
+    # ========================================================================
     resultados = dados.get('resultados_fluxo', {}).get('secoes', [])
     if resultados:
-        print(f"\n📈 SEÇÃO RESULTADO POR FLUXO DE CAIXA ({len(resultados)} linhas):")
-        for i, item in enumerate(resultados[:10]):  # Mostrar primeiras 10
-            if item.get('tipo') == 'titulo':
-                print(f"   {i+1}. 📌 TÍTULO: {item['texto']}")
-            else:
-                nome = item.get('nome', 'N/A')
-                previsao = item.get('resultados_totais', {}).get('previsao_total')
-                realizado = item.get('resultados_totais', {}).get('total_realizado')
-                print(f"   {i+1}. {nome}")
-                print(f"      └─ Previsão: R$ {previsao} | Realizado: R$ {realizado}")
+        print("\n" + "="*100)
+        print("📈 SEÇÃO: RESULTADO POR FLUXO DE CAIXA")
+        print("="*100)
 
-    print("\n" + "="*80)
+        for i, item in enumerate(resultados):
+            linha_excel = item.get('linha', 'N/A')
+
+            if item.get('tipo') == 'titulo':
+                # É um título
+                print(f"\n{'═'*100}")
+                print(f"LINHA {linha_excel} (Excel) | TÍTULO")
+                print(f"{'═'*100}")
+                print(f"📌 {item['texto']}")
+            else:
+                # É uma linha com dados
+                nome = item.get('nome', 'N/A')
+
+                print(f"\n{'─'*100}")
+                print(f"LINHA {linha_excel} (Excel) | {nome}")
+                print(f"{'─'*100}")
+
+                # Viabilidade
+                viab = item['viabilidade']
+                print(f"├─ VIABILIDADE:")
+                print(f"│  • Percentual: {formatar_numero(viab['percentual'])}%")
+                print(f"│  • Valor: R$ {formatar_numero(viab['valor'])}")
+
+                # Dados mensais
+                if num_meses > 0 and item.get('dados_mensais'):
+                    print(f"├─ DADOS MENSAIS:")
+                    for mes_data in item['dados_mensais']:
+                        mes_nome = mes_data['mes_nome']
+                        print(f"│  └─ {mes_nome}:")
+                        print(f"│     • % Realizado: {formatar_numero(mes_data['perc_realizado'])}%")
+                        print(f"│     • Valor Realizado: R$ {formatar_numero(mes_data['valor_realizado'])}")
+                        print(f"│     • % Atingido: {formatar_numero(mes_data['perc_atingido'])}%")
+                        print(f"│     • Valor Diferença: R$ {formatar_numero(mes_data['valor_diferenca'])}")
+
+                # Resultados totais
+                res = item['resultados_totais']
+                print(f"└─ RESULTADOS TOTAIS:")
+                print(f"   • Previsão Total: R$ {formatar_numero(res['previsao_total'])}")
+                print(f"   • Total Realizado: R$ {formatar_numero(res['total_realizado'])}")
+                print(f"   • Diferença Total: R$ {formatar_numero(res['diferenca_total'])}")
+                print(f"   • Média % Realizado: {formatar_numero(res['media_perc_realizado'])}%")
+                print(f"   • Média Valor Realizado: R$ {formatar_numero(res['media_valor_realizado'])}")
+                print(f"   • Média % Diferença: {formatar_numero(res['media_perc_diferenca'])}%")
+                print(f"   • Média Valor Diferença: R$ {formatar_numero(res['media_valor_diferenca'])}")
+
+    print("\n" + "="*100)
+
+
+def formatar_numero(valor):
+    """
+    Formata um número para exibição legível (ou 'N/A' se None)
+    """
+    if valor is None:
+        return "N/A"
+
+    # Se for um número muito pequeno (perto de zero), exibir como 0.00
+    if isinstance(valor, (int, float)) and abs(valor) < 0.01:
+        return "0.00"
+
+    # Formatar com 2 casas decimais e separador de milhares
+    try:
+        return f"{float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (ValueError, TypeError):
+        return str(valor)
 
 
 # ============================================================================
