@@ -17,6 +17,103 @@ from openpyxl import load_workbook
 # FUNÇÕES AUXILIARES
 # ============================================================================
 
+def mapear_colunas(cabecalho_linha2, cabecalho_linha3):
+    """
+    Mapeia dinamicamente as colunas baseado no cabeçalho multi-nível.
+
+    Args:
+        cabecalho_linha2: Lista com valores da linha 2 (categorias principais)
+        cabecalho_linha3: Lista com valores da linha 3 (sub-métricas)
+
+    Returns:
+        dict: Mapeamento de colunas
+    """
+
+    mapeamento = {
+        'col_natureza': 0,  # Coluna 0 (índice) = Coluna A (Excel)
+        'col_viab_perc': None,
+        'col_viab_valor': None,
+        'meses': [],
+        'resultados': {}
+    }
+
+    # Processar cabeçalho
+    mes_atual = None
+    colunas_mes_atual = {}
+
+    for idx, (cat_principal, sub_metrica) in enumerate(zip(cabecalho_linha2, cabecalho_linha3)):
+        # Normalizar valores
+        cat_str = str(cat_principal).strip().upper() if cat_principal else ""
+        sub_str = str(sub_metrica).strip().upper() if sub_metrica else ""
+
+        # Coluna NATUREZA ou NATUREZA DE LANÇAMENTO
+        if "NATUREZA" in cat_str:
+            mapeamento['col_natureza'] = idx
+            continue
+
+        # Coluna VIABILIDADE
+        if "VIABILIDADE" in cat_str:
+            if "%" in sub_str or "PERCENT" in sub_str:
+                mapeamento['col_viab_perc'] = idx
+            elif "VALOR" in sub_str:
+                mapeamento['col_viab_valor'] = idx
+            continue
+
+        # Detectar meses
+        meses_possiveis = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO',
+                          'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
+
+        # Verificar se é um mês
+        eh_mes = False
+        for mes_nome in meses_possiveis:
+            if mes_nome in cat_str:
+                eh_mes = True
+                # Se mudou de mês, salvar o anterior
+                if mes_atual and mes_atual != cat_str:
+                    if colunas_mes_atual:
+                        mapeamento['meses'].append({
+                            'nome': mes_atual.title(),
+                            **colunas_mes_atual
+                        })
+                        colunas_mes_atual = {}
+
+                mes_atual = cat_str
+                break
+
+        if eh_mes:
+            # Mapear sub-colunas do mês
+            if "%" in sub_str and "ATINGIDO" not in sub_str and "DIFERENÇA" not in sub_str and "DIFERENCA" not in sub_str:
+                # % simples = % Realizado
+                colunas_mes_atual['col_perc'] = idx
+            elif "VALOR" in sub_str and "REALIZADO" in sub_str:
+                colunas_mes_atual['col_valor'] = idx
+            elif "ATINGIDO" in sub_str:
+                colunas_mes_atual['col_atingido'] = idx
+            elif "DIFERENÇA" in sub_str or "DIFERENCA" in sub_str:
+                colunas_mes_atual['col_diferenca'] = idx
+            continue
+
+        # Detectar colunas de resultados/totais
+        if ("ORÇADO" in cat_str or "ORCADO" in cat_str or "PREVISÃO" in cat_str or "PREVISAO" in cat_str) and "TOTAL" in cat_str:
+            mapeamento['resultados']['previsao_total'] = idx
+        elif "REALIZADO" in cat_str and "TOTAL" in cat_str:
+            mapeamento['resultados']['total_realizado'] = idx
+        elif "DIFERENÇA" in cat_str or "DIFERENCA" in cat_str:
+            if "TOTAL" in cat_str:
+                mapeamento['resultados']['diferenca_total'] = idx
+        elif "PENDENTE" in cat_str:
+            mapeamento['resultados']['pendente_total'] = idx
+
+    # Salvar último mês
+    if mes_atual and colunas_mes_atual:
+        mapeamento['meses'].append({
+            'nome': mes_atual.title(),
+            **colunas_mes_atual
+        })
+
+    return mapeamento
+
+
 def extrair_codigo_e_nome(texto):
     """
     Extrai código hierárquico e nome de um texto como "1.01.06 - PMW RECEITA VENDA SERVIÇO"
@@ -43,15 +140,14 @@ def extrair_codigo_e_nome(texto):
     return codigo, nome, nivel
 
 
-def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha):
+def processar_item_hierarquico(col_a, row_values, mapeamento, linha):
     """
-    Processa um item hierárquico (linha normal da planilha)
+    Processa um item hierárquico (linha normal da planilha) usando mapeamento dinâmico
 
     Args:
         col_a: Valor da coluna A (código e nome)
         row_values: Lista com todos os valores da linha
-        num_meses: Número de meses detectados
-        meses_nomes: Lista com nomes dos meses
+        mapeamento: Dicionário com mapeamento de colunas
         linha: Número da linha atual
 
     Returns:
@@ -60,52 +156,39 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     # Extrair código e nome
     codigo, nome, nivel = extrair_codigo_e_nome(col_a)
 
-    # Extrair viabilidade (colunas B e C, índices 1 e 2)
-    perc_viabilidade = row_values[1] if len(row_values) > 1 else None
-    valor_viabilidade = row_values[2] if len(row_values) > 2 else None
+    # Extrair viabilidade usando mapeamento
+    perc_viabilidade = None
+    valor_viabilidade = None
 
-    # Converter valores de viabilidade
-    if perc_viabilidade is not None:
-        try:
-            perc_viabilidade = float(perc_viabilidade)
-        except (ValueError, TypeError):
-            perc_viabilidade = None
+    if mapeamento['col_viab_perc'] is not None:
+        perc_viabilidade = converter_valor(row_values[mapeamento['col_viab_perc']])
 
-    if valor_viabilidade is not None:
-        try:
-            valor_viabilidade = float(valor_viabilidade)
-        except (ValueError, TypeError):
-            valor_viabilidade = None
+    if mapeamento['col_viab_valor'] is not None:
+        valor_viabilidade = converter_valor(row_values[mapeamento['col_viab_valor']])
 
-    # Processar dados mensais
+    # Processar dados mensais usando mapeamento
     dados_meses = []
-    col_inicio_mes = 3  # Coluna D (índice 3)
 
-    for i in range(num_meses):
-        idx_base = col_inicio_mes + (i * 4)
-
-        # Cada mês tem 4 colunas: % realizado, valor realizado, % atingido, valor diferença
+    for i, mes_info in enumerate(mapeamento['meses']):
         mes_data = {
             'mes_numero': i + 1,
-            'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
-            'perc_realizado': converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None,
-            'valor_realizado': converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None,
-            'perc_atingido': converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None,
-            'valor_diferenca': converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None,
+            'mes_nome': mes_info['nome'],
+            'perc_realizado': converter_valor(row_values[mes_info.get('col_perc')]) if mes_info.get('col_perc') is not None else None,
+            'valor_realizado': converter_valor(row_values[mes_info.get('col_valor')]) if mes_info.get('col_valor') is not None else None,
+            'perc_atingido': converter_valor(row_values[mes_info.get('col_atingido')]) if mes_info.get('col_atingido') is not None else None,
+            'valor_diferenca': converter_valor(row_values[mes_info.get('col_diferenca')]) if mes_info.get('col_diferenca') is not None else None,
         }
         dados_meses.append(mes_data)
 
-    # Processar resultados totais (últimas 7 colunas)
-    idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
-
+    # Processar resultados totais usando mapeamento
     resultados = {
-        'previsao_total': converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None,
-        'total_realizado': converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None,
-        'diferenca_total': converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None,
-        'media_perc_realizado': converter_valor(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
-        'media_valor_realizado': converter_valor(row_values[idx_resultados_inicio + 4]) if idx_resultados_inicio + 4 < len(row_values) else None,
-        'media_perc_diferenca': converter_valor(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
-        'media_valor_diferenca': converter_valor(row_values[idx_resultados_inicio + 6]) if idx_resultados_inicio + 6 < len(row_values) else None,
+        'previsao_total': converter_valor(row_values[mapeamento['resultados'].get('previsao_total')]) if mapeamento['resultados'].get('previsao_total') is not None else None,
+        'total_realizado': converter_valor(row_values[mapeamento['resultados'].get('total_realizado')]) if mapeamento['resultados'].get('total_realizado') is not None else None,
+        'diferenca_total': converter_valor(row_values[mapeamento['resultados'].get('diferenca_total')]) if mapeamento['resultados'].get('diferenca_total') is not None else None,
+        'media_perc_realizado': None,  # Não tem no cabeçalho descrito
+        'media_valor_realizado': None,
+        'media_perc_diferenca': None,
+        'media_valor_diferenca': None,
     }
 
     return {
@@ -122,46 +205,47 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     }
 
 
-def processar_linha_resultado(col_a, row_values, num_meses, meses_nomes, linha):
+def processar_linha_resultado(col_a, row_values, mapeamento, linha):
     """
-    Processa uma linha da seção RESULTADO POR FLUXO DE CAIXA
+    Processa uma linha da seção RESULTADO POR FLUXO DE CAIXA usando mapeamento dinâmico
 
     Similar a processar_item_hierarquico, mas sem hierarquia
     """
     nome = str(col_a).strip()
 
-    # Extrair viabilidade
-    perc_viabilidade = converter_valor(row_values[1]) if len(row_values) > 1 else None
-    valor_viabilidade = converter_valor(row_values[2]) if len(row_values) > 2 else None
+    # Extrair viabilidade usando mapeamento
+    perc_viabilidade = None
+    valor_viabilidade = None
 
-    # Processar dados mensais
+    if mapeamento['col_viab_perc'] is not None:
+        perc_viabilidade = converter_valor(row_values[mapeamento['col_viab_perc']])
+
+    if mapeamento['col_viab_valor'] is not None:
+        valor_viabilidade = converter_valor(row_values[mapeamento['col_viab_valor']])
+
+    # Processar dados mensais usando mapeamento
     dados_meses = []
-    col_inicio_mes = 3
 
-    for i in range(num_meses):
-        idx_base = col_inicio_mes + (i * 4)
-
+    for i, mes_info in enumerate(mapeamento['meses']):
         mes_data = {
             'mes_numero': i + 1,
-            'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
-            'perc_realizado': converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None,
-            'valor_realizado': converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None,
-            'perc_atingido': converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None,
-            'valor_diferenca': converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None,
+            'mes_nome': mes_info['nome'],
+            'perc_realizado': converter_valor(row_values[mes_info.get('col_perc')]) if mes_info.get('col_perc') is not None else None,
+            'valor_realizado': converter_valor(row_values[mes_info.get('col_valor')]) if mes_info.get('col_valor') is not None else None,
+            'perc_atingido': converter_valor(row_values[mes_info.get('col_atingido')]) if mes_info.get('col_atingido') is not None else None,
+            'valor_diferenca': converter_valor(row_values[mes_info.get('col_diferenca')]) if mes_info.get('col_diferenca') is not None else None,
         }
         dados_meses.append(mes_data)
 
-    # Processar resultados
-    idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
-
+    # Processar resultados usando mapeamento
     resultados = {
-        'previsao_total': converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None,
-        'total_realizado': converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None,
-        'diferenca_total': converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None,
-        'media_perc_realizado': converter_valor(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
-        'media_valor_realizado': converter_valor(row_values[idx_resultados_inicio + 4]) if idx_resultados_inicio + 4 < len(row_values) else None,
-        'media_perc_diferenca': converter_valor(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
-        'media_valor_diferenca': converter_valor(row_values[idx_resultados_inicio + 6]) if idx_resultados_inicio + 6 < len(row_values) else None,
+        'previsao_total': converter_valor(row_values[mapeamento['resultados'].get('previsao_total')]) if mapeamento['resultados'].get('previsao_total') is not None else None,
+        'total_realizado': converter_valor(row_values[mapeamento['resultados'].get('total_realizado')]) if mapeamento['resultados'].get('total_realizado') is not None else None,
+        'diferenca_total': converter_valor(row_values[mapeamento['resultados'].get('diferenca_total')]) if mapeamento['resultados'].get('diferenca_total') is not None else None,
+        'media_perc_realizado': None,
+        'media_valor_realizado': None,
+        'media_perc_diferenca': None,
+        'media_valor_diferenca': None,
     }
 
     return {
@@ -372,28 +456,50 @@ def process_bpo_file(file):
         sheet = wb.active
 
         # ====================================================================
-        # PASSO 1: IDENTIFICAR ESTRUTURA DA PLANILHA
+        # PASSO 1: LER CABEÇALHO MULTI-NÍVEL (LINHAS 2 e 3)
         # ====================================================================
+        print(f"\n🔍 Lendo cabeçalho da planilha...")
+
+        # Linha 2: Categorias principais (NATUREZA, VIABILIDADE, JANEIRO, FEVEREIRO, etc.)
+        # Linha 3: Sub-métricas (%, VALOR, %, VALOR REALIZADO, % ATINGIDO, VALOR DIFERENÇA)
+
+        cabecalho_linha2 = []
+        cabecalho_linha3 = []
+
         total_colunas = sheet.max_column
-        print(f"\n📊 Total de colunas encontradas: {total_colunas}")
 
-        # Calcular número de meses
-        # Total - 3 (nome + 2 viabilidade) - 7 (resultados) = colunas mensais
-        colunas_mensais = total_colunas - 3 - 7
-        num_meses = colunas_mensais // 4
+        for col in range(1, total_colunas + 1):
+            val2 = sheet.cell(row=2, column=col).value
+            val3 = sheet.cell(row=3, column=col).value
+            cabecalho_linha2.append(val2)
+            cabecalho_linha3.append(val3)
 
-        print(f"📅 Número de meses detectados: {num_meses}")
-        print(f"📈 Estrutura: 3 fixas + {colunas_mensais} mensais ({num_meses} meses) + 7 resultados")
-
-        # Nomes dos meses
-        meses_nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+        print(f"📊 Total de colunas: {total_colunas}")
 
         # ====================================================================
-        # PASSO 2: PROCESSAR ITENS HIERÁRQUICOS (LINHA 4 ATÉ "RESULTADO...")
+        # PASSO 2: MAPEAR COLUNAS DINAMICAMENTE
+        # ====================================================================
+        print(f"\n🗺️  Mapeando estrutura das colunas...")
+
+        mapeamento = mapear_colunas(cabecalho_linha2, cabecalho_linha3)
+
+        print(f"   • Coluna Natureza: {mapeamento['col_natureza']}")
+        print(f"   • Colunas Viabilidade: {mapeamento['col_viab_perc']}, {mapeamento['col_viab_valor']}")
+        print(f"   • Número de meses: {len(mapeamento['meses'])}")
+
+        for mes_info in mapeamento['meses']:
+            print(f"      - {mes_info['nome']}: Colunas {mes_info['col_perc']}, {mes_info['col_valor']}, {mes_info['col_atingido']}, {mes_info['col_diferenca']}")
+
+        print(f"   • Colunas Resultados: {mapeamento['resultados']}")
+
+        num_meses = len(mapeamento['meses'])
+        meses_nomes = [m['nome'] for m in mapeamento['meses']]
+
+        # ====================================================================
+        # PASSO 3: PROCESSAR ITENS HIERÁRQUICOS (LINHA 4 ATÉ "RESULTADO...")
         # ====================================================================
         itens_hierarquicos = []
-        linha_atual = 4  # Começa na linha 4
+        linha_atual = 4  # Começa na linha 4 (dados começam após cabeçalho)
 
         print(f"\n🔍 Processando itens hierárquicos...")
 
@@ -419,8 +525,7 @@ def process_bpo_file(file):
                 item = processar_item_hierarquico(
                     col_a,
                     row_values,
-                    num_meses,
-                    meses_nomes,
+                    mapeamento,
                     linha_atual
                 )
                 itens_hierarquicos.append(item)
@@ -465,8 +570,7 @@ def process_bpo_file(file):
                         item_resultado = processar_linha_resultado(
                             col_a,
                             row_values,
-                            num_meses,
-                            meses_nomes,
+                            mapeamento,
                             linha_atual
                         )
                         secoes_resultado.append(item_resultado)
