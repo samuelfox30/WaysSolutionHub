@@ -140,7 +140,7 @@ def extrair_codigo_e_nome(texto):
     return codigo, nome, nivel
 
 
-def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha):
+def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha, mostrar_debug=False):
     """
     Processa um item hierárquico (linha normal da planilha) com índices FIXOS
 
@@ -157,6 +157,7 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
         num_meses: Número de meses
         meses_nomes: Lista com nomes dos meses
         linha: Número da linha atual
+        mostrar_debug: Se True, exibe prints detalhados (padrão: False)
 
     Returns:
         dict: Dados estruturados do item
@@ -164,18 +165,20 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     # Extrair código e nome
     codigo, nome, nivel = extrair_codigo_e_nome(col_a)
 
-    # DEBUG: Mostrar nome da linha
-    print(f"\n🔍 LINHA {linha} - {nome}")
+    # DEBUG: Mostrar nome da linha (apenas se debug ativado)
+    if mostrar_debug:
+        print(f"\n🔍 LINHA {linha} - {nome}")
 
     # Extrair viabilidade (índices FIXOS: 1 e 2)
     perc_viabilidade = converter_valor(row_values[1]) if len(row_values) > 1 else None
     valor_viabilidade = converter_valor(row_values[2]) if len(row_values) > 2 else None
 
-    # DEBUG: Mostrar células de viabilidade
-    col_letter_perc = chr(66)  # B
-    col_letter_valor = chr(67)  # C
-    print(f"   {col_letter_perc}{linha} (% Viab) = {row_values[1]} → {perc_viabilidade}")
-    print(f"   {col_letter_valor}{linha} (Valor Viab) = {row_values[2]} → {valor_viabilidade}")
+    # DEBUG: Mostrar células de viabilidade (apenas se debug ativado)
+    if mostrar_debug:
+        col_letter_perc = chr(66)  # B
+        col_letter_valor = chr(67)  # C
+        print(f"   {col_letter_perc}{linha} (% Viab) = {row_values[1]}")
+        print(f"   {col_letter_valor}{linha} (Valor Viab) = {row_values[2]}")
 
     # Processar dados mensais (começando no índice 3 = coluna D)
     dados_meses = []
@@ -205,18 +208,18 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
         }
         dados_meses.append(mes_data)
 
-        # DEBUG: Mostrar células do mês (apenas os 2 primeiros meses para não poluir)
-        if i < 2:
+        # DEBUG: Mostrar células do mês (apenas os 2 primeiros meses e se debug ativado)
+        if mostrar_debug and i < 2:
             col_perc = chr(68 + (i * 4))  # D, H, L, ...
             col_valor = chr(68 + (i * 4) + 1)  # E, I, M, ...
             col_atingido = chr(68 + (i * 4) + 2)  # F, J, N, ...
             col_dif = chr(68 + (i * 4) + 3)  # G, K, O, ...
 
             print(f"   {meses_nomes[i]}:")
-            print(f"      {col_perc}{linha} (% Real) = {row_values[idx_base] if idx_base < len(row_values) else 'N/A'} → {perc_realizado}")
-            print(f"      {col_valor}{linha} (Valor Real) = {row_values[idx_base + 1] if idx_base + 1 < len(row_values) else 'N/A'} → {valor_realizado}")
-            print(f"      {col_atingido}{linha} (% Ating) = {row_values[idx_base + 2] if idx_base + 2 < len(row_values) else 'N/A'} → {perc_atingido}")
-            print(f"      {col_dif}{linha} (Dif) = {row_values[idx_base + 3] if idx_base + 3 < len(row_values) else 'N/A'} → {valor_diferenca}")
+            print(f"      {col_perc}{linha} (% Real) = {row_values[idx_base] if idx_base < len(row_values) else 'N/A'}")
+            print(f"      {col_valor}{linha} (Valor Real) = {row_values[idx_base + 1] if idx_base + 1 < len(row_values) else 'N/A'}")
+            print(f"      {col_atingido}{linha} (% Ating) = {row_values[idx_base + 2] if idx_base + 2 < len(row_values) else 'N/A'}")
+            print(f"      {col_dif}{linha} (Dif) = {row_values[idx_base + 3] if idx_base + 3 < len(row_values) else 'N/A'}")
 
     # Processar resultados totais (últimas 7 colunas)
     idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
@@ -225,17 +228,18 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     total_realizado = converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None
     diferenca_total = converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None
 
-    # DEBUG: Mostrar células de totais
-    print(f"   TOTAIS:")
-    if idx_resultados_inicio < len(row_values):
-        col_prev = chr(65 + idx_resultados_inicio) if idx_resultados_inicio < 26 else f"Col{idx_resultados_inicio}"
-        print(f"      {col_prev}{linha} (Previsão Total) = {row_values[idx_resultados_inicio]} → {previsao_total}")
-    if idx_resultados_inicio + 1 < len(row_values):
-        col_real = chr(65 + idx_resultados_inicio + 1) if idx_resultados_inicio + 1 < 26 else f"Col{idx_resultados_inicio + 1}"
-        print(f"      {col_real}{linha} (Realizado Total) = {row_values[idx_resultados_inicio + 1]} → {total_realizado}")
-    if idx_resultados_inicio + 2 < len(row_values):
-        col_dif = chr(65 + idx_resultados_inicio + 2) if idx_resultados_inicio + 2 < 26 else f"Col{idx_resultados_inicio + 2}"
-        print(f"      {col_dif}{linha} (Diferença Total) = {row_values[idx_resultados_inicio + 2]} → {diferenca_total}")
+    # DEBUG: Mostrar células de totais (apenas se debug ativado)
+    if mostrar_debug:
+        print(f"   TOTAIS:")
+        if idx_resultados_inicio < len(row_values):
+            col_prev = chr(65 + idx_resultados_inicio) if idx_resultados_inicio < 26 else f"Col{idx_resultados_inicio}"
+            print(f"      {col_prev}{linha} (Previsão Total) = {row_values[idx_resultados_inicio]}")
+        if idx_resultados_inicio + 1 < len(row_values):
+            col_real = chr(65 + idx_resultados_inicio + 1) if idx_resultados_inicio + 1 < 26 else f"Col{idx_resultados_inicio + 1}"
+            print(f"      {col_real}{linha} (Realizado Total) = {row_values[idx_resultados_inicio + 1]}")
+        if idx_resultados_inicio + 2 < len(row_values):
+            col_dif = chr(65 + idx_resultados_inicio + 2) if idx_resultados_inicio + 2 < 26 else f"Col{idx_resultados_inicio + 2}"
+            print(f"      {col_dif}{linha} (Diferença Total) = {row_values[idx_resultados_inicio + 2]}")
 
     resultados = {
         'previsao_total': previsao_total,
@@ -563,7 +567,9 @@ def process_bpo_file(file):
         itens_hierarquicos = []
         linha_atual = 4  # Começa na linha 4 (dados começam após cabeçalho)
 
-        print(f"\n🔍 Processando itens hierárquicos...")
+        print(f"\n🔍 Processando itens hierárquicos (mostrando primeiras 3 linhas)...")
+
+        contador_debug = 0  # Contador para limitar prints de debug
 
         while True:
             row_values = []
@@ -584,14 +590,19 @@ def process_bpo_file(file):
             # Processar item se coluna A tem conteúdo
             col_a = row_values[0]
             if col_a and str(col_a).strip():
+                # Mostrar debug apenas para as primeiras 3 linhas
+                mostrar_debug = contador_debug < 3
+
                 item = processar_item_hierarquico(
                     col_a,
                     row_values,
                     num_meses,
                     meses_nomes,
-                    linha_atual
+                    linha_atual,
+                    mostrar_debug
                 )
                 itens_hierarquicos.append(item)
+                contador_debug += 1
 
             linha_atual += 1
 
