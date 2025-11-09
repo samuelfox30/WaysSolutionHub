@@ -31,6 +31,7 @@ class DatabaseConnection:
             self.create_empresa_table_if_not_exists()
             self.create_user_empresa_table_if_not_exists()
             self.create_empresa_tables_if_not_exists()
+            self.create_bpo_tables_if_not_exists()
             self.insert_default_grupos_subgrupos()
 
         except mysql.connector.Error as err:
@@ -234,6 +235,28 @@ class DatabaseConnection:
 
         except mysql.connector.Error as err:
             print(f"Erro ao criar as tabelas de empresas: {err}")
+
+    def create_bpo_tables_if_not_exists(self):
+        """Cria tabelas para armazenar dados BPO (mensal)"""
+        try:
+            # Tabela principal BPO - armazena snapshot completo mensal em JSON
+            bpo_schema = (
+                "CREATE TABLE IF NOT EXISTS TbBpoDados ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  empresa_id INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  mes INT NOT NULL,"
+                "  dados_json LONGTEXT NOT NULL,"
+                "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,"
+                "  UNIQUE KEY unique_empresa_ano_mes (empresa_id, ano, mes)"
+                ")"
+            )
+            self.cursor.execute(bpo_schema)
+            self.connection.commit()
+            print("Tabela 'TbBpoDados' verificada/criada com sucesso.")
+        except mysql.connector.Error as err:
+            print(f"Erro ao criar tabelas BPO: {err}")
 
     def insert_default_grupos_subgrupos(self):
         try:
