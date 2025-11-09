@@ -165,20 +165,9 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha,
     # Extrair código e nome
     codigo, nome, nivel = extrair_codigo_e_nome(col_a)
 
-    # DEBUG: Mostrar nome da linha (apenas se debug ativado)
-    if mostrar_debug:
-        print(f"\n🔍 LINHA {linha} - {nome}")
-
     # Extrair viabilidade (índices FIXOS: 1 e 2)
-    perc_viabilidade = converter_valor(row_values[1]) if len(row_values) > 1 else None
+    perc_viabilidade = converter_porcentagem(row_values[1]) if len(row_values) > 1 else None
     valor_viabilidade = converter_valor(row_values[2]) if len(row_values) > 2 else None
-
-    # DEBUG: Mostrar células de viabilidade (apenas se debug ativado)
-    if mostrar_debug:
-        col_letter_perc = chr(66)  # B
-        col_letter_valor = chr(67)  # C
-        print(f"   {col_letter_perc}{linha} (% Viab) = {row_values[1]}")
-        print(f"   {col_letter_valor}{linha} (Valor Viab) = {row_values[2]}")
 
     # Processar dados mensais (começando no índice 3 = coluna D)
     dados_meses = []
@@ -193,9 +182,9 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha,
         # 2: % Atingido
         # 3: Valor Diferença
 
-        perc_realizado = converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None
+        perc_realizado = converter_porcentagem(row_values[idx_base]) if idx_base < len(row_values) else None
         valor_realizado = converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None
-        perc_atingido = converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None
+        perc_atingido = converter_porcentagem(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None
         valor_diferenca = converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None
 
         mes_data = {
@@ -208,19 +197,6 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha,
         }
         dados_meses.append(mes_data)
 
-        # DEBUG: Mostrar células do mês (apenas os 2 primeiros meses e se debug ativado)
-        if mostrar_debug and i < 2:
-            col_perc = chr(68 + (i * 4))  # D, H, L, ...
-            col_valor = chr(68 + (i * 4) + 1)  # E, I, M, ...
-            col_atingido = chr(68 + (i * 4) + 2)  # F, J, N, ...
-            col_dif = chr(68 + (i * 4) + 3)  # G, K, O, ...
-
-            print(f"   {meses_nomes[i]}:")
-            print(f"      {col_perc}{linha} (% Real) = {row_values[idx_base] if idx_base < len(row_values) else 'N/A'}")
-            print(f"      {col_valor}{linha} (Valor Real) = {row_values[idx_base + 1] if idx_base + 1 < len(row_values) else 'N/A'}")
-            print(f"      {col_atingido}{linha} (% Ating) = {row_values[idx_base + 2] if idx_base + 2 < len(row_values) else 'N/A'}")
-            print(f"      {col_dif}{linha} (Dif) = {row_values[idx_base + 3] if idx_base + 3 < len(row_values) else 'N/A'}")
-
     # Processar resultados totais (últimas 7 colunas)
     idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
 
@@ -228,26 +204,13 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha,
     total_realizado = converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None
     diferenca_total = converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None
 
-    # DEBUG: Mostrar células de totais (apenas se debug ativado)
-    if mostrar_debug:
-        print(f"   TOTAIS:")
-        if idx_resultados_inicio < len(row_values):
-            col_prev = chr(65 + idx_resultados_inicio) if idx_resultados_inicio < 26 else f"Col{idx_resultados_inicio}"
-            print(f"      {col_prev}{linha} (Previsão Total) = {row_values[idx_resultados_inicio]}")
-        if idx_resultados_inicio + 1 < len(row_values):
-            col_real = chr(65 + idx_resultados_inicio + 1) if idx_resultados_inicio + 1 < 26 else f"Col{idx_resultados_inicio + 1}"
-            print(f"      {col_real}{linha} (Realizado Total) = {row_values[idx_resultados_inicio + 1]}")
-        if idx_resultados_inicio + 2 < len(row_values):
-            col_dif = chr(65 + idx_resultados_inicio + 2) if idx_resultados_inicio + 2 < 26 else f"Col{idx_resultados_inicio + 2}"
-            print(f"      {col_dif}{linha} (Diferença Total) = {row_values[idx_resultados_inicio + 2]}")
-
     resultados = {
         'previsao_total': previsao_total,
         'total_realizado': total_realizado,
         'diferenca_total': diferenca_total,
-        'media_perc_realizado': converter_valor(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
+        'media_perc_realizado': converter_porcentagem(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
         'media_valor_realizado': converter_valor(row_values[idx_resultados_inicio + 4]) if idx_resultados_inicio + 4 < len(row_values) else None,
-        'media_perc_diferenca': converter_valor(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
+        'media_perc_diferenca': converter_porcentagem(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
         'media_valor_diferenca': converter_valor(row_values[idx_resultados_inicio + 6]) if idx_resultados_inicio + 6 < len(row_values) else None,
     }
 
@@ -274,7 +237,7 @@ def processar_linha_resultado(col_a, row_values, num_meses, meses_nomes, linha):
     nome = str(col_a).strip()
 
     # Extrair viabilidade (índices FIXOS: 1 e 2)
-    perc_viabilidade = converter_valor(row_values[1]) if len(row_values) > 1 else None
+    perc_viabilidade = converter_porcentagem(row_values[1]) if len(row_values) > 1 else None
     valor_viabilidade = converter_valor(row_values[2]) if len(row_values) > 2 else None
 
     # Processar dados mensais
@@ -287,9 +250,9 @@ def processar_linha_resultado(col_a, row_values, num_meses, meses_nomes, linha):
         mes_data = {
             'mes_numero': i + 1,
             'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
-            'perc_realizado': converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None,
+            'perc_realizado': converter_porcentagem(row_values[idx_base]) if idx_base < len(row_values) else None,
             'valor_realizado': converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None,
-            'perc_atingido': converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None,
+            'perc_atingido': converter_porcentagem(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None,
             'valor_diferenca': converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None,
         }
         dados_meses.append(mes_data)
@@ -301,9 +264,9 @@ def processar_linha_resultado(col_a, row_values, num_meses, meses_nomes, linha):
         'previsao_total': converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None,
         'total_realizado': converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None,
         'diferenca_total': converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None,
-        'media_perc_realizado': converter_valor(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
+        'media_perc_realizado': converter_porcentagem(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
         'media_valor_realizado': converter_valor(row_values[idx_resultados_inicio + 4]) if idx_resultados_inicio + 4 < len(row_values) else None,
-        'media_perc_diferenca': converter_valor(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
+        'media_perc_diferenca': converter_porcentagem(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
         'media_valor_diferenca': converter_valor(row_values[idx_resultados_inicio + 6]) if idx_resultados_inicio + 6 < len(row_values) else None,
     }
 
@@ -327,6 +290,17 @@ def converter_valor(valor):
 
     try:
         return float(valor)
+    except (ValueError, TypeError):
+        return None
+
+
+def converter_porcentagem(valor):
+    """Converte um valor de célula para porcentagem (multiplica por 100)"""
+    if valor is None or valor == '':
+        return None
+
+    try:
+        return float(valor) * 100
     except (ValueError, TypeError):
         return None
 
@@ -506,20 +480,14 @@ def process_bpo_file(file):
     """
 
     try:
-        print("\n" + "="*80)
-        print("INICIANDO PROCESSAMENTO DA PLANILHA BPO FINANCEIRO")
-        print("="*80)
+        print("\n🔄 Processando planilha BPO...")
 
         # Carregar workbook (data_only=True para pegar valores calculados ao invés de fórmulas)
         wb = load_workbook(file, data_only=True)
 
-        # ====================================================================
-        # PASSO 1: SELECIONAR SHEET 'APRESENTAÇÃO'
-        # ====================================================================
+        # Selecionar sheet 'APRESENTAÇÃO'
         sheet_name = 'APRESENTAÇÃO'
-
         if sheet_name not in wb.sheetnames:
-            # Tentar variações do nome
             for name in wb.sheetnames:
                 if 'APRESENTA' in name.upper():
                     sheet_name = name
@@ -527,17 +495,11 @@ def process_bpo_file(file):
 
         if sheet_name in wb.sheetnames:
             sheet = wb[sheet_name]
-            print(f"✅ Sheet '{sheet_name}' selecionada")
         else:
-            print(f"⚠️  Sheet 'APRESENTAÇÃO' não encontrada. Sheets disponíveis: {wb.sheetnames}")
-            print(f"   Usando a primeira sheet: {wb.sheetnames[0]}")
             sheet = wb[wb.sheetnames[0]]
 
-        # ====================================================================
-        # PASSO 2: IDENTIFICAR ESTRUTURA DA PLANILHA (FIXA)
-        # ====================================================================
+        # Identificar estrutura da planilha (FIXA)
         total_colunas = sheet.max_column
-        print(f"\n📊 Total de colunas: {total_colunas}")
 
         # Estrutura FIXA:
         # Coluna A (0): Nome/Código
@@ -550,24 +512,13 @@ def process_bpo_file(file):
         colunas_meses = colunas_depois_viabilidade - colunas_totais
         num_meses = colunas_meses // 4
 
-        print(f"📅 Estrutura detectada:")
-        print(f"   • Coluna A: Nome/Código")
-        print(f"   • Coluna B: % Viabilidade")
-        print(f"   • Coluna C: Valor Viabilidade")
-        print(f"   • Colunas D-{chr(67+colunas_meses)}: {num_meses} meses ({colunas_meses} colunas)")
-        print(f"   • Últimas 7 colunas: Totais")
-
         # Nomes dos meses
         meses_nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
-        # ====================================================================
-        # PASSO 3: PROCESSAR ITENS HIERÁRQUICOS (LINHA 4 ATÉ "RESULTADO...")
-        # ====================================================================
+        # Processar itens hierárquicos (LINHA 4 ATÉ "RESULTADO...")
         itens_hierarquicos = []
         linha_atual = 4  # Começa na linha 4 (dados começam após cabeçalho)
-
-        print(f"\n🔍 Processando itens hierárquicos (mostrando primeiras 3 linhas)...")
 
         contador_debug = 0  # Contador para limitar prints de debug
 
@@ -579,12 +530,10 @@ def process_bpo_file(file):
 
             # Verifica se chegou na seção de resultados
             if row_values[0] and "RESULTADO POR FLUXO DE CAIXA" in str(row_values[0]):
-                print(f"\n✅ Encontrado 'RESULTADO POR FLUXO DE CAIXA' na linha {linha_atual}")
                 break
 
             # Verifica se linha está completamente vazia (fim da planilha)
             if all(v is None or str(v).strip() == '' for v in row_values):
-                print(f"\n⚠️  Linha vazia encontrada na linha {linha_atual} - parando processamento")
                 break
 
             # Processar item se coluna A tem conteúdo
@@ -606,15 +555,10 @@ def process_bpo_file(file):
 
             linha_atual += 1
 
-        print(f"✅ Total de itens hierárquicos processados: {len(itens_hierarquicos)}")
-
-        # ====================================================================
-        # PASSO 3: PROCESSAR SEÇÃO "RESULTADO POR FLUXO DE CAIXA"
-        # ====================================================================
+        # Processar seção "RESULTADO POR FLUXO DE CAIXA"
         resultados_fluxo = {}
 
         if row_values[0] and "RESULTADO POR FLUXO DE CAIXA" in str(row_values[0]):
-            print(f"\n🔍 Processando seção RESULTADO POR FLUXO DE CAIXA...")
 
             # Pular linha do título
             linha_atual += 1
@@ -630,7 +574,6 @@ def process_bpo_file(file):
 
                 # Se linha vazia, acabou
                 if all(v is None or str(v).strip() == '' for v in row_values):
-                    print(f"✅ Fim da seção de resultados na linha {linha_atual}")
                     break
 
                 col_a = row_values[0]
@@ -651,7 +594,6 @@ def process_bpo_file(file):
                         secoes_resultado.append(item_resultado)
                     else:
                         # Linha de título
-                        print(f"  📌 Título encontrado: {col_a}")
                         secoes_resultado.append({
                             'tipo': 'titulo',
                             'texto': str(col_a).strip(),
@@ -665,11 +607,7 @@ def process_bpo_file(file):
                 'total_linhas': len(secoes_resultado)
             }
 
-            print(f"✅ Total de linhas na seção de resultados: {len(secoes_resultado)}")
-
-        # ====================================================================
-        # PASSO 4: MONTAR ESTRUTURA FINAL
-        # ====================================================================
+        # Montar estrutura final
         dados_processados = {
             'itens_hierarquicos': itens_hierarquicos,
             'resultados_fluxo': resultados_fluxo,
@@ -682,14 +620,7 @@ def process_bpo_file(file):
             }
         }
 
-        # ====================================================================
-        # PASSO 5: EXIBIR RESUMO
-        # ====================================================================
-        exibir_resumo_processamento(dados_processados)
-
-        print("\n" + "="*80)
-        print("PROCESSAMENTO CONCLUÍDO COM SUCESSO!")
-        print("="*80 + "\n")
+        print(f"✅ Processamento concluído: {len(itens_hierarquicos)} itens processados\n")
 
         return dados_processados
 
