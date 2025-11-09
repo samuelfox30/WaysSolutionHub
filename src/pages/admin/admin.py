@@ -704,8 +704,12 @@ def consultar_dados_bpo():
     ano_selecionado = None
     mes_selecionado = None
 
+    # Aceitar empresa_id por GET (quando vem do botão)
+    empresa_id = request.args.get('empresa_id') or request.form.get('empresa_id')
+    if empresa_id:
+        empresa_selecionada = int(empresa_id)
+
     if request.method == 'POST':
-        empresa_id = request.form.get('empresa_id')
         ano_selecionado = request.form.get('ano')
         mes_selecionado = request.form.get('mes')
 

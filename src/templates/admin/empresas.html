@@ -93,6 +93,11 @@
                                         title="Gerenciar dados">
                                     <i class="bi bi-database"></i>
                                 </button>
+                                <a href="{{ url_for('admin.consultar_dados_bpo') }}?empresa_id={{ empresa.id }}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="Ver dados BPO">
+                                    <i class="bi bi-calendar-check"></i>
+                                </a>
                                 <button class="btn btn-sm btn-outline-primary btn-edit-empresa"
                                         data-id="{{ empresa.id }}"
                                         data-nome="{{ empresa.nome }}"

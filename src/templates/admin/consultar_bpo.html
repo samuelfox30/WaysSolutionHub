@@ -150,91 +150,51 @@
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <i class="bi bi-file-earmark-text-fill me-2"></i>
-                    Dados BPO Financeiro
+                    Dados BPO - Mês {{ mes_selecionado }}/{{ ano_selecionado }}
                 </div>
                 <div>
-                    <span class="month-badge">
-                        <i class="bi bi-calendar-month me-1"></i>
-                        Mês {{ mes_selecionado }}/{{ ano_selecionado }}
-                    </span>
+                    <small>Upload: {{ data_results.data_upload.strftime('%d/%m/%Y %H:%M') }}</small>
                 </div>
             </div>
         </div>
 
         <div class="p-4">
-            <!-- INFORMAÇÃO DE DESENVOLVIMENTO -->
-            <div class="alert alert-info border-0 shadow-sm">
-                <div class="d-flex align-items-start">
-                    <i class="bi bi-info-circle-fill fs-3 me-3"></i>
-                    <div>
-                        <h5 class="alert-heading mb-2">Funcionalidade em Desenvolvimento</h5>
-                        <p class="mb-2">
-                            A consulta de dados BPO Financeiro está estruturada e pronta para receber implementação.
-                        </p>
-                        <hr>
-                        <p class="mb-0 small">
-                            <strong>Status atual:</strong>
-                            {{ data_results.mensagem or 'Aguardando implementação da função de busca no banco de dados' }}
-                        </p>
-                        {% if data_results.empresa_id %}
-                        <p class="mb-0 small mt-2">
-                            <strong>Parâmetros recebidos:</strong><br>
-                            • Empresa ID: {{ data_results.empresa_id }}<br>
-                            • Período: {{ data_results.mes }}/{{ data_results.ano }}
-                        </p>
-                        {% endif %}
-                    </div>
-                </div>
-            </div>
-
-            <!-- PRÓXIMOS PASSOS -->
-            <div class="alert alert-light border">
-                <h6 class="fw-semibold mb-3">
-                    <i class="bi bi-list-check me-2"></i>
-                    Próximos Passos para Implementação
-                </h6>
-                <ol class="mb-0">
-                    <li class="mb-2">
-                        <strong>Implementar processamento de planilha BPO</strong> em
-                        <code>bpo_file_processing.py</code>
-                    </li>
-                    <li class="mb-2">
-                        <strong>Criar tabelas no banco de dados</strong> para armazenar dados BPO mensais
-                    </li>
-                    <li class="mb-2">
-                        <strong>Implementar função de salvamento</strong> em <code>CompanyManager</code>:
-                        <code>salvar_dados_bpo_empresa()</code>
-                    </li>
-                    <li class="mb-2">
-                        <strong>Implementar função de busca</strong> em <code>CompanyManager</code>:
-                        <code>buscar_dados_bpo_empresa()</code>
-                    </li>
-                    <li class="mb-0">
-                        <strong>Descomentar código nas rotas</strong> <code>admin.py</code> para
-                        conectar ao banco de dados
-                    </li>
-                </ol>
-            </div>
-
-            <!-- MOCKUP DE VISUALIZAÇÃO FUTURA -->
-            <div class="mt-4">
-                <h6 class="fw-semibold text-muted mb-3">
-                    <i class="bi bi-eye me-2"></i>
-                    Preview de Visualização (Mockup)
-                </h6>
-                <div class="alert alert-secondary">
-                    <p class="small mb-2">
-                        <strong>Quando implementado, esta área exibirá:</strong>
-                    </p>
-                    <ul class="small mb-0">
-                        <li>Tabelas com categorias e subcategorias dos dados BPO</li>
-                        <li>Valores financeiros organizados por categoria</li>
-                        <li>Gráficos de análise mensal</li>
-                        <li>Comparação entre meses diferentes</li>
-                        <li>Resumo executivo dos dados</li>
-                        <li>Opções de exportação (PDF, Excel)</li>
-                    </ul>
-                </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Nome</th>
+                            <th class="text-end">% Viab</th>
+                            <th class="text-end">Valor Viab</th>
+                            <th class="text-end">% Real</th>
+                            <th class="text-end">Valor Real</th>
+                            <th class="text-end">% Ating</th>
+                            <th class="text-end">Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in data_results.dados.itens_hierarquicos %}
+                        <tr>
+                            <td><code>{{ item.codigo }}</code></td>
+                            <td style="padding-left: {{ item.nivel_hierarquia * 20 }}px;">{{ item.nome }}</td>
+                            <td class="text-end">{{ "%.2f"|format(item.viabilidade.percentual or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(item.viabilidade.valor or 0) }}</td>
+                            {% if item.dados_mensais %}
+                            <td class="text-end">{{ "%.2f"|format(item.dados_mensais[0].perc_realizado or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_realizado or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(item.dados_mensais[0].perc_atingido or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_diferenca or 0) }}</td>
+                            {% else %}
+                            <td class="text-end">-</td>
+                            <td class="text-end">-</td>
+                            <td class="text-end">-</td>
+                            <td class="text-end">-</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
