@@ -509,6 +509,85 @@ class CompanyManager(DatabaseConnection):
             self.connection.rollback()
             return False
 
+    # ====================================================================
+    # FUNÇÕES BPO (DADOS MENSAIS)
+    # ====================================================================
+
+    def salvar_dados_bpo_empresa(self, empresa_id, ano, mes, dados_processados):
+        """Salva dados BPO processados para empresa/ano/mês específico"""
+        try:
+            import json
+
+            # Verificar se empresa existe
+            self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
+            if not self.cursor.fetchone():
+                raise Exception(f"Empresa ID {empresa_id} não encontrada")
+
+            # Converter dados para JSON
+            dados_json = json.dumps(dados_processados, ensure_ascii=False)
+
+            # Deletar dados antigos do mesmo período
+            self.cursor.execute(
+                "DELETE FROM TbBpoDados WHERE empresa_id = %s AND ano = %s AND mes = %s",
+                (empresa_id, ano, mes)
+            )
+
+            # Inserir novos dados
+            sql = """
+                INSERT INTO TbBpoDados (empresa_id, ano, mes, dados_json)
+                VALUES (%s, %s, %s, %s)
+            """
+            self.cursor.execute(sql, (empresa_id, ano, mes, dados_json))
+            self.connection.commit()
+
+            print(f"[DEBUG] Dados BPO salvos: empresa_id={empresa_id}, ano={ano}, mes={mes}")
+            return True
+
+        except Exception as err:
+            print(f"[ERRO] Erro ao salvar dados BPO: {err}")
+            self.connection.rollback()
+            return False
+
+    def buscar_dados_bpo_empresa(self, empresa_id, ano, mes):
+        """Busca dados BPO de empresa/ano/mês específico"""
+        try:
+            import json
+
+            sql = """
+                SELECT dados_json, created_at
+                FROM TbBpoDados
+                WHERE empresa_id = %s AND ano = %s AND mes = %s
+            """
+            self.cursor.execute(sql, (empresa_id, ano, mes))
+            row = self.cursor.fetchone()
+
+            if row:
+                dados_json = json.loads(row[0])
+                return {
+                    'dados': dados_json,
+                    'data_upload': row[1]
+                }
+            return None
+
+        except Exception as err:
+            print(f"[ERRO] Erro ao buscar dados BPO: {err}")
+            return None
+
+    def excluir_dados_bpo_empresa(self, empresa_id, ano, mes):
+        """Exclui dados BPO de empresa/ano/mês específico"""
+        try:
+            sql = "DELETE FROM TbBpoDados WHERE empresa_id = %s AND ano = %s AND mes = %s"
+            self.cursor.execute(sql, (empresa_id, ano, mes))
+            self.connection.commit()
+
+            print(f"[DEBUG] Dados BPO excluídos: empresa_id={empresa_id}, ano={ano}, mes={mes}")
+            return True
+
+        except Exception as err:
+            print(f"[ERRO] Erro ao excluir dados BPO: {err}")
+            self.connection.rollback()
+            return False
+
     def close(self):
         """Fecha a conexão com o banco de dados."""
         self.close_connection()

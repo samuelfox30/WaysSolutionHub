@@ -602,29 +602,20 @@ def upload_dados_bpo():
         # Processar arquivo Excel de BPO
         dados_bpo = process_bpo_file(arquivo)
 
-        print("="*80)
-        print(f"UPLOAD BPO - Empresa: {empresa_id} | Ano: {ano} | Mês: {mes}")
-        print(f"Dados processados: {dados_bpo}")
-        print("="*80)
+        # Salvar no banco de dados
+        company_manager = CompanyManager()
+        sucesso = company_manager.salvar_dados_bpo_empresa(
+            empresa_id=int(empresa_id),
+            ano=int(ano),
+            mes=int(mes),
+            dados_processados=dados_bpo
+        )
+        company_manager.close()
 
-        # ===================================================================
-        # TODO: IMPLEMENTAR SALVAMENTO NO BANCO DE DADOS
-        # ===================================================================
-        # Quando a função de salvamento estiver pronta no CompanyManager,
-        # descomente e ajuste as linhas abaixo:
-        #
-        # company_manager = CompanyManager()
-        # company_manager.salvar_dados_bpo_empresa(
-        #     empresa_id=int(empresa_id),
-        #     ano=int(ano),
-        #     mes=int(mes),
-        #     dados_bpo=dados_bpo
-        # )
-        # company_manager.close()
-        # ===================================================================
-
-        flash(f"Dados de BPO Financeiro (mês {mes}/{ano}) processados com sucesso! "
-              f"Aguardando implementação final do banco de dados.", "info")
+        if sucesso:
+            flash(f"Dados BPO Financeiro (mês {mes}/{ano}) salvos com sucesso!", "success")
+        else:
+            flash("Erro ao salvar dados BPO no banco de dados.", "danger")
 
     except Exception as e:
         print(f"Erro ao processar arquivo BPO: {e}")
@@ -694,26 +685,11 @@ def consultar_dados_bpo():
         mes_selecionado = request.form.get('mes')
 
         if empresa_id and ano_selecionado and mes_selecionado:
-            # ===================================================================
-            # TODO: IMPLEMENTAR BUSCA DE DADOS BPO NO BANCO
-            # ===================================================================
-            # Quando a função de busca estiver pronta no CompanyManager,
-            # descomente e ajuste as linhas abaixo:
-            #
-            # data_results = company_manager.buscar_dados_bpo_empresa(
-            #     int(empresa_id),
-            #     int(ano_selecionado),
-            #     int(mes_selecionado)
-            # )
-            # ===================================================================
-
-            # Dados mockados temporariamente para não dar erro
-            data_results = {
-                'mensagem': 'Busca de dados BPO ainda não implementada',
-                'empresa_id': empresa_id,
-                'ano': ano_selecionado,
-                'mes': mes_selecionado
-            }
+            data_results = company_manager.buscar_dados_bpo_empresa(
+                int(empresa_id),
+                int(ano_selecionado),
+                int(mes_selecionado)
+            )
             empresa_selecionada = int(empresa_id)
 
     company_manager.close()
@@ -770,21 +746,14 @@ def deletar_dados_bpo_empresa():
         flash("Parâmetros inválidos para exclusão de dados BPO.", "danger")
         return redirect(url_for('admin.gerenciar_empresas'))
 
-    # ===================================================================
-    # TODO: IMPLEMENTAR EXCLUSÃO DE DADOS BPO NO BANCO
-    # ===================================================================
-    # Quando a função estiver pronta no CompanyManager, descomente:
-    #
-    # from models.company_manager import CompanyManager
-    # company_manager = CompanyManager()
-    # ok = company_manager.excluir_dados_bpo_empresa(int(empresa_id), ano, mes)
-    # company_manager.close()
-    #
-    # if ok:
-    #     flash(f"Dados de BPO para {mes}/{ano} foram excluídos com sucesso.", "success")
-    # else:
-    #     flash(f"Erro ao excluir dados de BPO para {mes}/{ano}.", "danger")
-    # ===================================================================
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    sucesso = company_manager.excluir_dados_bpo_empresa(int(empresa_id), ano, mes)
+    company_manager.close()
 
-    flash(f"Função de exclusão de dados BPO ainda não implementada (Empresa {empresa_id}, {mes}/{ano}).", "info")
+    if sucesso:
+        flash(f"Dados de BPO para {mes}/{ano} foram excluídos com sucesso.", "success")
+    else:
+        flash(f"Erro ao excluir dados de BPO para {mes}/{ano}.", "danger")
+
     return redirect(url_for('admin.gerenciar_empresas'))
