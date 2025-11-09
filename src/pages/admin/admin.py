@@ -586,36 +586,61 @@ def upload_dados_bpo():
 
     empresa_id = request.form.get('empresa_id')
     ano = request.form.get('ano')
-    mes = request.form.get('mes')
     arquivo = request.files.get('arquivo')
 
     # Validação básica
-    if not empresa_id or not ano or not mes or not arquivo:
-        flash("Todos os campos são obrigatórios para upload de BPO.", "danger")
+    if not empresa_id or not ano or not arquivo:
+        flash("Empresa, ano e arquivo são obrigatórios para upload de BPO.", "danger")
         return redirect(url_for('admin.gerenciar_empresas'))
 
     try:
-        # Importar função de processamento de BPO
         from controllers.data_processing.bpo_file_processing import process_bpo_file
         from models.company_manager import CompanyManager
 
-        # Processar arquivo Excel de BPO
+        # Processar arquivo Excel (detecta meses automaticamente)
         dados_bpo = process_bpo_file(arquivo)
+        num_meses = dados_bpo['metadados']['num_meses']
+        meses_processados = []
 
-        # Salvar no banco de dados
         company_manager = CompanyManager()
-        sucesso = company_manager.salvar_dados_bpo_empresa(
-            empresa_id=int(empresa_id),
-            ano=int(ano),
-            mes=int(mes),
-            dados_processados=dados_bpo
-        )
+
+        # Salvar cada mês separadamente
+        for mes_num in range(1, num_meses + 1):
+            # Filtrar dados deste mês
+            dados_mes = {
+                'itens_hierarquicos': [],
+                'resultados_fluxo': dados_bpo['resultados_fluxo'],
+                'metadados': dados_bpo['metadados']
+            }
+
+            # Para cada item, pegar só dados do mês atual
+            for item in dados_bpo['itens_hierarquicos']:
+                item_mes = item.copy()
+                item_mes['dados_mensais'] = [
+                    m for m in item['dados_mensais'] if m['mes_numero'] == mes_num
+                ]
+                dados_mes['itens_hierarquicos'].append(item_mes)
+
+            # Salvar se tiver dados
+            if dados_mes['itens_hierarquicos']:
+                sucesso = company_manager.salvar_dados_bpo_empresa(
+                    empresa_id=int(empresa_id),
+                    ano=int(ano),
+                    mes=mes_num,
+                    dados_processados=dados_mes
+                )
+                if sucesso:
+                    meses_processados.append(mes_num)
+
         company_manager.close()
 
-        if sucesso:
-            flash(f"Dados BPO Financeiro (mês {mes}/{ano}) salvos com sucesso!", "success")
+        if meses_processados:
+            meses_nomes = {1:'Jan', 2:'Fev', 3:'Mar', 4:'Abr', 5:'Mai', 6:'Jun',
+                          7:'Jul', 8:'Ago', 9:'Set', 10:'Out', 11:'Nov', 12:'Dez'}
+            meses_str = ', '.join([meses_nomes[m] for m in meses_processados])
+            flash(f"Dados BPO salvos para {len(meses_processados)} meses ({meses_str}/{ano})!", "success")
         else:
-            flash("Erro ao salvar dados BPO no banco de dados.", "danger")
+            flash("Nenhum dado BPO foi encontrado na planilha.", "warning")
 
     except Exception as e:
         print(f"Erro ao processar arquivo BPO: {e}")
