@@ -196,6 +196,38 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- TABELA DE TOTAIS -->
+            {% if data_results.dados.itens_hierarquicos %}
+            {% set totais = data_results.dados.itens_hierarquicos[0].resultados_totais %}
+            <h6 class="mt-4 mb-3 fw-semibold">Totais Consolidados</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Previsto Total</th>
+                            <th>Realizado Total</th>
+                            <th>Diferença Total</th>
+                            <th>Média % Realizado</th>
+                            <th>Média Valor Realizado</th>
+                            <th>Média % Diferença</th>
+                            <th>Média Valor Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.previsao_total or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.total_realizado or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.diferenca_total or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(totais.media_perc_realizado or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.media_valor_realizado or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(totais.media_perc_diferenca or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.media_valor_diferenca or 0) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
