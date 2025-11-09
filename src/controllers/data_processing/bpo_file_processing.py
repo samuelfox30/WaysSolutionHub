@@ -510,8 +510,8 @@ def process_bpo_file(file):
         print("INICIANDO PROCESSAMENTO DA PLANILHA BPO FINANCEIRO")
         print("="*80)
 
-        # Carregar workbook
-        wb = load_workbook(file)
+        # Carregar workbook (data_only=True para pegar valores calculados ao invés de fórmulas)
+        wb = load_workbook(file, data_only=True)
 
         # ====================================================================
         # PASSO 1: SELECIONAR SHEET 'APRESENTAÇÃO'
