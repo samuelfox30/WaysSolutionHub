@@ -867,11 +867,11 @@ def api_dados_bpo(empresa_id):
     print(f"Total de meses encontrados no DB: {len(meses_data)}")
 
     # Processar dados para dashboard
-    # Mapear nomes de DRE para chaves
+    # Mapear nomes de DRE para chaves (a ordem importa! Mais específico primeiro)
     dre_map = {
+        'RESULTADO REAL + CUSTO MATERIA PRIMA': 'real_mp',  # Mais específico primeiro!
         'RESULTADO POR FLUXO DE CAIXA': 'fluxo_caixa',
-        'RESULTADO REAL': 'real',
-        'RESULTADO REAL + CUSTO MP': 'real_mp'
+        'RESULTADO REAL': 'real'  # Mais genérico por último
     }
 
     # Inicializar totais acumulados
@@ -901,6 +901,17 @@ def api_dados_bpo(empresa_id):
 
         print(f"\n📅 MÊS {mes_num}/{ano}:")
         print(f"   Total de seções em resultados_fluxo: {len(secoes)}")
+
+        # MOSTRAR TODAS AS SEÇÕES PRIMEIRO (para debug)
+        print(f"   LISTAGEM COMPLETA DE SEÇÕES:")
+        for idx, secao in enumerate(secoes):
+            tipo = secao.get('tipo', 'N/A')
+            if tipo == 'titulo':
+                print(f"   [{idx}] tipo={tipo}, texto={secao.get('texto', 'N/A')[:80]}")
+            elif tipo == 'dados':
+                print(f"   [{idx}] tipo={tipo}, nome={secao.get('nome', 'N/A')[:80]}")
+            else:
+                print(f"   [{idx}] tipo={tipo} (inesperado!)")
 
         # Processar cada seção (cada DRE)
         dre_atual = None
