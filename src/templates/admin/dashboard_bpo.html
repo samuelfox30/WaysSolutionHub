@@ -156,6 +156,10 @@ function atualizarDados() {
     fetch(url)
         .then(r => r.json())
         .then(data => {
+            console.log('Dados recebidos da API:', data);
+            console.log('totais_acumulados:', data.totais_acumulados);
+            console.log('fluxo_caixa:', data.totais_acumulados.fluxo_caixa);
+
             // Atualizar cards
             const tot = data.totais_acumulados;
             document.getElementById('card_fc_rec').textContent = formatMoney(tot.fluxo_caixa.receita);
