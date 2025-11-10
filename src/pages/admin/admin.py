@@ -609,17 +609,30 @@ def upload_dados_bpo():
             # Filtrar dados deste mês
             dados_mes = {
                 'itens_hierarquicos': [],
-                'resultados_fluxo': dados_bpo['resultados_fluxo'],
+                'resultados_fluxo': {'secoes': [], 'total_linhas': 0},
                 'metadados': dados_bpo['metadados']
             }
 
-            # Para cada item, pegar só dados do mês atual
+            # Para cada item hierárquico, pegar só dados do mês atual
             for item in dados_bpo['itens_hierarquicos']:
                 item_mes = item.copy()
                 item_mes['dados_mensais'] = [
                     m for m in item['dados_mensais'] if m['mes_numero'] == mes_num
                 ]
                 dados_mes['itens_hierarquicos'].append(item_mes)
+
+            # Filtrar também os dados mensais dentro de resultados_fluxo.secoes
+            if 'resultados_fluxo' in dados_bpo and 'secoes' in dados_bpo['resultados_fluxo']:
+                for secao in dados_bpo['resultados_fluxo']['secoes']:
+                    secao_mes = secao.copy()
+                    # Se é uma seção com dados (não apenas título), filtrar dados mensais
+                    if secao.get('tipo') == 'dados' and 'dados_mensais' in secao:
+                        secao_mes['dados_mensais'] = [
+                            m for m in secao['dados_mensais'] if m['mes_numero'] == mes_num
+                        ]
+                    dados_mes['resultados_fluxo']['secoes'].append(secao_mes)
+
+                dados_mes['resultados_fluxo']['total_linhas'] = len(dados_mes['resultados_fluxo']['secoes'])
 
             # Salvar se tiver dados
             if dados_mes['itens_hierarquicos']:
@@ -813,21 +826,20 @@ def dashboard_bpo(empresa_id):
 
 @admin_bp.route('/admin/api/dados-bpo/<int:empresa_id>')
 def api_dados_bpo(empresa_id):
-    """API retorna dados BPO de múltiplos meses"""
+    """API retorna dados BPO processados para dashboard"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         return jsonify({"error": "Não autorizado"}), 403
 
-    # Parâmetros
-    tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
     ano_inicio = int(request.args.get('ano_inicio', 2025))
     mes_inicio = int(request.args.get('mes_inicio', 1))
     ano_fim = int(request.args.get('ano_fim', 2025))
     mes_fim = int(request.args.get('mes_fim', 12))
+    tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
 
     from models.company_manager import CompanyManager
     company_manager = CompanyManager()
 
-    # Buscar todos os meses no período
+    # Buscar todos os meses
     meses_data = []
     ano_atual = ano_inicio
     mes_atual = mes_inicio
@@ -840,8 +852,6 @@ def api_dados_bpo(empresa_id):
                 'mes': mes_atual,
                 'dados': dados['dados']
             })
-
-        # Próximo mês
         mes_atual += 1
         if mes_atual > 12:
             mes_atual = 1
@@ -849,112 +859,87 @@ def api_dados_bpo(empresa_id):
 
     company_manager.close()
 
-    # Processar dados
-    resultado = processar_dados_bpo_dashboard(meses_data, tipo_dre)
-    return jsonify(resultado)
-
-
-def processar_dados_bpo_dashboard(meses_data, tipo_dre):
-    """Processa dados BPO para dashboard"""
-
-    print(f"\n=== DEBUG processar_dados_bpo_dashboard ===")
-    print(f"Tipo DRE: {tipo_dre}")
-    print(f"Número de meses recebidos: {len(meses_data)}")
-
-    # Mapear tipo DRE para nome na planilha
+    # Processar dados para dashboard
+    # Mapear nomes de DRE para chaves
     dre_map = {
-        'fluxo_caixa': 'RESULTADO POR FLUXO DE CAIXA',
-        'real': 'RESULTADO REAL',
-        'real_mp': 'RESULTADO REAL + CUSTO MATÉRIA PRIMA'
+        'RESULTADO POR FLUXO DE CAIXA': 'fluxo_caixa',
+        'RESULTADO REAL': 'real',
+        'RESULTADO REAL + CUSTO MP': 'real_mp'
     }
 
-    # Arrays para gráficos
-    meses_labels = []
-    receitas = []
-    despesas = []
-    gerais = []
-
-    # Totais acumulados (soma de todos os meses)
-    totais_acumulados = {
+    # Inicializar totais acumulados
+    totais = {
         'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
         'real': {'receita': 0, 'despesa': 0, 'geral': 0},
         'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
     }
 
-    for mes_item in meses_data:
-        ano = mes_item['ano']
-        mes = mes_item['mes']
-        dados = mes_item['dados']
+    # Arrays para gráficos (por mês, do DRE selecionado)
+    labels_meses = []
+    receitas_mensais = []
+    despesas_mensais = []
+    gerais_mensais = []
 
-        meses_nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-                      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
-        meses_labels.append(f"{meses_nomes[mes-1]}/{ano}")
+    for mes_data in meses_data:
+        mes_num = mes_data['mes']
+        ano = mes_data['ano']
+        dados = mes_data['dados']
 
-        print(f"\n--- Processando {meses_nomes[mes-1]}/{ano} ---")
+        # Label para gráfico
+        labels_meses.append(f"{mes_num}/{ano}")
 
-        # Processar resultados_fluxo
-        if 'resultados_fluxo' in dados and dados['resultados_fluxo']:
-            secoes = dados['resultados_fluxo'].get('secoes', [])
-            print(f"Total de seções: {len(secoes)}")
+        # Extrair resultados_fluxo.secoes
+        resultados_fluxo = dados.get('resultados_fluxo', {})
+        secoes = resultados_fluxo.get('secoes', [])
 
-            # DEBUG: Mostrar estrutura
-            for idx, item in enumerate(secoes):
-                print(f"  [{idx}] tipo={item.get('tipo')} | nome={item.get('nome', item.get('texto', 'N/A'))}")
+        # Processar cada seção (cada DRE)
+        dre_atual = None
+        receita_mes = 0
+        despesa_mes = 0
+        geral_mes = 0
 
-            # Encontrar dados de cada DRE
-            for tipo_key, nome_dre in dre_map.items():
-                encontrou = False
-                for i, item in enumerate(secoes):
-                    if item.get('tipo') == 'titulo' and nome_dre in item.get('texto', ''):
-                        print(f"\n✓ Encontrado: {nome_dre} no índice {i}")
-
-                        # Pegar as 3 próximas linhas (TOTAL RECEITA, TOTAL DESPESAS, TOTAL GERAL)
-                        if i + 1 < len(secoes):
-                            rec = secoes[i + 1].get('resultados_totais', {}).get('total_realizado', 0) or 0
-                            print(f"  Receita (i+1): {rec}")
-                        else:
-                            rec = 0
-                        if i + 2 < len(secoes):
-                            desp = secoes[i + 2].get('resultados_totais', {}).get('total_realizado', 0) or 0
-                            print(f"  Despesa (i+2): {desp}")
-                        else:
-                            desp = 0
-                        if i + 3 < len(secoes):
-                            ger = secoes[i + 3].get('resultados_totais', {}).get('total_realizado', 0) or 0
-                            print(f"  Geral (i+3): {ger}")
-                        else:
-                            ger = 0
-
-                        totais_acumulados[tipo_key]['receita'] += rec
-                        totais_acumulados[tipo_key]['despesa'] += desp
-                        totais_acumulados[tipo_key]['geral'] += ger
-
-                        if tipo_key == tipo_dre:
-                            receitas.append(rec)
-                            despesas.append(desp)
-                            gerais.append(ger)
-
-                        encontrou = True
+        for secao in secoes:
+            if secao.get('tipo') == 'titulo':
+                # É um título de DRE
+                texto_titulo = secao.get('texto', '').upper()
+                for dre_nome, dre_key in dre_map.items():
+                    if dre_nome in texto_titulo:
+                        dre_atual = dre_key
                         break
+            elif secao.get('tipo') == 'dados' and dre_atual:
+                # É uma linha com dados (TOTAL RECEITA, TOTAL DESPESAS, TOTAL GERAL)
+                nome = secao.get('nome', '').upper()
 
-                if not encontrou and tipo_key == tipo_dre:
-                    receitas.append(0)
-                    despesas.append(0)
-                    gerais.append(0)
-        else:
-            print("  ⚠ Sem resultados_fluxo neste mês")
+                # Pegar valor realizado do mês
+                dados_mensais = secao.get('dados_mensais', [])
+                valor = 0
+                if dados_mensais and len(dados_mensais) > 0:
+                    valor = dados_mensais[0].get('valor_realizado', 0) or 0
 
-    print(f"\n=== RESULTADO FINAL ===")
-    print(f"Totais acumulados: {totais_acumulados}")
-    print(f"Receitas array: {receitas}")
-    print(f"Despesas array: {despesas}")
-    print(f"Gerais array: {gerais}")
+                # Classificar e acumular
+                if 'TOTAL RECEITA' in nome or 'RECEITA' in nome:
+                    totais[dre_atual]['receita'] += valor
+                    if dre_atual == tipo_dre:
+                        receita_mes = valor
+                elif 'TOTAL DESPESA' in nome or 'DESPESA' in nome:
+                    totais[dre_atual]['despesa'] += valor
+                    if dre_atual == tipo_dre:
+                        despesa_mes = valor
+                elif 'TOTAL GERAL' in nome or 'GERAL' in nome:
+                    totais[dre_atual]['geral'] += valor
+                    if dre_atual == tipo_dre:
+                        geral_mes = valor
 
-    return {
-        'meses': meses_labels,
-        'receitas': receitas,
-        'despesas': despesas,
-        'gerais': gerais,
-        'totais_acumulados': totais_acumulados
-    }
+        # Adicionar aos arrays do gráfico
+        receitas_mensais.append(receita_mes)
+        despesas_mensais.append(despesa_mes)
+        gerais_mensais.append(geral_mes)
+
+    return jsonify({
+        'totais_acumulados': totais,
+        'meses': labels_meses,
+        'receitas': receitas_mensais,
+        'despesas': despesas_mensais,
+        'gerais': gerais_mensais
+    })
 
