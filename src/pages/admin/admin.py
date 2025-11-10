@@ -859,6 +859,13 @@ def api_dados_bpo(empresa_id):
 
     company_manager.close()
 
+    print("\n" + "="*80)
+    print(f"🔍 DEBUG API DASHBOARD BPO - Empresa {empresa_id}")
+    print("="*80)
+    print(f"Período: {mes_inicio}/{ano_inicio} até {mes_fim}/{ano_fim}")
+    print(f"DRE selecionado: {tipo_dre}")
+    print(f"Total de meses encontrados no DB: {len(meses_data)}")
+
     # Processar dados para dashboard
     # Mapear nomes de DRE para chaves
     dre_map = {
@@ -892,19 +899,24 @@ def api_dados_bpo(empresa_id):
         resultados_fluxo = dados.get('resultados_fluxo', {})
         secoes = resultados_fluxo.get('secoes', [])
 
+        print(f"\n📅 MÊS {mes_num}/{ano}:")
+        print(f"   Total de seções em resultados_fluxo: {len(secoes)}")
+
         # Processar cada seção (cada DRE)
         dre_atual = None
         receita_mes = 0
         despesa_mes = 0
         geral_mes = 0
 
-        for secao in secoes:
+        for idx, secao in enumerate(secoes):
             if secao.get('tipo') == 'titulo':
                 # É um título de DRE
                 texto_titulo = secao.get('texto', '').upper()
+                print(f"   [{idx}] TÍTULO: {texto_titulo}")
                 for dre_nome, dre_key in dre_map.items():
                     if dre_nome in texto_titulo:
                         dre_atual = dre_key
+                        print(f"       → DRE identificado: {dre_key}")
                         break
             elif secao.get('tipo') == 'dados' and dre_atual:
                 # É uma linha com dados (TOTAL RECEITA, TOTAL DESPESAS, TOTAL GERAL)
@@ -916,24 +928,43 @@ def api_dados_bpo(empresa_id):
                 if dados_mensais and len(dados_mensais) > 0:
                     valor = dados_mensais[0].get('valor_realizado', 0) or 0
 
+                print(f"   [{idx}] DADOS - DRE={dre_atual}, Nome={nome}")
+                print(f"       → dados_mensais: {len(dados_mensais)} itens")
+                print(f"       → Valor extraído: R$ {valor:,.2f}")
+
                 # Classificar e acumular
                 if 'TOTAL RECEITA' in nome or 'RECEITA' in nome:
                     totais[dre_atual]['receita'] += valor
                     if dre_atual == tipo_dre:
                         receita_mes = valor
+                    print(f"       → Classificado como RECEITA")
                 elif 'TOTAL DESPESA' in nome or 'DESPESA' in nome:
                     totais[dre_atual]['despesa'] += valor
                     if dre_atual == tipo_dre:
                         despesa_mes = valor
+                    print(f"       → Classificado como DESPESA")
                 elif 'TOTAL GERAL' in nome or 'GERAL' in nome:
                     totais[dre_atual]['geral'] += valor
                     if dre_atual == tipo_dre:
                         geral_mes = valor
+                    print(f"       → Classificado como GERAL")
+                else:
+                    print(f"       ⚠️  NÃO CLASSIFICADO!")
 
         # Adicionar aos arrays do gráfico
         receitas_mensais.append(receita_mes)
         despesas_mensais.append(despesa_mes)
         gerais_mensais.append(geral_mes)
+
+    print("\n" + "="*80)
+    print("📊 TOTAIS ACUMULADOS FINAIS:")
+    print("="*80)
+    for dre_key, valores in totais.items():
+        print(f"{dre_key.upper()}:")
+        print(f"   Receita: R$ {valores['receita']:,.2f}")
+        print(f"   Despesa: R$ {valores['despesa']:,.2f}")
+        print(f"   Geral:   R$ {valores['geral']:,.2f}")
+    print("="*80 + "\n")
 
     return jsonify({
         'totais_acumulados': totais,
