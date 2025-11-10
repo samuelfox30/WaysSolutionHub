@@ -786,3 +786,151 @@ def deletar_dados_bpo_empresa():
         flash(f"Erro ao excluir dados de BPO para {mes}/{ano}.", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/dashboard-bpo/<int:empresa_id>')
+def dashboard_bpo(empresa_id):
+    """Dashboard BPO de uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    empresa = company_manager.buscar_empresa_por_id(empresa_id)
+    company_manager.close()
+
+    if not empresa:
+        flash("Empresa não encontrada.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    return render_template(
+        'admin/dashboard_bpo.html',
+        empresa=empresa,
+        empresa_id=empresa_id
+    )
+
+
+@admin_bp.route('/admin/api/dados-bpo/<int:empresa_id>')
+def api_dados_bpo(empresa_id):
+    """API retorna dados BPO de múltiplos meses"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({"error": "Não autorizado"}), 403
+
+    # Parâmetros
+    tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
+    ano_inicio = int(request.args.get('ano_inicio', 2025))
+    mes_inicio = int(request.args.get('mes_inicio', 1))
+    ano_fim = int(request.args.get('ano_fim', 2025))
+    mes_fim = int(request.args.get('mes_fim', 12))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    # Buscar todos os meses no período
+    meses_data = []
+    ano_atual = ano_inicio
+    mes_atual = mes_inicio
+
+    while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
+        dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
+        if dados:
+            meses_data.append({
+                'ano': ano_atual,
+                'mes': mes_atual,
+                'dados': dados['dados']
+            })
+
+        # Próximo mês
+        mes_atual += 1
+        if mes_atual > 12:
+            mes_atual = 1
+            ano_atual += 1
+
+    company_manager.close()
+
+    # Processar dados
+    resultado = processar_dados_bpo_dashboard(meses_data, tipo_dre)
+    return jsonify(resultado)
+
+
+def processar_dados_bpo_dashboard(meses_data, tipo_dre):
+    """Processa dados BPO para dashboard"""
+
+    # Mapear tipo DRE para nome na planilha
+    dre_map = {
+        'fluxo_caixa': 'RESULTADO POR FLUXO DE CAIXA',
+        'real': 'RESULTADO REAL',
+        'real_mp': 'RESULTADO REAL + CUSTO MATÉRIA PRIMA'
+    }
+
+    # Arrays para gráficos
+    meses_labels = []
+    receitas = []
+    despesas = []
+    gerais = []
+
+    # Totais acumulados (soma de todos os meses)
+    totais_acumulados = {
+        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+    }
+
+    for mes_item in meses_data:
+        ano = mes_item['ano']
+        mes = mes_item['mes']
+        dados = mes_item['dados']
+
+        meses_nomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
+                      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
+        meses_labels.append(f"{meses_nomes[mes-1]}/{ano}")
+
+        # Processar resultados_fluxo
+        if 'resultados_fluxo' in dados and dados['resultados_fluxo']:
+            secoes = dados['resultados_fluxo'].get('secoes', [])
+
+            # Encontrar dados de cada DRE
+            for tipo_key, nome_dre in dre_map.items():
+                encontrou = False
+                for i, item in enumerate(secoes):
+                    if item.get('tipo') == 'titulo' and nome_dre in item.get('texto', ''):
+                        # Pegar as 3 próximas linhas (TOTAL RECEITA, TOTAL DESPESAS, TOTAL GERAL)
+                        if i + 1 < len(secoes):
+                            rec = secoes[i + 1].get('resultados_totais', {}).get('total_realizado', 0) or 0
+                        else:
+                            rec = 0
+                        if i + 2 < len(secoes):
+                            desp = secoes[i + 2].get('resultados_totais', {}).get('total_realizado', 0) or 0
+                        else:
+                            desp = 0
+                        if i + 3 < len(secoes):
+                            ger = secoes[i + 3].get('resultados_totais', {}).get('total_realizado', 0) or 0
+                        else:
+                            ger = 0
+
+                        totais_acumulados[tipo_key]['receita'] += rec
+                        totais_acumulados[tipo_key]['despesa'] += desp
+                        totais_acumulados[tipo_key]['geral'] += ger
+
+                        if tipo_key == tipo_dre:
+                            receitas.append(rec)
+                            despesas.append(desp)
+                            gerais.append(ger)
+
+                        encontrou = True
+                        break
+
+                if not encontrou and tipo_key == tipo_dre:
+                    receitas.append(0)
+                    despesas.append(0)
+                    gerais.append(0)
+
+    return {
+        'meses': meses_labels,
+        'receitas': receitas,
+        'despesas': despesas,
+        'gerais': gerais,
+        'totais_acumulados': totais_acumulados
+    }
+
