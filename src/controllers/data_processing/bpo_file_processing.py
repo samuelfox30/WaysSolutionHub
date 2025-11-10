@@ -560,11 +560,18 @@ def process_bpo_file(file):
 
         if row_values[0] and "RESULTADO POR FLUXO DE CAIXA" in str(row_values[0]):
 
-            # Pular linha do título
-            linha_atual += 1
-
             # Processar as 12 linhas especiais
             secoes_resultado = []
+
+            # IMPORTANTE: Adicionar o título da seção antes de processar os dados
+            secoes_resultado.append({
+                'tipo': 'titulo',
+                'texto': str(row_values[0]).strip(),
+                'linha': linha_atual
+            })
+
+            # Ir para a próxima linha (primeira linha de dados)
+            linha_atual += 1
 
             while True:
                 row_values = []
