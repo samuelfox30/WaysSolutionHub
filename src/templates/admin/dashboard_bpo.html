@@ -1,0 +1,244 @@
+{% extends "admin/base.html" %}
+
+{% block header_title %}Dashboard BPO - {{ empresa.nome }}{% endblock %}
+{% block header_subtitle %}Visualização de dados mensais{% endblock %}
+
+{% block content %}
+
+<div class="container-fluid px-4">
+    <!-- FILTROS -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Filtros</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Tipo de DRE</label>
+                    <select id="tipo_dre" class="form-select">
+                        <option value="fluxo_caixa">Resultado por Fluxo de Caixa</option>
+                        <option value="real">Resultado Real</option>
+                        <option value="real_mp">Resultado Real + Custo MP</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Mês Início</label>
+                    <select id="mes_inicio" class="form-select">
+                        {% for i in range(1, 13) %}
+                        <option value="{{ i }}" {% if i == 1 %}selected{% endif %}>{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ano Início</label>
+                    <input type="number" id="ano_inicio" class="form-control" value="2025" min="2000" max="2100">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Mês Fim</label>
+                    <select id="mes_fim" class="form-select">
+                        {% for i in range(1, 13) %}
+                        <option value="{{ i }}" {% if i == 12 %}selected{% endif %}>{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ano Fim</label>
+                    <input type="number" id="ano_fim" class="form-control" value="2025" min="2000" max="2100">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="atualizarDados()">Filtrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULTADO GERAL -->
+    <h5 class="mb-3">Resultado Geral</h5>
+
+    <!-- 3 CARDS DOS DREs -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Resultado por Fluxo de Caixa</h6>
+                    <div class="small">Receita: <strong id="card_fc_rec">R$ 0,00</strong></div>
+                    <div class="small">Despesa: <strong id="card_fc_desp">R$ 0,00</strong></div>
+                    <div class="small">Geral: <strong id="card_fc_ger">R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Resultado Real</h6>
+                    <div class="small">Receita: <strong id="card_real_rec">R$ 0,00</strong></div>
+                    <div class="small">Despesa: <strong id="card_real_desp">R$ 0,00</strong></div>
+                    <div class="small">Geral: <strong id="card_real_ger">R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Resultado Real + Custo MP</h6>
+                    <div class="small">Receita: <strong id="card_mp_rec">R$ 0,00</strong></div>
+                    <div class="small">Despesa: <strong id="card_mp_desp">R$ 0,00</strong></div>
+                    <div class="small">Geral: <strong id="card_mp_ger">R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA DO DRE SELECIONADO -->
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Total Receita</th>
+                    <th>Total Despesa</th>
+                    <th>Total Geral</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td id="tab_rec">R$ 0,00</td>
+                    <td id="tab_desp">R$ 0,00</td>
+                    <td id="tab_ger">R$ 0,00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Total Receita por Mês</h6>
+                    <canvas id="chartReceita"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Total Despesas por Mês</h6>
+                    <canvas id="chartDespesa"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Total Geral por Mês</h6>
+                    <canvas id="chartGeral"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let chartReceita, chartDespesa, chartGeral;
+
+function formatMoney(val) {
+    return 'R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function atualizarDados() {
+    const tipo_dre = document.getElementById('tipo_dre').value;
+    const mes_inicio = document.getElementById('mes_inicio').value;
+    const ano_inicio = document.getElementById('ano_inicio').value;
+    const mes_fim = document.getElementById('mes_fim').value;
+    const ano_fim = document.getElementById('ano_fim').value;
+
+    const url = `/admin/api/dados-bpo/{{ empresa_id }}?tipo_dre=${tipo_dre}&mes_inicio=${mes_inicio}&ano_inicio=${ano_inicio}&mes_fim=${mes_fim}&ano_fim=${ano_fim}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            // Atualizar cards
+            const tot = data.totais_acumulados;
+            document.getElementById('card_fc_rec').textContent = formatMoney(tot.fluxo_caixa.receita);
+            document.getElementById('card_fc_desp').textContent = formatMoney(tot.fluxo_caixa.despesa);
+            document.getElementById('card_fc_ger').textContent = formatMoney(tot.fluxo_caixa.geral);
+
+            document.getElementById('card_real_rec').textContent = formatMoney(tot.real.receita);
+            document.getElementById('card_real_desp').textContent = formatMoney(tot.real.despesa);
+            document.getElementById('card_real_ger').textContent = formatMoney(tot.real.geral);
+
+            document.getElementById('card_mp_rec').textContent = formatMoney(tot.real_mp.receita);
+            document.getElementById('card_mp_desp').textContent = formatMoney(tot.real_mp.despesa);
+            document.getElementById('card_mp_ger').textContent = formatMoney(tot.real_mp.geral);
+
+            // Atualizar tabela do DRE selecionado
+            const dre_sel = tot[tipo_dre];
+            document.getElementById('tab_rec').textContent = formatMoney(dre_sel.receita);
+            document.getElementById('tab_desp').textContent = formatMoney(dre_sel.despesa);
+            document.getElementById('tab_ger').textContent = formatMoney(dre_sel.geral);
+
+            // Atualizar gráficos
+            atualizarGraficos(data.meses, data.receitas, data.despesas, data.gerais);
+        });
+}
+
+function atualizarGraficos(labels, receitas, despesas, gerais) {
+    // Receita
+    if (chartReceita) chartReceita.destroy();
+    chartReceita = new Chart(document.getElementById('chartReceita'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Receita',
+                data: receitas,
+                backgroundColor: '#28a745'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    // Despesa
+    if (chartDespesa) chartDespesa.destroy();
+    chartDespesa = new Chart(document.getElementById('chartDespesa'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Despesa',
+                data: despesas,
+                backgroundColor: '#dc3545'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    // Geral
+    if (chartGeral) chartGeral.destroy();
+    chartGeral = new Chart(document.getElementById('chartGeral'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Geral',
+                data: gerais,
+                backgroundColor: '#007bff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {legend: {display: false}}
+        }
+    });
+}
+
+// Carregar ao iniciar
+atualizarDados();
+</script>
+
+{% endblock %}
