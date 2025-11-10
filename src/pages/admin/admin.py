@@ -857,6 +857,10 @@ def api_dados_bpo(empresa_id):
 def processar_dados_bpo_dashboard(meses_data, tipo_dre):
     """Processa dados BPO para dashboard"""
 
+    print(f"\n=== DEBUG processar_dados_bpo_dashboard ===")
+    print(f"Tipo DRE: {tipo_dre}")
+    print(f"Número de meses recebidos: {len(meses_data)}")
+
     # Mapear tipo DRE para nome na planilha
     dre_map = {
         'fluxo_caixa': 'RESULTADO POR FLUXO DE CAIXA',
@@ -886,26 +890,38 @@ def processar_dados_bpo_dashboard(meses_data, tipo_dre):
                       'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']
         meses_labels.append(f"{meses_nomes[mes-1]}/{ano}")
 
+        print(f"\n--- Processando {meses_nomes[mes-1]}/{ano} ---")
+
         # Processar resultados_fluxo
         if 'resultados_fluxo' in dados and dados['resultados_fluxo']:
             secoes = dados['resultados_fluxo'].get('secoes', [])
+            print(f"Total de seções: {len(secoes)}")
+
+            # DEBUG: Mostrar estrutura
+            for idx, item in enumerate(secoes):
+                print(f"  [{idx}] tipo={item.get('tipo')} | nome={item.get('nome', item.get('texto', 'N/A'))}")
 
             # Encontrar dados de cada DRE
             for tipo_key, nome_dre in dre_map.items():
                 encontrou = False
                 for i, item in enumerate(secoes):
                     if item.get('tipo') == 'titulo' and nome_dre in item.get('texto', ''):
+                        print(f"\n✓ Encontrado: {nome_dre} no índice {i}")
+
                         # Pegar as 3 próximas linhas (TOTAL RECEITA, TOTAL DESPESAS, TOTAL GERAL)
                         if i + 1 < len(secoes):
                             rec = secoes[i + 1].get('resultados_totais', {}).get('total_realizado', 0) or 0
+                            print(f"  Receita (i+1): {rec}")
                         else:
                             rec = 0
                         if i + 2 < len(secoes):
                             desp = secoes[i + 2].get('resultados_totais', {}).get('total_realizado', 0) or 0
+                            print(f"  Despesa (i+2): {desp}")
                         else:
                             desp = 0
                         if i + 3 < len(secoes):
                             ger = secoes[i + 3].get('resultados_totais', {}).get('total_realizado', 0) or 0
+                            print(f"  Geral (i+3): {ger}")
                         else:
                             ger = 0
 
@@ -925,6 +941,14 @@ def processar_dados_bpo_dashboard(meses_data, tipo_dre):
                     receitas.append(0)
                     despesas.append(0)
                     gerais.append(0)
+        else:
+            print("  ⚠ Sem resultados_fluxo neste mês")
+
+    print(f"\n=== RESULTADO FINAL ===")
+    print(f"Totais acumulados: {totais_acumulados}")
+    print(f"Receitas array: {receitas}")
+    print(f"Despesas array: {despesas}")
+    print(f"Gerais array: {gerais}")
 
     return {
         'meses': meses_labels,
