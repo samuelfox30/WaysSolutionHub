@@ -112,12 +112,12 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
         # Cada mês tem 4 colunas fixas:
         # 0: Valor Orçado
         # 1: Valor Realizado
-        # 2: % Atingido
+        # 2: % Atingido (já vem como número, ex: 86.06 para 86,06%)
         # 3: Valor Diferença
 
         valor_orcado = converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None
         valor_realizado = converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None
-        perc_atingido = converter_porcentagem(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None
+        perc_atingido = converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None  # SEM multiplicar por 100!
         valor_diferenca = converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None
 
         mes_data = {
