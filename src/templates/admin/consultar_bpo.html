@@ -165,12 +165,10 @@
                         <tr>
                             <th>Código</th>
                             <th>Nome</th>
-                            <th class="text-end">% Viab</th>
-                            <th class="text-end">Valor Viab</th>
-                            <th class="text-end">% Real</th>
-                            <th class="text-end">Valor Real</th>
-                            <th class="text-end">% Ating</th>
-                            <th class="text-end">Diferença</th>
+                            <th class="text-end">Valor Orçado</th>
+                            <th class="text-end">Valor Realizado</th>
+                            <th class="text-end">% Atingido</th>
+                            <th class="text-end">Valor Diferença</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -178,10 +176,8 @@
                         <tr>
                             <td><code>{{ item.codigo }}</code></td>
                             <td style="padding-left: {{ item.nivel_hierarquia * 20 }}px;">{{ item.nome }}</td>
-                            <td class="text-end">{{ "%.2f"|format(item.viabilidade.percentual or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(item.viabilidade.valor or 0) }}</td>
                             {% if item.dados_mensais %}
-                            <td class="text-end">{{ "%.2f"|format(item.dados_mensais[0].perc_realizado or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_orcado or 0) }}</td>
                             <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_realizado or 0) }}</td>
                             <td class="text-end">{{ "%.2f"|format(item.dados_mensais[0].perc_atingido or 0) }}%</td>
                             <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_diferenca or 0) }}</td>
@@ -205,13 +201,9 @@
                         <tr>
                             <th>Código</th>
                             <th>Nome</th>
-                            <th class="text-end">Previsto Total</th>
-                            <th class="text-end">Realizado Total</th>
-                            <th class="text-end">Diferença Total</th>
-                            <th class="text-end">Média % Real</th>
-                            <th class="text-end">Média Valor Real</th>
-                            <th class="text-end">Média % Dif</th>
-                            <th class="text-end">Média Valor Dif</th>
+                            <th class="text-end">Valor Orçado Total</th>
+                            <th class="text-end">Valor Realizado Total</th>
+                            <th class="text-end">Valor Pendente Total</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -220,13 +212,9 @@
                         <tr>
                             <td><code>{{ item.codigo }}</code></td>
                             <td style="padding-left: {{ item.nivel_hierarquia * 20 }}px;">{{ item.nome }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.previsao_total or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.total_realizado or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.diferenca_total or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(totais.media_perc_realizado or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.media_valor_realizado or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(totais.media_perc_diferenca or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.media_valor_diferenca or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.valor_orcado_total or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.valor_realizado_total or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.valor_pendente_total or 0) }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
