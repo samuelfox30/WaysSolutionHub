@@ -609,7 +609,7 @@ def upload_dados_bpo():
             # Filtrar dados deste mês
             dados_mes = {
                 'itens_hierarquicos': [],
-                'resultados_fluxo': {'secoes': [], 'total_linhas': 0},
+                'totais_calculados': dados_bpo.get('totais_calculados', {}),  # Vazio por enquanto
                 'metadados': dados_bpo['metadados']
             }
 
@@ -620,19 +620,6 @@ def upload_dados_bpo():
                     m for m in item['dados_mensais'] if m['mes_numero'] == mes_num
                 ]
                 dados_mes['itens_hierarquicos'].append(item_mes)
-
-            # Filtrar também os dados mensais dentro de resultados_fluxo.secoes
-            if 'resultados_fluxo' in dados_bpo and 'secoes' in dados_bpo['resultados_fluxo']:
-                for secao in dados_bpo['resultados_fluxo']['secoes']:
-                    secao_mes = secao.copy()
-                    # Se é uma seção com dados (não apenas título), filtrar dados mensais
-                    if secao.get('tipo') == 'dados' and 'dados_mensais' in secao:
-                        secao_mes['dados_mensais'] = [
-                            m for m in secao['dados_mensais'] if m['mes_numero'] == mes_num
-                        ]
-                    dados_mes['resultados_fluxo']['secoes'].append(secao_mes)
-
-                dados_mes['resultados_fluxo']['total_linhas'] = len(dados_mes['resultados_fluxo']['secoes'])
 
             # Salvar se tiver dados
             if dados_mes['itens_hierarquicos']:
