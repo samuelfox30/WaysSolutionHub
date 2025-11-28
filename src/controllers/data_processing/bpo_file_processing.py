@@ -153,6 +153,147 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     }
 
 
+def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
+    """
+    Calcula os totais do 1º cenário: RESULTADO POR FLUXO DE CAIXA
+
+    Para cada mês, calcula 3 totais em 4 colunas:
+    - Orçamento: Receita, Despesa, Geral
+    - Realizado: Receita, Despesa, Geral
+    - % Atingido: Receita%, Despesa%, Geral%
+    - Diferença: Receita, Despesa, Geral
+
+    Args:
+        itens_hierarquicos: Lista de itens processados
+        num_meses: Número de meses
+
+    Returns:
+        dict: Totais calculados por mês
+    """
+
+    # Estrutura de retorno
+    totais = {
+        'fluxo_caixa': {},  # Será preenchido por mês
+        'real': {},         # Para depois (vazio por enquanto)
+        'real_mp': {}       # Para depois (vazio por enquanto)
+    }
+
+    # Encontrar os itens "1 - RECEITA" e "2 - DESPESAS"
+    item_receita = None
+    item_despesa = None
+
+    for item in itens_hierarquicos:
+        nome_upper = item['nome'].upper()
+        codigo = item['codigo']
+
+        # Procurar por "1 - RECEITA" ou similar
+        if codigo == "1" or ("RECEITA" in nome_upper and codigo.startswith("1")):
+            if not item_receita:  # Pegar o primeiro
+                item_receita = item
+                print(f"✅ Item RECEITA encontrado: [{item['codigo']}] {item['nome']}")
+
+        # Procurar por "2 - DESPESAS" ou similar
+        if codigo == "2" or ("DESPESA" in nome_upper and codigo.startswith("2")):
+            if not item_despesa:  # Pegar o primeiro
+                item_despesa = item
+                print(f"✅ Item DESPESA encontrado: [{item['codigo']}] {item['nome']}")
+
+    if not item_receita or not item_despesa:
+        print("⚠️  ATENÇÃO: Não foi possível encontrar itens RECEITA e/ou DESPESAS!")
+        print(f"   Item RECEITA: {'Encontrado' if item_receita else 'NÃO ENCONTRADO'}")
+        print(f"   Item DESPESA: {'Encontrado' if item_despesa else 'NÃO ENCONTRADO'}")
+        return totais
+
+    # Calcular para cada mês
+    for mes_num in range(1, num_meses + 1):
+        # Encontrar dados deste mês
+        dados_mes_receita = next((m for m in item_receita['dados_mensais'] if m['mes_numero'] == mes_num), None)
+        dados_mes_despesa = next((m for m in item_despesa['dados_mensais'] if m['mes_numero'] == mes_num), None)
+
+        if not dados_mes_receita or not dados_mes_despesa:
+            print(f"⚠️  Mês {mes_num}: Dados não encontrados")
+            continue
+
+        # ====================================================================
+        # COLUNA 1 - ORÇAMENTO
+        # ====================================================================
+        orcamento_receita = dados_mes_receita['valor_orcado'] or 0
+        orcamento_despesa = dados_mes_despesa['valor_orcado'] or 0
+        orcamento_geral = orcamento_receita - orcamento_despesa
+
+        # ====================================================================
+        # COLUNA 2 - REALIZADO
+        # ====================================================================
+        realizado_receita = dados_mes_receita['valor_realizado'] or 0
+        realizado_despesa = dados_mes_despesa['valor_realizado'] or 0
+        realizado_geral = realizado_receita - realizado_despesa
+
+        # ====================================================================
+        # COLUNA 3 - % ATINGIDO
+        # ====================================================================
+        # Fórmula: (Realizado - Orçado) / Orçado * 100
+        if orcamento_receita != 0:
+            perc_receita = ((realizado_receita - orcamento_receita) / orcamento_receita) * 100
+        else:
+            perc_receita = 0
+
+        if orcamento_despesa != 0:
+            perc_despesa = ((realizado_despesa - orcamento_despesa) / orcamento_despesa) * 100
+        else:
+            perc_despesa = 0
+
+        if orcamento_geral != 0:
+            perc_geral = ((realizado_geral - orcamento_geral) / orcamento_geral) * 100
+        else:
+            perc_geral = 0
+
+        # ====================================================================
+        # COLUNA 4 - DIFERENÇA
+        # ====================================================================
+        # Receita: Realizado - Orçado
+        # Despesa: Orçado - Realizado (INVERTIDO!)
+        # Geral: Receita - Despesa
+        diferenca_receita = realizado_receita - orcamento_receita
+        diferenca_despesa = orcamento_despesa - realizado_despesa  # INVERTIDO
+        diferenca_geral = diferenca_receita - diferenca_despesa
+
+        # Salvar totais deste mês
+        totais['fluxo_caixa'][mes_num] = {
+            'orcamento': {
+                'receita': orcamento_receita,
+                'despesa': orcamento_despesa,
+                'geral': orcamento_geral
+            },
+            'realizado': {
+                'receita': realizado_receita,
+                'despesa': realizado_despesa,
+                'geral': realizado_geral
+            },
+            'perc_atingido': {
+                'receita': perc_receita,
+                'despesa': perc_despesa,
+                'geral': perc_geral
+            },
+            'diferenca': {
+                'receita': diferenca_receita,
+                'despesa': diferenca_despesa,
+                'geral': diferenca_geral
+            }
+        }
+
+        # Log apenas do primeiro mês para não poluir
+        if mes_num == 1:
+            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo:")
+            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita)} | Despesa: R$ {formatar_numero(orcamento_despesa)} | Geral: R$ {formatar_numero(orcamento_geral)}")
+            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita)} | Despesa: R$ {formatar_numero(realizado_despesa)} | Geral: R$ {formatar_numero(realizado_geral)}")
+            print(f"   % ATINGIDO → Receita: {perc_receita:.2f}% | Despesa: {perc_despesa:.2f}% | Geral: {perc_geral:.2f}%")
+            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita)} | Despesa: R$ {formatar_numero(diferenca_despesa)} | Geral: R$ {formatar_numero(diferenca_geral)}")
+
+    print(f"\n✅ Totais calculados para {len(totais['fluxo_caixa'])} meses")
+
+    return totais
+
+
 # ============================================================================
 # FUNÇÃO PRINCIPAL DE PROCESSAMENTO
 # ============================================================================
@@ -259,16 +400,19 @@ def process_bpo_file(file):
 
         print(f"\n📊 Total de itens processados: {len(itens_hierarquicos)}")
 
+        # ========================================================================
+        # CALCULAR TOTAIS (1º CENÁRIO: RESULTADO POR FLUXO DE CAIXA)
+        # ========================================================================
+        print("\n" + "-"*100)
+        print("🧮 CALCULANDO TOTAIS - RESULTADO POR FLUXO DE CAIXA")
+        print("-"*100)
+
+        totais_calculados = calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses)
+
         # Montar estrutura final
         dados_processados = {
             'itens_hierarquicos': itens_hierarquicos,
-            'totais_calculados': {
-                # Será preenchido depois quando souber a fórmula
-                # Estrutura planejada:
-                # 'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
-                # 'real': {'receita': 0, 'despesa': 0, 'geral': 0},
-                # 'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
-            },
+            'totais_calculados': totais_calculados,
             'metadados': {
                 'total_colunas': total_colunas,
                 'num_meses': num_meses,
