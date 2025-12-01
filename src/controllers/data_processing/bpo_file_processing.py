@@ -252,10 +252,10 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         # ====================================================================
         # Receita: Realizado - Orçado
         # Despesa: Orçado - Realizado (INVERTIDO!)
-        # Geral: Receita - Despesa
+        # Geral: Receita + Despesa
         diferenca_receita = realizado_receita - orcamento_receita
         diferenca_despesa = orcamento_despesa - realizado_despesa  # INVERTIDO
-        diferenca_geral = diferenca_receita - diferenca_despesa
+        diferenca_geral = diferenca_receita + diferenca_despesa
 
         # Salvar totais deste mês
         totais['fluxo_caixa'][mes_num] = {
@@ -394,10 +394,10 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         # ====================================================================
         # Receita: Realizado - Orçado
         # Despesa: Orçado - Realizado (INVERTIDO!)
-        # Geral: Receita - Despesa
+        # Geral: Receita + Despesa
         diferenca_receita_real = realizado_receita_real - orcamento_receita_real
         diferenca_despesa_real = orcamento_despesa_real - realizado_despesa_real  # INVERTIDO
-        diferenca_geral_real = diferenca_receita_real - diferenca_despesa_real
+        diferenca_geral_real = diferenca_receita_real + diferenca_despesa_real
 
         # Salvar totais deste mês
         totais['real'][mes_num] = {
@@ -516,10 +516,10 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         # ====================================================================
         # Receita: Realizado - Orçado
         # Despesa: Orçado - Realizado (INVERTIDO!)
-        # Geral: Receita - Despesa
+        # Geral: Receita + Despesa
         diferenca_receita_mp = realizado_receita_mp - orcamento_receita_mp
         diferenca_despesa_mp = orcamento_despesa_mp - realizado_despesa_mp  # INVERTIDO
-        diferenca_geral_mp = diferenca_receita_mp - diferenca_despesa_mp
+        diferenca_geral_mp = diferenca_receita_mp + diferenca_despesa_mp
 
         # Salvar totais deste mês
         totais['real_mp'][mes_num] = {
