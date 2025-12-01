@@ -894,8 +894,10 @@ def api_dados_bpo(empresa_id):
         # Extrair totais_calculados (nova estrutura)
         totais_calculados = dados.get('totais_calculados', {})
 
-        if not totais_calculados:
+        # Verificar se totais_calculados está vazio ou None
+        if not totais_calculados or totais_calculados == {}:
             print(f"   ⚠️  totais_calculados vazio para este mês")
+            print(f"   💡 DICA: Faça upload da planilha novamente para recalcular os dados")
             receitas_mensais.append(0)
             despesas_mensais.append(0)
             gerais_mensais.append(0)
@@ -910,31 +912,39 @@ def api_dados_bpo(empresa_id):
         for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
             cenario_data = totais_calculados.get(cenario_key, {})
 
+            # Verificar se o cenário existe e não está vazio
+            if not cenario_data or not isinstance(cenario_data, dict):
+                print(f"   ⚠️  {cenario_key.upper()}: cenário vazio ou inválido")
+                continue
+
             # Pegar dados do mês (a chave é o número do mês)
             mes_dados = cenario_data.get(mes_num, {})
 
-            if mes_dados:
+            if mes_dados and isinstance(mes_dados, dict):
                 # Extrair valores realizados
                 realizado = mes_dados.get('realizado', {})
-                receita = realizado.get('receita', 0) or 0
-                despesa = realizado.get('despesa', 0) or 0
-                geral = realizado.get('geral', 0) or 0
+                if isinstance(realizado, dict):
+                    receita = realizado.get('receita', 0) or 0
+                    despesa = realizado.get('despesa', 0) or 0
+                    geral = realizado.get('geral', 0) or 0
 
-                # Acumular totais
-                totais[cenario_key]['receita'] += receita
-                totais[cenario_key]['despesa'] += despesa
-                totais[cenario_key]['geral'] += geral
+                    # Acumular totais
+                    totais[cenario_key]['receita'] += receita
+                    totais[cenario_key]['despesa'] += despesa
+                    totais[cenario_key]['geral'] += geral
 
-                print(f"   {cenario_key.upper()}:")
-                print(f"      Receita: R$ {receita:,.2f}")
-                print(f"      Despesa: R$ {despesa:,.2f}")
-                print(f"      Geral:   R$ {geral:,.2f}")
+                    print(f"   {cenario_key.upper()}:")
+                    print(f"      Receita: R$ {receita:,.2f}")
+                    print(f"      Despesa: R$ {despesa:,.2f}")
+                    print(f"      Geral:   R$ {geral:,.2f}")
 
-                # Se é o DRE selecionado, guardar para gráfico
-                if cenario_key == tipo_dre:
-                    receita_grafico = receita
-                    despesa_grafico = despesa
-                    geral_grafico = geral
+                    # Se é o DRE selecionado, guardar para gráfico
+                    if cenario_key == tipo_dre:
+                        receita_grafico = receita
+                        despesa_grafico = despesa
+                        geral_grafico = geral
+                else:
+                    print(f"   ⚠️  {cenario_key.upper()}: estrutura 'realizado' inválida")
             else:
                 print(f"   ⚠️  {cenario_key.upper()}: sem dados para mês {mes_num}")
 
