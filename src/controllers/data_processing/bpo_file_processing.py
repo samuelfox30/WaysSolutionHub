@@ -433,6 +433,129 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
 
     print(f"\n✅ Totais do Resultado Real calculados para {len(totais['real'])} meses")
 
+    # ========================================================================
+    # CALCULAR 3º CENÁRIO: RESULTADO REAL + CUSTO MATÉRIA PRIMA
+    # ========================================================================
+    print("\n" + "-"*100)
+    print("🧮 CALCULANDO TOTAIS - RESULTADO REAL + CUSTO MATÉRIA PRIMA")
+    print("-"*100)
+
+    # Item a buscar: CUSTO MATERIA PRIMA
+    item_custo_mp_nome = 'CUSTO MATERIA PRIMA'
+
+    # Calcular para cada mês
+    for mes_num in range(1, num_meses + 1):
+        # Pegar dados do cenário "Real" deste mês
+        dados_real = totais['real'].get(mes_num)
+
+        if not dados_real:
+            print(f"⚠️  Mês {mes_num}: Dados do Resultado Real não encontrados")
+            continue
+
+        # ====================================================================
+        # COLUNA 1 - ORÇAMENTO
+        # ====================================================================
+        # Mesmos valores do cenário "Real"
+        orcamento_receita_mp = dados_real['orcamento']['receita']
+        orcamento_despesa_mp = dados_real['orcamento']['despesa']
+        orcamento_geral_mp = dados_real['orcamento']['geral']
+
+        # ====================================================================
+        # COLUNA 2 - REALIZADO
+        # ====================================================================
+        # Total Receita = igual ao cenário "Real"
+        realizado_receita_mp = dados_real['realizado']['receita']
+
+        # Buscar valores de CUSTO MATERIA PRIMA
+        dados_custo_mp = buscar_valores_item(item_custo_mp_nome)
+        custo_mp_orcado = 0
+        custo_mp_realizado = 0
+
+        if dados_custo_mp:
+            for mes_data in dados_custo_mp:
+                if mes_data['mes_numero'] == mes_num:
+                    custo_mp_orcado = mes_data.get('valor_orcado', 0) or 0
+                    custo_mp_realizado = mes_data.get('valor_realizado', 0) or 0
+                    break
+
+        # Total Despesa (fórmula complexa):
+        # ((CUSTO_MP_ORCADO / RECEITA_ORCADO) * RECEITA_REALIZADO - CUSTO_MP_REALIZADO)
+        # + DESPESA_REAL_REALIZADO - CUSTO_MP_REALIZADO
+
+        despesa_real_realizado = dados_real['realizado']['despesa']
+
+        if orcamento_receita_mp != 0:
+            parte1 = ((custo_mp_orcado / orcamento_receita_mp) * realizado_receita_mp) - custo_mp_realizado
+        else:
+            parte1 = 0
+
+        realizado_despesa_mp = parte1 + despesa_real_realizado - custo_mp_realizado
+        realizado_geral_mp = realizado_receita_mp - realizado_despesa_mp
+
+        # ====================================================================
+        # COLUNA 3 - % ATINGIDO
+        # ====================================================================
+        # Fórmula: (Realizado / Orçado) * 100
+        if orcamento_receita_mp != 0:
+            perc_receita_mp = (realizado_receita_mp / orcamento_receita_mp) * 100
+        else:
+            perc_receita_mp = 0
+
+        if orcamento_despesa_mp != 0:
+            perc_despesa_mp = (realizado_despesa_mp / orcamento_despesa_mp) * 100
+        else:
+            perc_despesa_mp = 0
+
+        if orcamento_geral_mp != 0:
+            perc_geral_mp = (realizado_geral_mp / orcamento_geral_mp) * 100
+        else:
+            perc_geral_mp = 0
+
+        # ====================================================================
+        # COLUNA 4 - DIFERENÇA
+        # ====================================================================
+        # Receita: Realizado - Orçado
+        # Despesa: Orçado - Realizado (INVERTIDO!)
+        # Geral: Receita - Despesa
+        diferenca_receita_mp = realizado_receita_mp - orcamento_receita_mp
+        diferenca_despesa_mp = orcamento_despesa_mp - realizado_despesa_mp  # INVERTIDO
+        diferenca_geral_mp = diferenca_receita_mp - diferenca_despesa_mp
+
+        # Salvar totais deste mês
+        totais['real_mp'][mes_num] = {
+            'orcamento': {
+                'receita': orcamento_receita_mp,
+                'despesa': orcamento_despesa_mp,
+                'geral': orcamento_geral_mp
+            },
+            'realizado': {
+                'receita': realizado_receita_mp,
+                'despesa': realizado_despesa_mp,
+                'geral': realizado_geral_mp
+            },
+            'perc_atingido': {
+                'receita': perc_receita_mp,
+                'despesa': perc_despesa_mp,
+                'geral': perc_geral_mp
+            },
+            'diferenca': {
+                'receita': diferenca_receita_mp,
+                'despesa': diferenca_despesa_mp,
+                'geral': diferenca_geral_mp
+            }
+        }
+
+        # Log apenas do primeiro mês
+        if mes_num == 1:
+            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo (Resultado Real + Custo MP):")
+            print(f"   CUSTO MP   → Orçado: R$ {formatar_numero(custo_mp_orcado)} | Realizado: R$ {formatar_numero(custo_mp_realizado)}")
+            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita_mp)} | Despesa: R$ {formatar_numero(orcamento_despesa_mp)} | Geral: R$ {formatar_numero(orcamento_geral_mp)}")
+            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita_mp)} | Despesa: R$ {formatar_numero(realizado_despesa_mp)} | Geral: R$ {formatar_numero(realizado_geral_mp)}")
+            print(f"   % ATINGIDO → Receita: {perc_receita_mp:.2f}% | Despesa: {perc_despesa_mp:.2f}% | Geral: {perc_geral_mp:.2f}%")
+            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita_mp)} | Despesa: R$ {formatar_numero(diferenca_despesa_mp)} | Geral: R$ {formatar_numero(diferenca_geral_mp)}")
+
+    print(f"\n✅ Totais do Resultado Real + Custo MP calculados para {len(totais['real_mp'])} meses")
+
     return totais
 
 
