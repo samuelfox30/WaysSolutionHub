@@ -193,6 +193,44 @@
                 </table>
             </div>
 
+            <!-- TABELA DE CENÁRIOS (RESULTADO POR FLUXO DE CAIXA, RESULTADO REAL, etc) -->
+            {% if data_results.dados.resultados_fluxo and data_results.dados.resultados_fluxo.secoes %}
+            <h6 class="mt-5 mb-3 fw-semibold">Cenários de Totais</h6>
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Cenário / Item</th>
+                            <th class="text-end">Orçado</th>
+                            <th class="text-end">Realizado</th>
+                            <th class="text-end">% Atingido</th>
+                            <th class="text-end">Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in data_results.dados.resultados_fluxo.secoes %}
+                            {% if item.tipo == 'titulo' %}
+                                <tr class="table-warning">
+                                    <td colspan="5" class="fw-bold">{{ item.texto }}</td>
+                                </tr>
+                            {% else %}
+                                {% if item.dados_mensais %}
+                                    {% set dados_mes = item.dados_mensais[0] %}
+                                    <tr>
+                                        <td class="ps-4">{{ item.nome }}</td>
+                                        <td class="text-end">R$ {{ "{:,.2f}".format(dados_mes.perc_realizado or 0) }}</td>
+                                        <td class="text-end">R$ {{ "{:,.2f}".format(dados_mes.valor_realizado or 0) }}</td>
+                                        <td class="text-end">{{ "%.2f"|format(dados_mes.perc_atingido or 0) }}%</td>
+                                        <td class="text-end">R$ {{ "{:,.2f}".format(dados_mes.valor_diferenca or 0) }}</td>
+                                    </tr>
+                                {% endif %}
+                            {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+
             <!-- TABELA DE TOTAIS CONSOLIDADOS -->
             <h6 class="mt-4 mb-3 fw-semibold">Totais Consolidados</h6>
             <div class="table-responsive">
