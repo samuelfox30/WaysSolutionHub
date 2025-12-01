@@ -307,6 +307,102 @@
             {% endif %}
             {% endif %}
 
+            <!-- TABELA DE TOTAIS CALCULADOS - RESULTADO REAL -->
+            {% if data_results.dados.totais_calculados and data_results.dados.totais_calculados.real %}
+            {% set mes_num = mes_selecionado %}
+            {% if mes_num in data_results.dados.totais_calculados.real %}
+            {% set real = data_results.dados.totais_calculados.real[mes_num] %}
+
+            <h6 class="mt-5 mb-3 fw-semibold text-success">
+                <i class="bi bi-calculator me-2"></i>Resultado Real
+            </h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-success">
+                        <tr>
+                            <th>Categoria</th>
+                            <th class="text-end">Orçamento</th>
+                            <th class="text-end">Realizado</th>
+                            <th class="text-end">% Atingido</th>
+                            <th class="text-end">Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Total Receita</strong></td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real.orcamento.receita or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real.realizado.receita or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(real.perc_atingido.receita or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real.diferenca.receita or 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Despesa</strong></td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real.orcamento.despesa or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real.realizado.despesa or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(real.perc_atingido.despesa or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real.diferenca.despesa or 0) }}</td>
+                        </tr>
+                        <tr class="table-light">
+                            <td><strong>Total Geral</strong></td>
+                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real.orcamento.geral or 0) }}</strong></td>
+                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real.realizado.geral or 0) }}</strong></td>
+                            <td class="text-end"><strong>{{ "%.2f"|format(real.perc_atingido.geral or 0) }}%</strong></td>
+                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real.diferenca.geral or 0) }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% endif %}
+
+            <!-- TABELA DE TOTAIS CALCULADOS - RESULTADO REAL + MP -->
+            {% if data_results.dados.totais_calculados and data_results.dados.totais_calculados.real_mp %}
+            {% set mes_num = mes_selecionado %}
+            {% if mes_num in data_results.dados.totais_calculados.real_mp %}
+            {% set real_mp = data_results.dados.totais_calculados.real_mp[mes_num] %}
+
+            <h6 class="mt-5 mb-3 fw-semibold text-warning">
+                <i class="bi bi-calculator me-2"></i>Resultado Real + Custo MP
+            </h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered">
+                    <thead class="table-warning">
+                        <tr>
+                            <th>Categoria</th>
+                            <th class="text-end">Orçamento</th>
+                            <th class="text-end">Realizado</th>
+                            <th class="text-end">% Atingido</th>
+                            <th class="text-end">Diferença</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Total Receita</strong></td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.orcamento.receita or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.realizado.receita or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(real_mp.perc_atingido.receita or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.diferenca.receita or 0) }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Despesa</strong></td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.orcamento.despesa or 0) }}</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.realizado.despesa or 0) }}</td>
+                            <td class="text-end">{{ "%.2f"|format(real_mp.perc_atingido.despesa or 0) }}%</td>
+                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.diferenca.despesa or 0) }}</td>
+                        </tr>
+                        <tr class="table-light">
+                            <td><strong>Total Geral</strong></td>
+                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real_mp.orcamento.geral or 0) }}</strong></td>
+                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real_mp.realizado.geral or 0) }}</strong></td>
+                            <td class="text-end"><strong>{{ "%.2f"|format(real_mp.perc_atingido.geral or 0) }}%</strong></td>
+                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real_mp.diferenca.geral or 0) }}</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            {% endif %}
+            {% endif %}
+
         </div>
     </div>
     {% endif %}
