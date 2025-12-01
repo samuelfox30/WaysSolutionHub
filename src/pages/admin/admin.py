@@ -606,10 +606,25 @@ def upload_dados_bpo():
 
         # Salvar cada mês separadamente
         for mes_num in range(1, num_meses + 1):
+            # Filtrar totais_calculados deste mês
+            totais_mes = {}
+            totais_calculados = dados_bpo.get('totais_calculados', {})
+
+            for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
+                if cenario_key in totais_calculados:
+                    cenario_data = totais_calculados[cenario_key]
+                    # Pegar apenas dados do mês atual (mes_num é a chave)
+                    if mes_num in cenario_data:
+                        totais_mes[cenario_key] = {mes_num: cenario_data[mes_num]}
+                    else:
+                        totais_mes[cenario_key] = {}
+                else:
+                    totais_mes[cenario_key] = {}
+
             # Filtrar dados deste mês
             dados_mes = {
                 'itens_hierarquicos': [],
-                'totais_calculados': dados_bpo.get('totais_calculados', {}),  # Vazio por enquanto
+                'totais_calculados': totais_mes,
                 'metadados': dados_bpo['metadados']
             }
 
@@ -853,14 +868,6 @@ def api_dados_bpo(empresa_id):
     print(f"DRE selecionado: {tipo_dre}")
     print(f"Total de meses encontrados no DB: {len(meses_data)}")
 
-    # Processar dados para dashboard
-    # Mapear nomes de DRE para chaves (a ordem importa! Mais específico primeiro)
-    dre_map = {
-        'RESULTADO REAL + CUSTO MATERIA PRIMA': 'real_mp',  # Mais específico primeiro!
-        'RESULTADO POR FLUXO DE CAIXA': 'fluxo_caixa',
-        'RESULTADO REAL': 'real'  # Mais genérico por último
-    }
-
     # Inicializar totais acumulados
     totais = {
         'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
@@ -882,77 +889,59 @@ def api_dados_bpo(empresa_id):
         # Label para gráfico
         labels_meses.append(f"{mes_num}/{ano}")
 
-        # Extrair resultados_fluxo.secoes
-        resultados_fluxo = dados.get('resultados_fluxo', {})
-        secoes = resultados_fluxo.get('secoes', [])
-
         print(f"\n📅 MÊS {mes_num}/{ano}:")
-        print(f"   Total de seções em resultados_fluxo: {len(secoes)}")
 
-        # MOSTRAR TODAS AS SEÇÕES PRIMEIRO (para debug)
-        print(f"   LISTAGEM COMPLETA DE SEÇÕES:")
-        for idx, secao in enumerate(secoes):
-            tipo = secao.get('tipo', 'N/A')
-            if tipo == 'titulo':
-                print(f"   [{idx}] tipo={tipo}, texto={secao.get('texto', 'N/A')[:80]}")
-            elif tipo == 'dados':
-                print(f"   [{idx}] tipo={tipo}, nome={secao.get('nome', 'N/A')[:80]}")
+        # Extrair totais_calculados (nova estrutura)
+        totais_calculados = dados.get('totais_calculados', {})
+
+        if not totais_calculados:
+            print(f"   ⚠️  totais_calculados vazio para este mês")
+            receitas_mensais.append(0)
+            despesas_mensais.append(0)
+            gerais_mensais.append(0)
+            continue
+
+        # Variáveis para gráfico deste mês
+        receita_grafico = 0
+        despesa_grafico = 0
+        geral_grafico = 0
+
+        # Processar cada cenário (fluxo_caixa, real, real_mp)
+        for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
+            cenario_data = totais_calculados.get(cenario_key, {})
+
+            # Pegar dados do mês (a chave é o número do mês)
+            mes_dados = cenario_data.get(mes_num, {})
+
+            if mes_dados:
+                # Extrair valores realizados
+                realizado = mes_dados.get('realizado', {})
+                receita = realizado.get('receita', 0) or 0
+                despesa = realizado.get('despesa', 0) or 0
+                geral = realizado.get('geral', 0) or 0
+
+                # Acumular totais
+                totais[cenario_key]['receita'] += receita
+                totais[cenario_key]['despesa'] += despesa
+                totais[cenario_key]['geral'] += geral
+
+                print(f"   {cenario_key.upper()}:")
+                print(f"      Receita: R$ {receita:,.2f}")
+                print(f"      Despesa: R$ {despesa:,.2f}")
+                print(f"      Geral:   R$ {geral:,.2f}")
+
+                # Se é o DRE selecionado, guardar para gráfico
+                if cenario_key == tipo_dre:
+                    receita_grafico = receita
+                    despesa_grafico = despesa
+                    geral_grafico = geral
             else:
-                print(f"   [{idx}] tipo={tipo} (inesperado!)")
-
-        # Processar cada seção (cada DRE)
-        dre_atual = None
-        receita_mes = 0
-        despesa_mes = 0
-        geral_mes = 0
-
-        for idx, secao in enumerate(secoes):
-            if secao.get('tipo') == 'titulo':
-                # É um título de DRE
-                texto_titulo = secao.get('texto', '').upper()
-                print(f"   [{idx}] TÍTULO: {texto_titulo}")
-                for dre_nome, dre_key in dre_map.items():
-                    if dre_nome in texto_titulo:
-                        dre_atual = dre_key
-                        print(f"       → DRE identificado: {dre_key}")
-                        break
-            elif secao.get('tipo') == 'dados' and dre_atual:
-                # É uma linha com dados (TOTAL RECEITA, TOTAL DESPESAS, TOTAL GERAL)
-                nome = secao.get('nome', '').upper()
-
-                # Pegar valor realizado do mês
-                dados_mensais = secao.get('dados_mensais', [])
-                valor = 0
-                if dados_mensais and len(dados_mensais) > 0:
-                    valor = dados_mensais[0].get('valor_realizado', 0) or 0
-
-                print(f"   [{idx}] DADOS - DRE={dre_atual}, Nome={nome}")
-                print(f"       → dados_mensais: {len(dados_mensais)} itens")
-                print(f"       → Valor extraído: R$ {valor:,.2f}")
-
-                # Classificar e acumular
-                if 'TOTAL RECEITA' in nome or 'RECEITA' in nome:
-                    totais[dre_atual]['receita'] += valor
-                    if dre_atual == tipo_dre:
-                        receita_mes = valor
-                    print(f"       → Classificado como RECEITA")
-                elif 'TOTAL DESPESA' in nome or 'DESPESA' in nome:
-                    totais[dre_atual]['despesa'] += valor
-                    if dre_atual == tipo_dre:
-                        despesa_mes = valor
-                    print(f"       → Classificado como DESPESA")
-                elif 'TOTAL GERAL' in nome or 'GERAL' in nome:
-                    totais[dre_atual]['geral'] += valor
-                    if dre_atual == tipo_dre:
-                        geral_mes = valor
-                    print(f"       → Classificado como GERAL")
-                else:
-                    print(f"       ⚠️  NÃO CLASSIFICADO!")
+                print(f"   ⚠️  {cenario_key.upper()}: sem dados para mês {mes_num}")
 
         # Adicionar aos arrays do gráfico
-        receitas_mensais.append(receita_mes)
-        despesas_mensais.append(despesa_mes)
-        gerais_mensais.append(geral_mes)
+        receitas_mensais.append(receita_grafico)
+        despesas_mensais.append(despesa_grafico)
+        gerais_mensais.append(geral_grafico)
 
     print("\n" + "="*80)
     print("📊 TOTAIS ACUMULADOS FINAIS:")

@@ -289,47 +289,14 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
             print(f"   % ATINGIDO → Receita: {perc_receita:.2f}% | Despesa: {perc_despesa:.2f}% | Geral: {perc_geral:.2f}%")
             print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita)} | Despesa: R$ {formatar_numero(diferenca_despesa)} | Geral: R$ {formatar_numero(diferenca_geral)}")
 
-    print(f"\n✅ Totais calculados para {len(totais['fluxo_caixa'])} meses")
+    print(f"\n✅ Totais do Fluxo de Caixa calculados para {len(totais['fluxo_caixa'])} meses")
 
-    return totais
-
-
-# ============================================================================
-# CÁLCULO DE CENÁRIOS ADICIONAIS
-# ============================================================================
-
-def calcular_cenarios_adicionais(secoes_fluxo_caixa, itens_hierarquicos, num_meses):
-    """
-    Calcula cenários adicionais: Resultado Real e Resultado Real + MP
-
-    Args:
-        secoes_fluxo_caixa: Lista com as seções do Resultado por Fluxo de Caixa
-        itens_hierarquicos: Lista com todos os itens da planilha
-        num_meses: Número de meses processados
-
-    Returns:
-        Lista de seções incluindo os novos cenários
-    """
-
-    # Encontrar os totais do Fluxo de Caixa
-    idx_fluxo_caixa = None
-    for i, item in enumerate(secoes_fluxo_caixa):
-        if item.get('tipo') == 'titulo' and 'RESULTADO POR FLUXO DE CAIXA' in item.get('texto', ''):
-            idx_fluxo_caixa = i
-            break
-
-    if idx_fluxo_caixa is None:
-        print("[AVISO] Cenário 'Resultado por Fluxo de Caixa' não encontrado")
-        return secoes_fluxo_caixa
-
-    # Pegar os 3 totais do Fluxo de Caixa (Receita, Despesa, Geral)
-    total_receita_fc = secoes_fluxo_caixa[idx_fluxo_caixa + 1] if idx_fluxo_caixa + 1 < len(secoes_fluxo_caixa) else None
-    total_despesa_fc = secoes_fluxo_caixa[idx_fluxo_caixa + 2] if idx_fluxo_caixa + 2 < len(secoes_fluxo_caixa) else None
-    total_geral_fc = secoes_fluxo_caixa[idx_fluxo_caixa + 3] if idx_fluxo_caixa + 3 < len(secoes_fluxo_caixa) else None
-
-    if not all([total_receita_fc, total_despesa_fc, total_geral_fc]):
-        print("[AVISO] Totais do Fluxo de Caixa incompletos")
-        return secoes_fluxo_caixa
+    # ========================================================================
+    # CALCULAR 2º CENÁRIO: RESULTADO REAL
+    # ========================================================================
+    print("\n" + "-"*100)
+    print("🧮 CALCULANDO TOTAIS - RESULTADO REAL")
+    print("-"*100)
 
     # Itens a subtrair da RECEITA para o Resultado Real
     itens_subtrair_receita = ['RECEITA EMPRESTIMO', 'OUTRAS RECEITAS']
@@ -350,139 +317,123 @@ def calcular_cenarios_adicionais(secoes_fluxo_caixa, itens_hierarquicos, num_mes
                 return item.get('dados_mensais', [])
         return []
 
-    # Função auxiliar para calcular total de um array de itens
-    def calcular_total_subtracao(nomes_itens, mes_num, coluna):
+    # Função auxiliar para calcular total de subtração
+    def calcular_total_subtracao(nomes_itens, mes_num, campo):
         """
         Soma os valores de múltiplos itens para um mês específico
-        coluna: 'perc_realizado', 'valor_realizado', 'perc_atingido', 'valor_diferenca'
+        campo: 'valor_orcado', 'valor_realizado'
         """
         total = 0
         for nome in nomes_itens:
             dados_mensais = buscar_valores_item(nome)
             for mes_data in dados_mensais:
                 if mes_data['mes_numero'] == mes_num:
-                    valor = mes_data.get(coluna, 0)
+                    valor = mes_data.get(campo, 0)
                     total += valor if valor else 0
                     break
         return total
 
-    # Calcular Resultado Real
-    total_receita_real = {
-        'tipo': 'dados',
-        'nome': 'TOTAL RECEITA',
-        'linha': 0,
-        'viabilidade': {'percentual': None, 'valor': None},
-        'dados_mensais': [],
-        'resultados_totais': {}
-    }
-
-    total_despesa_real = {
-        'tipo': 'dados',
-        'nome': 'TOTAL DESPESA',
-        'linha': 0,
-        'viabilidade': {'percentual': None, 'valor': None},
-        'dados_mensais': [],
-        'resultados_totais': {}
-    }
-
-    total_geral_real = {
-        'tipo': 'dados',
-        'nome': 'TOTAL GERAL',
-        'linha': 0,
-        'viabilidade': {'percentual': None, 'valor': None},
-        'dados_mensais': [],
-        'resultados_totais': {}
-    }
-
     # Calcular para cada mês
     for mes_num in range(1, num_meses + 1):
-        # Pegar dados do mês do Fluxo de Caixa
-        dados_mes_fc_receita = [m for m in total_receita_fc['dados_mensais'] if m['mes_numero'] == mes_num][0]
-        dados_mes_fc_despesa = [m for m in total_despesa_fc['dados_mensais'] if m['mes_numero'] == mes_num][0]
+        # Pegar dados do Fluxo de Caixa deste mês
+        dados_fc = totais['fluxo_caixa'].get(mes_num)
 
-        # COLUNA 1: % Realizado (que na verdade é "Orçado" na estrutura)
-        # Nota: A coluna 'perc_realizado' na estrutura representa o "Orçado" da planilha
-        receita_orcado_fc = dados_mes_fc_receita.get('perc_realizado', 0) or 0
-        despesa_orcado_fc = dados_mes_fc_despesa.get('perc_realizado', 0) or 0
+        if not dados_fc:
+            print(f"⚠️  Mês {mes_num}: Dados do Fluxo de Caixa não encontrados")
+            continue
 
-        subtracao_receita_orcado = calcular_total_subtracao(itens_subtrair_receita, mes_num, 'perc_realizado')
-        subtracao_despesa_orcado = calcular_total_subtracao(itens_subtrair_despesa, mes_num, 'perc_realizado')
+        # ====================================================================
+        # COLUNA 1 - ORÇAMENTO
+        # ====================================================================
+        orcamento_receita_fc = dados_fc['orcamento']['receita']
+        orcamento_despesa_fc = dados_fc['orcamento']['despesa']
 
-        receita_orcado_real = receita_orcado_fc - subtracao_receita_orcado
-        despesa_orcado_real = despesa_orcado_fc - subtracao_despesa_orcado
-        geral_orcado_real = receita_orcado_real - despesa_orcado_real
+        # Subtrair os itens específicos
+        subtracao_receita_orcado = calcular_total_subtracao(itens_subtrair_receita, mes_num, 'valor_orcado')
+        subtracao_despesa_orcado = calcular_total_subtracao(itens_subtrair_despesa, mes_num, 'valor_orcado')
 
-        # COLUNA 2: Valor Realizado
-        receita_realizado_fc = dados_mes_fc_receita.get('valor_realizado', 0) or 0
-        despesa_realizado_fc = dados_mes_fc_despesa.get('valor_realizado', 0) or 0
+        orcamento_receita_real = orcamento_receita_fc - subtracao_receita_orcado
+        orcamento_despesa_real = orcamento_despesa_fc - subtracao_despesa_orcado
+        orcamento_geral_real = orcamento_receita_real - orcamento_despesa_real
 
+        # ====================================================================
+        # COLUNA 2 - REALIZADO
+        # ====================================================================
+        realizado_receita_fc = dados_fc['realizado']['receita']
+        realizado_despesa_fc = dados_fc['realizado']['despesa']
+
+        # Subtrair os itens específicos
         subtracao_receita_realizado = calcular_total_subtracao(itens_subtrair_receita, mes_num, 'valor_realizado')
         subtracao_despesa_realizado = calcular_total_subtracao(itens_subtrair_despesa, mes_num, 'valor_realizado')
 
-        receita_realizado_real = receita_realizado_fc - subtracao_receita_realizado
-        despesa_realizado_real = despesa_realizado_fc - subtracao_despesa_realizado
-        geral_realizado_real = receita_realizado_real - despesa_realizado_real
+        realizado_receita_real = realizado_receita_fc - subtracao_receita_realizado
+        realizado_despesa_real = realizado_despesa_fc - subtracao_despesa_realizado
+        realizado_geral_real = realizado_receita_real - realizado_despesa_real
 
-        # COLUNA 3: % Atingido (calculado: Realizado / Orçado * 100)
-        receita_perc_atingido = (receita_realizado_real / receita_orcado_real * 100) if receita_orcado_real != 0 else 0
-        despesa_perc_atingido = (despesa_realizado_real / despesa_orcado_real * 100) if despesa_orcado_real != 0 else 0
-        geral_perc_atingido = (geral_realizado_real / geral_orcado_real * 100) if geral_orcado_real != 0 else 0
+        # ====================================================================
+        # COLUNA 3 - % ATINGIDO
+        # ====================================================================
+        # Fórmula: (Realizado / Orçado) * 100
+        if orcamento_receita_real != 0:
+            perc_receita_real = (realizado_receita_real / orcamento_receita_real) * 100
+        else:
+            perc_receita_real = 0
 
-        # COLUNA 4: Diferença
-        receita_diferenca = receita_realizado_real - receita_orcado_real
-        despesa_diferenca = despesa_orcado_real - despesa_realizado_real  # Invertido!
-        geral_diferenca = receita_diferenca - despesa_diferenca
+        if orcamento_despesa_real != 0:
+            perc_despesa_real = (realizado_despesa_real / orcamento_despesa_real) * 100
+        else:
+            perc_despesa_real = 0
 
-        # Adicionar dados do mês
-        total_receita_real['dados_mensais'].append({
-            'mes_numero': mes_num,
-            'mes_nome': dados_mes_fc_receita['mes_nome'],
-            'perc_realizado': receita_orcado_real,
-            'valor_realizado': receita_realizado_real,
-            'perc_atingido': receita_perc_atingido,
-            'valor_diferenca': receita_diferenca
-        })
+        if orcamento_geral_real != 0:
+            perc_geral_real = (realizado_geral_real / orcamento_geral_real) * 100
+        else:
+            perc_geral_real = 0
 
-        total_despesa_real['dados_mensais'].append({
-            'mes_numero': mes_num,
-            'mes_nome': dados_mes_fc_despesa['mes_nome'],
-            'perc_realizado': despesa_orcado_real,
-            'valor_realizado': despesa_realizado_real,
-            'perc_atingido': despesa_perc_atingido,
-            'valor_diferenca': despesa_diferenca
-        })
+        # ====================================================================
+        # COLUNA 4 - DIFERENÇA
+        # ====================================================================
+        # Receita: Realizado - Orçado
+        # Despesa: Orçado - Realizado (INVERTIDO!)
+        # Geral: Receita - Despesa
+        diferenca_receita_real = realizado_receita_real - orcamento_receita_real
+        diferenca_despesa_real = orcamento_despesa_real - realizado_despesa_real  # INVERTIDO
+        diferenca_geral_real = diferenca_receita_real - diferenca_despesa_real
 
-        total_geral_real['dados_mensais'].append({
-            'mes_numero': mes_num,
-            'mes_nome': dados_mes_fc_receita['mes_nome'],
-            'perc_realizado': geral_orcado_real,
-            'valor_realizado': geral_realizado_real,
-            'perc_atingido': geral_perc_atingido,
-            'valor_diferenca': geral_diferenca
-        })
-
-    # Calcular resultados_totais (soma de todos os meses)
-    for total_obj in [total_receita_real, total_despesa_real, total_geral_real]:
-        total_obj['resultados_totais'] = {
-            'previsao_total': sum(m.get('perc_realizado', 0) or 0 for m in total_obj['dados_mensais']),
-            'total_realizado': sum(m.get('valor_realizado', 0) or 0 for m in total_obj['dados_mensais']),
-            'diferenca_total': sum(m.get('valor_diferenca', 0) or 0 for m in total_obj['dados_mensais']),
-            'media_perc_realizado': None,
-            'media_valor_realizado': None,
-            'media_perc_diferenca': None,
-            'media_valor_diferenca': None
+        # Salvar totais deste mês
+        totais['real'][mes_num] = {
+            'orcamento': {
+                'receita': orcamento_receita_real,
+                'despesa': orcamento_despesa_real,
+                'geral': orcamento_geral_real
+            },
+            'realizado': {
+                'receita': realizado_receita_real,
+                'despesa': realizado_despesa_real,
+                'geral': realizado_geral_real
+            },
+            'perc_atingido': {
+                'receita': perc_receita_real,
+                'despesa': perc_despesa_real,
+                'geral': perc_geral_real
+            },
+            'diferenca': {
+                'receita': diferenca_receita_real,
+                'despesa': diferenca_despesa_real,
+                'geral': diferenca_geral_real
+            }
         }
 
-    # Adicionar novo cenário à lista de seções
-    novas_secoes = secoes_fluxo_caixa.copy()
-    novas_secoes.extend([
-        {'tipo': 'titulo', 'texto': 'RESULTADO REAL', 'linha': 0},
-        total_receita_real,
-        total_despesa_real,
-        total_geral_real
-    ])
+        # Log apenas do primeiro mês
+        if mes_num == 1:
+            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo (Resultado Real):")
+            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita_real)} | Despesa: R$ {formatar_numero(orcamento_despesa_real)} | Geral: R$ {formatar_numero(orcamento_geral_real)}")
+            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita_real)} | Despesa: R$ {formatar_numero(realizado_despesa_real)} | Geral: R$ {formatar_numero(realizado_geral_real)}")
+            print(f"   % ATINGIDO → Receita: {perc_receita_real:.2f}% | Despesa: {perc_despesa_real:.2f}% | Geral: {perc_geral_real:.2f}%")
+            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita_real)} | Despesa: R$ {formatar_numero(diferenca_despesa_real)} | Geral: R$ {formatar_numero(diferenca_geral_real)}")
 
-    return novas_secoes
+    print(f"\n✅ Totais do Resultado Real calculados para {len(totais['real'])} meses")
+
+    return totais
 
 
 # ============================================================================
