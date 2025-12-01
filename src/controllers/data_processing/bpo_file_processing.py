@@ -598,56 +598,7 @@ def process_bpo_file(file):
         print("🧮 CALCULANDO TOTAIS - RESULTADO POR FLUXO DE CAIXA")
         print("-"*100)
 
-            # Processar as 12 linhas especiais
-            secoes_resultado = []
-
-            while True:
-                row_values = []
-                for col in range(1, total_colunas + 1):
-                    cell_value = sheet.cell(row=linha_atual, column=col).value
-                    row_values.append(cell_value)
-
-                # Se linha vazia, acabou
-                if all(v is None or str(v).strip() == '' for v in row_values):
-                    break
-
-                col_a = row_values[0]
-                if col_a and str(col_a).strip():
-                    # Verificar se é título (sem dados à direita) ou linha com dados
-                    tem_dados = any(row_values[i] is not None and row_values[i] != ''
-                                   for i in range(1, len(row_values)))
-
-                    if tem_dados:
-                        # Linha com dados
-                        item_resultado = processar_linha_resultado(
-                            col_a,
-                            row_values,
-                            num_meses,
-                            meses_nomes,
-                            linha_atual
-                        )
-                        secoes_resultado.append(item_resultado)
-                    else:
-                        # Linha de título
-                        secoes_resultado.append({
-                            'tipo': 'titulo',
-                            'texto': str(col_a).strip(),
-                            'linha': linha_atual
-                        })
-
-                linha_atual += 1
-
-            # Calcular cenários adicionais (Resultado Real e Resultado Real + MP)
-            secoes_resultado = calcular_cenarios_adicionais(
-                secoes_resultado,
-                itens_hierarquicos,
-                num_meses
-            )
-
-            resultados_fluxo = {
-                'secoes': secoes_resultado,
-                'total_linhas': len(secoes_resultado)
-            }
+        totais_calculados = calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses)
 
         # Montar estrutura final
         dados_processados = {
