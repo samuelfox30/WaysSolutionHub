@@ -231,19 +231,19 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         # ====================================================================
         # COLUNA 3 - % ATINGIDO
         # ====================================================================
-        # Fórmula: (Realizado - Orçado) / Orçado * 100
+        # Fórmula: (Realizado / Orçado) * 100
         if orcamento_receita != 0:
-            perc_receita = ((realizado_receita - orcamento_receita) / orcamento_receita) * 100
+            perc_receita = (realizado_receita / orcamento_receita) * 100
         else:
             perc_receita = 0
 
         if orcamento_despesa != 0:
-            perc_despesa = ((realizado_despesa - orcamento_despesa) / orcamento_despesa) * 100
+            perc_despesa = (realizado_despesa / orcamento_despesa) * 100
         else:
             perc_despesa = 0
 
         if orcamento_geral != 0:
-            perc_geral = ((realizado_geral - orcamento_geral) / orcamento_geral) * 100
+            perc_geral = (realizado_geral / orcamento_geral) * 100
         else:
             perc_geral = 0
 
@@ -373,19 +373,19 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         # ====================================================================
         # COLUNA 3 - % ATINGIDO
         # ====================================================================
-        # Fórmula: (Realizado - Orçado) / Orçado * 100
+        # Fórmula: (Realizado / Orçado) * 100
         if orcamento_receita_real != 0:
-            perc_receita_real = ((realizado_receita_real - orcamento_receita_real) / orcamento_receita_real) * 100
+            perc_receita_real = (realizado_receita_real / orcamento_receita_real) * 100
         else:
             perc_receita_real = 0
 
         if orcamento_despesa_real != 0:
-            perc_despesa_real = ((realizado_despesa_real - orcamento_despesa_real) / orcamento_despesa_real) * 100
+            perc_despesa_real = (realizado_despesa_real / orcamento_despesa_real) * 100
         else:
             perc_despesa_real = 0
 
         if orcamento_geral_real != 0:
-            perc_geral_real = ((realizado_geral_real - orcamento_geral_real) / orcamento_geral_real) * 100
+            perc_geral_real = (realizado_geral_real / orcamento_geral_real) * 100
         else:
             perc_geral_real = 0
 
@@ -495,19 +495,19 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         # ====================================================================
         # COLUNA 3 - % ATINGIDO
         # ====================================================================
-        # Fórmula: (Realizado - Orçado) / Orçado * 100
+        # Fórmula: (Realizado / Orçado) * 100
         if orcamento_receita_mp != 0:
-            perc_receita_mp = ((realizado_receita_mp - orcamento_receita_mp) / orcamento_receita_mp) * 100
+            perc_receita_mp = (realizado_receita_mp / orcamento_receita_mp) * 100
         else:
             perc_receita_mp = 0
 
         if orcamento_despesa_mp != 0:
-            perc_despesa_mp = ((realizado_despesa_mp - orcamento_despesa_mp) / orcamento_despesa_mp) * 100
+            perc_despesa_mp = (realizado_despesa_mp / orcamento_despesa_mp) * 100
         else:
             perc_despesa_mp = 0
 
         if orcamento_geral_mp != 0:
-            perc_geral_mp = ((realizado_geral_mp - orcamento_geral_mp) / orcamento_geral_mp) * 100
+            perc_geral_mp = (realizado_geral_mp / orcamento_geral_mp) * 100
         else:
             perc_geral_mp = 0
 
