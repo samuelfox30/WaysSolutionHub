@@ -1,12 +1,13 @@
 """
-BPO Financial Data Processing Module
-=====================================
+BPO Financial Data Processing Module (Nova Estrutura)
+=====================================================
 
-Este módulo é responsável por processar arquivos Excel com dados de BPO Financeiro (mensal).
-Diferente da viabilidade financeira (anual), os dados de BPO são processados mensalmente.
+Este módulo processa arquivos Excel com dados de BPO Financeiro (mensal).
+Sheet: "Sheet"
+Estrutura: Linha 1 = cabeçalho, Linha 2+ = dados
 
 Autor: WaysSolutionHub
-Data: 2025-10-31
+Data: 2025-11-25 (Refatorado)
 """
 
 import openpyxl
@@ -16,103 +17,6 @@ from openpyxl import load_workbook
 # ============================================================================
 # FUNÇÕES AUXILIARES
 # ============================================================================
-
-def mapear_colunas(cabecalho_linha2, cabecalho_linha3):
-    """
-    Mapeia dinamicamente as colunas baseado no cabeçalho multi-nível.
-
-    Args:
-        cabecalho_linha2: Lista com valores da linha 2 (categorias principais)
-        cabecalho_linha3: Lista com valores da linha 3 (sub-métricas)
-
-    Returns:
-        dict: Mapeamento de colunas
-    """
-
-    mapeamento = {
-        'col_natureza': 0,  # Coluna 0 (índice) = Coluna A (Excel)
-        'col_viab_perc': None,
-        'col_viab_valor': None,
-        'meses': [],
-        'resultados': {}
-    }
-
-    # Processar cabeçalho
-    mes_atual = None
-    colunas_mes_atual = {}
-
-    for idx, (cat_principal, sub_metrica) in enumerate(zip(cabecalho_linha2, cabecalho_linha3)):
-        # Normalizar valores
-        cat_str = str(cat_principal).strip().upper() if cat_principal else ""
-        sub_str = str(sub_metrica).strip().upper() if sub_metrica else ""
-
-        # Coluna NATUREZA ou NATUREZA DE LANÇAMENTO
-        if "NATUREZA" in cat_str:
-            mapeamento['col_natureza'] = idx
-            continue
-
-        # Coluna VIABILIDADE
-        if "VIABILIDADE" in cat_str:
-            if "%" in sub_str or "PERCENT" in sub_str:
-                mapeamento['col_viab_perc'] = idx
-            elif "VALOR" in sub_str:
-                mapeamento['col_viab_valor'] = idx
-            continue
-
-        # Detectar meses
-        meses_possiveis = ['JANEIRO', 'FEVEREIRO', 'MARÇO', 'MARCO', 'ABRIL', 'MAIO', 'JUNHO',
-                          'JULHO', 'AGOSTO', 'SETEMBRO', 'OUTUBRO', 'NOVEMBRO', 'DEZEMBRO']
-
-        # Verificar se é um mês
-        eh_mes = False
-        for mes_nome in meses_possiveis:
-            if mes_nome in cat_str:
-                eh_mes = True
-                # Se mudou de mês, salvar o anterior
-                if mes_atual and mes_atual != cat_str:
-                    if colunas_mes_atual:
-                        mapeamento['meses'].append({
-                            'nome': mes_atual.title(),
-                            **colunas_mes_atual
-                        })
-                        colunas_mes_atual = {}
-
-                mes_atual = cat_str
-                break
-
-        if eh_mes:
-            # Mapear sub-colunas do mês
-            if "%" in sub_str and "ATINGIDO" not in sub_str and "DIFERENÇA" not in sub_str and "DIFERENCA" not in sub_str:
-                # % simples = % Realizado
-                colunas_mes_atual['col_perc'] = idx
-            elif "VALOR" in sub_str and "REALIZADO" in sub_str:
-                colunas_mes_atual['col_valor'] = idx
-            elif "ATINGIDO" in sub_str:
-                colunas_mes_atual['col_atingido'] = idx
-            elif "DIFERENÇA" in sub_str or "DIFERENCA" in sub_str:
-                colunas_mes_atual['col_diferenca'] = idx
-            continue
-
-        # Detectar colunas de resultados/totais
-        if ("ORÇADO" in cat_str or "ORCADO" in cat_str or "PREVISÃO" in cat_str or "PREVISAO" in cat_str) and "TOTAL" in cat_str:
-            mapeamento['resultados']['previsao_total'] = idx
-        elif "REALIZADO" in cat_str and "TOTAL" in cat_str:
-            mapeamento['resultados']['total_realizado'] = idx
-        elif "DIFERENÇA" in cat_str or "DIFERENCA" in cat_str:
-            if "TOTAL" in cat_str:
-                mapeamento['resultados']['diferenca_total'] = idx
-        elif "PENDENTE" in cat_str:
-            mapeamento['resultados']['pendente_total'] = idx
-
-    # Salvar último mês
-    if mes_atual and colunas_mes_atual:
-        mapeamento['meses'].append({
-            'nome': mes_atual.title(),
-            **colunas_mes_atual
-        })
-
-    return mapeamento
-
 
 def extrair_codigo_e_nome(texto):
     """
@@ -140,149 +44,6 @@ def extrair_codigo_e_nome(texto):
     return codigo, nome, nivel
 
 
-def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha, mostrar_debug=False):
-    """
-    Processa um item hierárquico (linha normal da planilha) com índices FIXOS
-
-    Estrutura FIXA:
-    - Coluna 0 (A): Nome/Código
-    - Coluna 1 (B): % Viabilidade
-    - Coluna 2 (C): Valor Viabilidade
-    - Colunas 3+ (D+): Meses (4 colunas cada: %, Valor, % Atingido, Diferença)
-    - Últimas 7 colunas: Totais
-
-    Args:
-        col_a: Valor da coluna A (código e nome)
-        row_values: Lista com todos os valores da linha
-        num_meses: Número de meses
-        meses_nomes: Lista com nomes dos meses
-        linha: Número da linha atual
-        mostrar_debug: Se True, exibe prints detalhados (padrão: False)
-
-    Returns:
-        dict: Dados estruturados do item
-    """
-    # Extrair código e nome
-    codigo, nome, nivel = extrair_codigo_e_nome(col_a)
-
-    # Extrair viabilidade (índices FIXOS: 1 e 2)
-    perc_viabilidade = converter_porcentagem(row_values[1]) if len(row_values) > 1 else None
-    valor_viabilidade = converter_valor(row_values[2]) if len(row_values) > 2 else None
-
-    # Processar dados mensais (começando no índice 3 = coluna D)
-    dados_meses = []
-    col_inicio_mes = 3  # Coluna D
-
-    for i in range(num_meses):
-        idx_base = col_inicio_mes + (i * 4)
-
-        # Cada mês tem 4 colunas fixas:
-        # 0: % Realizado
-        # 1: Valor Realizado
-        # 2: % Atingido
-        # 3: Valor Diferença
-
-        perc_realizado = converter_porcentagem(row_values[idx_base]) if idx_base < len(row_values) else None
-        valor_realizado = converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None
-        perc_atingido = converter_porcentagem(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None
-        valor_diferenca = converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None
-
-        mes_data = {
-            'mes_numero': i + 1,
-            'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
-            'perc_realizado': perc_realizado,
-            'valor_realizado': valor_realizado,
-            'perc_atingido': perc_atingido,
-            'valor_diferenca': valor_diferenca,
-        }
-        dados_meses.append(mes_data)
-
-    # Processar resultados totais (últimas 7 colunas)
-    idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
-
-    previsao_total = converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None
-    total_realizado = converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None
-    diferenca_total = converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None
-
-    resultados = {
-        'previsao_total': previsao_total,
-        'total_realizado': total_realizado,
-        'diferenca_total': diferenca_total,
-        'media_perc_realizado': converter_porcentagem(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
-        'media_valor_realizado': converter_valor(row_values[idx_resultados_inicio + 4]) if idx_resultados_inicio + 4 < len(row_values) else None,
-        'media_perc_diferenca': converter_porcentagem(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
-        'media_valor_diferenca': converter_valor(row_values[idx_resultados_inicio + 6]) if idx_resultados_inicio + 6 < len(row_values) else None,
-    }
-
-    return {
-        'codigo': codigo,
-        'nome': nome,
-        'nivel_hierarquia': nivel,
-        'linha': linha,
-        'viabilidade': {
-            'percentual': perc_viabilidade,
-            'valor': valor_viabilidade
-        },
-        'dados_mensais': dados_meses,
-        'resultados_totais': resultados
-    }
-
-
-def processar_linha_resultado(col_a, row_values, num_meses, meses_nomes, linha):
-    """
-    Processa uma linha da seção RESULTADO POR FLUXO DE CAIXA com índices FIXOS
-
-    Similar a processar_item_hierarquico, mas sem hierarquia
-    """
-    nome = str(col_a).strip()
-
-    # Extrair viabilidade (índices FIXOS: 1 e 2)
-    perc_viabilidade = converter_porcentagem(row_values[1]) if len(row_values) > 1 else None
-    valor_viabilidade = converter_valor(row_values[2]) if len(row_values) > 2 else None
-
-    # Processar dados mensais
-    dados_meses = []
-    col_inicio_mes = 3
-
-    for i in range(num_meses):
-        idx_base = col_inicio_mes + (i * 4)
-
-        mes_data = {
-            'mes_numero': i + 1,
-            'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
-            'perc_realizado': converter_porcentagem(row_values[idx_base]) if idx_base < len(row_values) else None,
-            'valor_realizado': converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None,
-            'perc_atingido': converter_porcentagem(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None,
-            'valor_diferenca': converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None,
-        }
-        dados_meses.append(mes_data)
-
-    # Processar resultados totais (últimas 7 colunas)
-    idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
-
-    resultados = {
-        'previsao_total': converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None,
-        'total_realizado': converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None,
-        'diferenca_total': converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None,
-        'media_perc_realizado': converter_porcentagem(row_values[idx_resultados_inicio + 3]) if idx_resultados_inicio + 3 < len(row_values) else None,
-        'media_valor_realizado': converter_valor(row_values[idx_resultados_inicio + 4]) if idx_resultados_inicio + 4 < len(row_values) else None,
-        'media_perc_diferenca': converter_porcentagem(row_values[idx_resultados_inicio + 5]) if idx_resultados_inicio + 5 < len(row_values) else None,
-        'media_valor_diferenca': converter_valor(row_values[idx_resultados_inicio + 6]) if idx_resultados_inicio + 6 < len(row_values) else None,
-    }
-
-    return {
-        'tipo': 'dados',
-        'nome': nome,
-        'linha': linha,
-        'viabilidade': {
-            'percentual': perc_viabilidade,
-            'valor': valor_viabilidade
-        },
-        'dados_mensais': dados_meses,
-        'resultados_totais': resultados
-    }
-
-
 def converter_valor(valor):
     """Converte um valor de célula para float ou None"""
     if valor is None or valor == '':
@@ -305,152 +66,232 @@ def converter_porcentagem(valor):
         return None
 
 
-def exibir_resumo_processamento(dados):
-    """
-    Exibe um resumo visual dos dados processados de forma bem legível
-    """
-    print("\n" + "="*100)
-    print(" "*40 + "RESUMO DO PROCESSAMENTO")
-    print("="*100)
-
-    # Metadados
-    meta = dados.get('metadados', {})
-    print(f"\n📊 METADADOS:")
-    print(f"   • Total de colunas na planilha: {meta.get('total_colunas')}")
-    print(f"   • Número de meses detectados: {meta.get('num_meses')}")
-    print(f"   • Meses processados: {', '.join(meta.get('meses', []))}")
-    print(f"   • Total de itens hierárquicos: {meta.get('total_itens')}")
-    print(f"   • Total de linhas de resultados: {meta.get('total_resultados')}")
-
-    # ========================================================================
-    # EXIBIR ITENS HIERÁRQUICOS (ESTILO TABELA)
-    # ========================================================================
-    itens = dados.get('itens_hierarquicos', [])
-
-    print("\n" + "="*100)
-    print("📋 ITENS HIERÁRQUICOS (Primeiras 10 linhas comparadas com Excel)")
-    print("="*100)
-
-    num_meses = meta.get('num_meses', 0)
-
-    for i, item in enumerate(itens[:10]):
-        linha_excel = item['linha']
-        codigo = item['codigo']
-        nome = item['nome']
-        nivel = item['nivel_hierarquia']
-
-        # Indentação visual conforme hierarquia
-        indent = "  " * nivel
-
-        print(f"\n{'─'*100}")
-        print(f"LINHA {linha_excel} (Excel) | Nível {nivel} | Código: {codigo}")
-        print(f"{'─'*100}")
-        print(f"{indent}📌 NOME: {nome}")
-
-        # Viabilidade
-        viab = item['viabilidade']
-        print(f"{indent}├─ VIABILIDADE:")
-        print(f"{indent}│  • Percentual: {formatar_numero(viab['percentual'])}%")
-        print(f"{indent}│  • Valor: R$ {formatar_numero(viab['valor'])}")
-
-        # Dados mensais
-        if num_meses > 0:
-            print(f"{indent}├─ DADOS MENSAIS:")
-            for mes_data in item['dados_mensais']:
-                mes_nome = mes_data['mes_nome']
-                print(f"{indent}│  └─ {mes_nome}:")
-                print(f"{indent}│     • % Realizado: {formatar_numero(mes_data['perc_realizado'])}%")
-                print(f"{indent}│     • Valor Realizado: R$ {formatar_numero(mes_data['valor_realizado'])}")
-                print(f"{indent}│     • % Atingido: {formatar_numero(mes_data['perc_atingido'])}%")
-                print(f"{indent}│     • Valor Diferença: R$ {formatar_numero(mes_data['valor_diferenca'])}")
-
-        # Resultados totais
-        res = item['resultados_totais']
-        print(f"{indent}└─ RESULTADOS TOTAIS:")
-        print(f"{indent}   • Previsão Total: R$ {formatar_numero(res['previsao_total'])}")
-        print(f"{indent}   • Total Realizado: R$ {formatar_numero(res['total_realizado'])}")
-        print(f"{indent}   • Diferença Total: R$ {formatar_numero(res['diferenca_total'])}")
-        print(f"{indent}   • Média % Realizado: {formatar_numero(res['media_perc_realizado'])}%")
-        print(f"{indent}   • Média Valor Realizado: R$ {formatar_numero(res['media_valor_realizado'])}")
-        print(f"{indent}   • Média % Diferença: {formatar_numero(res['media_perc_diferenca'])}%")
-        print(f"{indent}   • Média Valor Diferença: R$ {formatar_numero(res['media_valor_diferenca'])}")
-
-    if len(itens) > 10:
-        print(f"\n... (e mais {len(itens) - 10} itens não exibidos)")
-
-    # ========================================================================
-    # EXIBIR SEÇÃO RESULTADO POR FLUXO DE CAIXA
-    # ========================================================================
-    resultados = dados.get('resultados_fluxo', {}).get('secoes', [])
-    if resultados:
-        print("\n" + "="*100)
-        print("📈 SEÇÃO: RESULTADO POR FLUXO DE CAIXA")
-        print("="*100)
-
-        for i, item in enumerate(resultados):
-            linha_excel = item.get('linha', 'N/A')
-
-            if item.get('tipo') == 'titulo':
-                # É um título
-                print(f"\n{'═'*100}")
-                print(f"LINHA {linha_excel} (Excel) | TÍTULO")
-                print(f"{'═'*100}")
-                print(f"📌 {item['texto']}")
-            else:
-                # É uma linha com dados
-                nome = item.get('nome', 'N/A')
-
-                print(f"\n{'─'*100}")
-                print(f"LINHA {linha_excel} (Excel) | {nome}")
-                print(f"{'─'*100}")
-
-                # Viabilidade
-                viab = item['viabilidade']
-                print(f"├─ VIABILIDADE:")
-                print(f"│  • Percentual: {formatar_numero(viab['percentual'])}%")
-                print(f"│  • Valor: R$ {formatar_numero(viab['valor'])}")
-
-                # Dados mensais
-                if num_meses > 0 and item.get('dados_mensais'):
-                    print(f"├─ DADOS MENSAIS:")
-                    for mes_data in item['dados_mensais']:
-                        mes_nome = mes_data['mes_nome']
-                        print(f"│  └─ {mes_nome}:")
-                        print(f"│     • % Realizado: {formatar_numero(mes_data['perc_realizado'])}%")
-                        print(f"│     • Valor Realizado: R$ {formatar_numero(mes_data['valor_realizado'])}")
-                        print(f"│     • % Atingido: {formatar_numero(mes_data['perc_atingido'])}%")
-                        print(f"│     • Valor Diferença: R$ {formatar_numero(mes_data['valor_diferenca'])}")
-
-                # Resultados totais
-                res = item['resultados_totais']
-                print(f"└─ RESULTADOS TOTAIS:")
-                print(f"   • Previsão Total: R$ {formatar_numero(res['previsao_total'])}")
-                print(f"   • Total Realizado: R$ {formatar_numero(res['total_realizado'])}")
-                print(f"   • Diferença Total: R$ {formatar_numero(res['diferenca_total'])}")
-                print(f"   • Média % Realizado: {formatar_numero(res['media_perc_realizado'])}%")
-                print(f"   • Média Valor Realizado: R$ {formatar_numero(res['media_valor_realizado'])}")
-                print(f"   • Média % Diferença: {formatar_numero(res['media_perc_diferenca'])}%")
-                print(f"   • Média Valor Diferença: R$ {formatar_numero(res['media_valor_diferenca'])}")
-
-    print("\n" + "="*100)
-
-
 def formatar_numero(valor):
-    """
-    Formata um número para exibição legível (ou 'N/A' se None)
-    """
+    """Formata um número para exibição legível (ou 'N/A' se None)"""
     if valor is None:
         return "N/A"
 
-    # Se for um número muito pequeno (perto de zero), exibir como 0.00
     if isinstance(valor, (int, float)) and abs(valor) < 0.01:
         return "0.00"
 
-    # Formatar com 2 casas decimais e separador de milhares
     try:
         return f"{float(valor):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except (ValueError, TypeError):
         return str(valor)
+
+
+def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha):
+    """
+    Processa um item hierárquico com a NOVA estrutura
+
+    Estrutura FIXA:
+    - Coluna 0 (A): Nome/Código
+    - Colunas 1+ (B+): Meses (4 colunas cada: Orçado, Realizado, % Atingido, Diferença)
+    - Últimas 3 colunas: Totais (Orçado Total, Realizado Total, Pendente Total)
+
+    Args:
+        col_a: Valor da coluna A (código e nome)
+        row_values: Lista com todos os valores da linha
+        num_meses: Número de meses
+        meses_nomes: Lista com nomes dos meses
+        linha: Número da linha atual
+
+    Returns:
+        dict: Dados estruturados do item
+    """
+    # Extrair código e nome
+    codigo, nome, nivel = extrair_codigo_e_nome(col_a)
+
+    # Processar dados mensais (começando no índice 1 = coluna B)
+    dados_meses = []
+    col_inicio_mes = 1  # Coluna B
+
+    for i in range(num_meses):
+        idx_base = col_inicio_mes + (i * 4)
+
+        # Cada mês tem 4 colunas fixas:
+        # 0: Valor Orçado
+        # 1: Valor Realizado
+        # 2: % Atingido (já vem como número, ex: 86.06 para 86,06%)
+        # 3: Valor Diferença
+
+        valor_orcado = converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None
+        valor_realizado = converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None
+        perc_atingido = converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None  # SEM multiplicar por 100!
+        valor_diferenca = converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None
+
+        mes_data = {
+            'mes_numero': i + 1,
+            'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
+            'valor_orcado': valor_orcado,
+            'valor_realizado': valor_realizado,
+            'perc_atingido': perc_atingido,
+            'valor_diferenca': valor_diferenca,
+        }
+        dados_meses.append(mes_data)
+
+    # Processar resultados totais (últimas 3 colunas)
+    idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
+
+    valor_orcado_total = converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None
+    valor_realizado_total = converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None
+    valor_pendente_total = converter_valor(row_values[idx_resultados_inicio + 2]) if idx_resultados_inicio + 2 < len(row_values) else None
+
+    resultados = {
+        'valor_orcado_total': valor_orcado_total,
+        'valor_realizado_total': valor_realizado_total,
+        'valor_pendente_total': valor_pendente_total
+    }
+
+    return {
+        'codigo': codigo,
+        'nome': nome,
+        'nivel_hierarquia': nivel,
+        'linha': linha,
+        'dados_mensais': dados_meses,
+        'resultados_totais': resultados
+    }
+
+
+def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
+    """
+    Calcula os totais do 1º cenário: RESULTADO POR FLUXO DE CAIXA
+
+    Para cada mês, calcula 3 totais em 4 colunas:
+    - Orçamento: Receita, Despesa, Geral
+    - Realizado: Receita, Despesa, Geral
+    - % Atingido: Receita%, Despesa%, Geral%
+    - Diferença: Receita, Despesa, Geral
+
+    Args:
+        itens_hierarquicos: Lista de itens processados
+        num_meses: Número de meses
+
+    Returns:
+        dict: Totais calculados por mês
+    """
+
+    # Estrutura de retorno
+    totais = {
+        'fluxo_caixa': {},  # Será preenchido por mês
+        'real': {},         # Para depois (vazio por enquanto)
+        'real_mp': {}       # Para depois (vazio por enquanto)
+    }
+
+    # Encontrar os itens "1 - RECEITA" e "2 - DESPESAS"
+    item_receita = None
+    item_despesa = None
+
+    for item in itens_hierarquicos:
+        nome_upper = item['nome'].upper()
+        codigo = item['codigo']
+
+        # Procurar por "1 - RECEITA" ou similar
+        if codigo == "1" or ("RECEITA" in nome_upper and codigo.startswith("1")):
+            if not item_receita:  # Pegar o primeiro
+                item_receita = item
+                print(f"✅ Item RECEITA encontrado: [{item['codigo']}] {item['nome']}")
+
+        # Procurar por "2 - DESPESAS" ou similar
+        if codigo == "2" or ("DESPESA" in nome_upper and codigo.startswith("2")):
+            if not item_despesa:  # Pegar o primeiro
+                item_despesa = item
+                print(f"✅ Item DESPESA encontrado: [{item['codigo']}] {item['nome']}")
+
+    if not item_receita or not item_despesa:
+        print("⚠️  ATENÇÃO: Não foi possível encontrar itens RECEITA e/ou DESPESAS!")
+        print(f"   Item RECEITA: {'Encontrado' if item_receita else 'NÃO ENCONTRADO'}")
+        print(f"   Item DESPESA: {'Encontrado' if item_despesa else 'NÃO ENCONTRADO'}")
+        return totais
+
+    # Calcular para cada mês
+    for mes_num in range(1, num_meses + 1):
+        # Encontrar dados deste mês
+        dados_mes_receita = next((m for m in item_receita['dados_mensais'] if m['mes_numero'] == mes_num), None)
+        dados_mes_despesa = next((m for m in item_despesa['dados_mensais'] if m['mes_numero'] == mes_num), None)
+
+        if not dados_mes_receita or not dados_mes_despesa:
+            print(f"⚠️  Mês {mes_num}: Dados não encontrados")
+            continue
+
+        # ====================================================================
+        # COLUNA 1 - ORÇAMENTO
+        # ====================================================================
+        orcamento_receita = dados_mes_receita['valor_orcado'] or 0
+        orcamento_despesa = dados_mes_despesa['valor_orcado'] or 0
+        orcamento_geral = orcamento_receita - orcamento_despesa
+
+        # ====================================================================
+        # COLUNA 2 - REALIZADO
+        # ====================================================================
+        realizado_receita = dados_mes_receita['valor_realizado'] or 0
+        realizado_despesa = dados_mes_despesa['valor_realizado'] or 0
+        realizado_geral = realizado_receita - realizado_despesa
+
+        # ====================================================================
+        # COLUNA 3 - % ATINGIDO
+        # ====================================================================
+        # Fórmula: (Realizado - Orçado) / Orçado * 100
+        if orcamento_receita != 0:
+            perc_receita = ((realizado_receita - orcamento_receita) / orcamento_receita) * 100
+        else:
+            perc_receita = 0
+
+        if orcamento_despesa != 0:
+            perc_despesa = ((realizado_despesa - orcamento_despesa) / orcamento_despesa) * 100
+        else:
+            perc_despesa = 0
+
+        if orcamento_geral != 0:
+            perc_geral = ((realizado_geral - orcamento_geral) / orcamento_geral) * 100
+        else:
+            perc_geral = 0
+
+        # ====================================================================
+        # COLUNA 4 - DIFERENÇA
+        # ====================================================================
+        # Receita: Realizado - Orçado
+        # Despesa: Orçado - Realizado (INVERTIDO!)
+        # Geral: Receita - Despesa
+        diferenca_receita = realizado_receita - orcamento_receita
+        diferenca_despesa = orcamento_despesa - realizado_despesa  # INVERTIDO
+        diferenca_geral = diferenca_receita - diferenca_despesa
+
+        # Salvar totais deste mês
+        totais['fluxo_caixa'][mes_num] = {
+            'orcamento': {
+                'receita': orcamento_receita,
+                'despesa': orcamento_despesa,
+                'geral': orcamento_geral
+            },
+            'realizado': {
+                'receita': realizado_receita,
+                'despesa': realizado_despesa,
+                'geral': realizado_geral
+            },
+            'perc_atingido': {
+                'receita': perc_receita,
+                'despesa': perc_despesa,
+                'geral': perc_geral
+            },
+            'diferenca': {
+                'receita': diferenca_receita,
+                'despesa': diferenca_despesa,
+                'geral': diferenca_geral
+            }
+        }
+
+        # Log apenas do primeiro mês para não poluir
+        if mes_num == 1:
+            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo:")
+            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita)} | Despesa: R$ {formatar_numero(orcamento_despesa)} | Geral: R$ {formatar_numero(orcamento_geral)}")
+            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita)} | Despesa: R$ {formatar_numero(realizado_despesa)} | Geral: R$ {formatar_numero(realizado_geral)}")
+            print(f"   % ATINGIDO → Receita: {perc_receita:.2f}% | Despesa: {perc_despesa:.2f}% | Geral: {perc_geral:.2f}%")
+            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita)} | Despesa: R$ {formatar_numero(diferenca_despesa)} | Geral: R$ {formatar_numero(diferenca_geral)}")
+
+    print(f"\n✅ Totais calculados para {len(totais['fluxo_caixa'])} meses")
+
+    return totais
 
 
 # ============================================================================
@@ -650,14 +491,15 @@ def calcular_cenarios_adicionais(secoes_fluxo_caixa, itens_hierarquicos, num_mes
 
 def process_bpo_file(file):
     """
-    Processa arquivo Excel de BPO Financeiro e retorna dados estruturados.
+    Processa arquivo Excel de BPO Financeiro (NOVA ESTRUTURA) e retorna dados estruturados.
 
     Estrutura da planilha:
-    - Linha 4+: Dados começam
+    - Sheet: "Sheet"
+    - Linha 1: Cabeçalho
+    - Linha 2+: Dados começam
     - Coluna A: Código hierárquico e nome (ex: "1.01 - RECEITA VENDA SERVIÇO")
-    - Coluna B: % Viabilidade
-    - Coluna C: Valor Viabilidade (R$)
-    - Colunas D+: Dados mensais (4 colunas por mês) + 7 colunas de resultados
+    - Coluna B+: Dados mensais (4 colunas por mês: Orçado, Realizado, % Ating, Diferença)
+    - Últimas 3 colunas: Totais (Orçado Total, Realizado Total, Pendente Total)
 
     Args:
         file: Arquivo Excel (.xlsx ou .xls)
@@ -665,53 +507,57 @@ def process_bpo_file(file):
     Returns:
         dict: {
             'itens_hierarquicos': [...],  # Itens com hierarquia
-            'resultados_fluxo': {...},     # Seção RESULTADO POR FLUXO DE CAIXA
-            'metadados': {...}             # Info sobre meses, totais, etc
+            'totais_calculados': {},      # Para adicionar depois (quando souber a fórmula)
+            'metadados': {...}            # Info sobre meses, totais, etc
         }
     """
 
     try:
-        print("\n🔄 Processando planilha BPO...")
+        print("\n" + "="*100)
+        print("🔄 PROCESSANDO PLANILHA BPO (NOVA ESTRUTURA)")
+        print("="*100)
 
         # Carregar workbook (data_only=True para pegar valores calculados ao invés de fórmulas)
         wb = load_workbook(file, data_only=True)
 
-        # Selecionar sheet 'APRESENTAÇÃO'
-        sheet_name = 'APRESENTAÇÃO'
+        # Selecionar sheet 'Sheet'
+        sheet_name = 'Sheet'
         if sheet_name not in wb.sheetnames:
-            for name in wb.sheetnames:
-                if 'APRESENTA' in name.upper():
-                    sheet_name = name
-                    break
+            raise Exception(f"Sheet '{sheet_name}' não encontrada. Sheets disponíveis: {wb.sheetnames}")
 
-        if sheet_name in wb.sheetnames:
-            sheet = wb[sheet_name]
-        else:
-            sheet = wb[wb.sheetnames[0]]
+        sheet = wb[sheet_name]
+        print(f"✅ Sheet '{sheet_name}' encontrada")
 
-        # Identificar estrutura da planilha (FIXA)
+        # Identificar estrutura da planilha
         total_colunas = sheet.max_column
+        print(f"📊 Total de colunas na planilha: {total_colunas}")
 
         # Estrutura FIXA:
         # Coluna A (0): Nome/Código
-        # Coluna B (1): % Viabilidade
-        # Coluna C (2): Valor Viabilidade
-        # Colunas D+ (3+): Meses (4 colunas cada) + 7 colunas de totais
+        # Colunas B+ (1+): Meses (4 colunas cada) + 3 colunas de totais
 
-        colunas_depois_viabilidade = total_colunas - 3  # Tira A, B, C
-        colunas_totais = 7
-        colunas_meses = colunas_depois_viabilidade - colunas_totais
+        colunas_depois_nome = total_colunas - 1  # Tira coluna A
+        colunas_totais = 3
+        colunas_meses = colunas_depois_nome - colunas_totais
         num_meses = colunas_meses // 4
+
+        print(f"📅 Número de meses detectados: {num_meses}")
+        print(f"📋 Colunas de meses: {colunas_meses} ({num_meses} meses × 4 colunas)")
+        print(f"📈 Colunas de totais: {colunas_totais}")
 
         # Nomes dos meses
         meses_nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
 
-        # Processar itens hierárquicos (LINHA 4 ATÉ "RESULTADO...")
-        itens_hierarquicos = []
-        linha_atual = 4  # Começa na linha 4 (dados começam após cabeçalho)
+        print(f"🗓️  Meses processados: {', '.join(meses_nomes[:num_meses])}")
 
-        contador_debug = 0  # Contador para limitar prints de debug
+        # Processar itens hierárquicos (LINHA 2 em diante)
+        itens_hierarquicos = []
+        linha_atual = 2  # Começa na linha 2 (linha 1 = cabeçalho)
+
+        print("\n" + "-"*100)
+        print("📋 PROCESSANDO ITENS HIERÁRQUICOS")
+        print("-"*100)
 
         while True:
             row_values = []
@@ -719,40 +565,38 @@ def process_bpo_file(file):
                 cell_value = sheet.cell(row=linha_atual, column=col).value
                 row_values.append(cell_value)
 
-            # Verifica se chegou na seção de resultados
-            if row_values[0] and "RESULTADO POR FLUXO DE CAIXA" in str(row_values[0]):
-                break
-
             # Verifica se linha está completamente vazia (fim da planilha)
             if all(v is None or str(v).strip() == '' for v in row_values):
+                print(f"⏹️  Linha {linha_atual}: Vazia - fim dos dados")
                 break
 
             # Processar item se coluna A tem conteúdo
             col_a = row_values[0]
             if col_a and str(col_a).strip():
-                # Mostrar debug apenas para as primeiras 3 linhas
-                mostrar_debug = contador_debug < 3
-
                 item = processar_item_hierarquico(
                     col_a,
                     row_values,
                     num_meses,
                     meses_nomes,
-                    linha_atual,
-                    mostrar_debug
+                    linha_atual
                 )
                 itens_hierarquicos.append(item)
-                contador_debug += 1
+
+                # Log apenas das primeiras 5 linhas para não poluir
+                if len(itens_hierarquicos) <= 5:
+                    print(f"✅ Linha {linha_atual}: [{item['codigo']}] {item['nome']}")
+                    print(f"   └─ Meses: {len(item['dados_mensais'])} | Totais: Orçado={formatar_numero(item['resultados_totais']['valor_orcado_total'])}")
 
             linha_atual += 1
 
-        # Processar seção "RESULTADO POR FLUXO DE CAIXA"
-        resultados_fluxo = {}
+        print(f"\n📊 Total de itens processados: {len(itens_hierarquicos)}")
 
-        if row_values[0] and "RESULTADO POR FLUXO DE CAIXA" in str(row_values[0]):
-
-            # Pular linha do título
-            linha_atual += 1
+        # ========================================================================
+        # CALCULAR TOTAIS (1º CENÁRIO: RESULTADO POR FLUXO DE CAIXA)
+        # ========================================================================
+        print("\n" + "-"*100)
+        print("🧮 CALCULANDO TOTAIS - RESULTADO POR FLUXO DE CAIXA")
+        print("-"*100)
 
             # Processar as 12 linhas especiais
             secoes_resultado = []
@@ -808,24 +652,34 @@ def process_bpo_file(file):
         # Montar estrutura final
         dados_processados = {
             'itens_hierarquicos': itens_hierarquicos,
-            'resultados_fluxo': resultados_fluxo,
+            'totais_calculados': totais_calculados,
             'metadados': {
                 'total_colunas': total_colunas,
                 'num_meses': num_meses,
                 'meses': meses_nomes[:num_meses],
-                'total_itens': len(itens_hierarquicos),
-                'total_resultados': len(resultados_fluxo.get('secoes', []))
+                'total_itens': len(itens_hierarquicos)
             }
         }
 
-        print(f"✅ Processamento concluído: {len(itens_hierarquicos)} itens processados\n")
+        print("\n" + "="*100)
+        print("✅ PROCESSAMENTO CONCLUÍDO COM SUCESSO!")
+        print("="*100)
+        print(f"📊 Resumo:")
+        print(f"   • Itens processados: {len(itens_hierarquicos)}")
+        print(f"   • Meses: {num_meses} ({', '.join(meses_nomes[:num_meses])})")
+        print(f"   • Total de colunas: {total_colunas}")
+        print("="*100 + "\n")
 
         return dados_processados
 
     except Exception as e:
-        print(f"\n❌ ERRO ao processar arquivo BPO: {str(e)}")
+        print("\n" + "="*100)
+        print(f"❌ ERRO AO PROCESSAR ARQUIVO BPO")
+        print("="*100)
+        print(f"Erro: {str(e)}")
         import traceback
         traceback.print_exc()
+        print("="*100 + "\n")
         raise Exception(f"Erro no processamento do BPO: {str(e)}")
 
 
@@ -838,50 +692,17 @@ def validate_bpo_data(dados):
 
     Returns:
         tuple: (bool, str) - (True/False, mensagem de erro/sucesso)
-
-    TODO: IMPLEMENTAR VALIDAÇÕES NECESSÁRIAS
-    =========================================
-    Exemplos de validações:
-    - Verificar se há dados mensais
-    - Validar se os meses estão no range correto (1-12)
-    - Verificar se valores são numéricos
-    - Validar campos obrigatórios
-    - Verificar consistência dos dados
     """
-
-    # Validação básica temporária
     if not dados:
         return False, "Dados vazios ou inválidos"
 
-    if 'dados_mensais' not in dados:
-        return False, "Estrutura de dados inválida: falta campo 'dados_mensais'"
+    if 'itens_hierarquicos' not in dados:
+        return False, "Estrutura de dados inválida: falta campo 'itens_hierarquicos'"
 
-    # TODO: Adicionar validações específicas aqui
+    if 'metadados' not in dados:
+        return False, "Estrutura de dados inválida: falta campo 'metadados'"
 
-    return True, "Validação OK (temporária)"
+    if len(dados['itens_hierarquicos']) == 0:
+        return False, "Nenhum item hierárquico encontrado"
 
-
-def get_bpo_summary(dados):
-    """
-    Gera um resumo dos dados de BPO para exibição rápida.
-
-    Args:
-        dados (dict): Dados processados do BPO
-
-    Returns:
-        dict: Resumo com informações agregadas
-
-    TODO: IMPLEMENTAR LÓGICA DE SUMARIZAÇÃO
-    ========================================
-    Exemplos de dados do resumo:
-    - Total por mês
-    - Total por categoria
-    - Média mensal
-    - Meses com dados
-    - etc.
-    """
-
-    return {
-        'total_registros': len(dados.get('dados_mensais', [])),
-        'status': 'Em desenvolvimento'
-    }
+    return True, "Validação OK"
