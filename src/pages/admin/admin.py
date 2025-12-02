@@ -890,9 +890,14 @@ def api_dados_bpo(empresa_id):
         labels_meses.append(f"{mes_num}/{ano}")
 
         print(f"\n📅 MÊS {mes_num}/{ano}:")
+        print(f"   Tipo de 'dados': {type(dados)}")
+        print(f"   Chaves em 'dados': {list(dados.keys()) if isinstance(dados, dict) else 'N/A'}")
 
         # Extrair totais_calculados (nova estrutura)
         totais_calculados = dados.get('totais_calculados', {})
+
+        print(f"   Tipo de 'totais_calculados': {type(totais_calculados)}")
+        print(f"   Valor de 'totais_calculados': {totais_calculados}")
 
         # Verificar se totais_calculados está vazio ou None
         if not totais_calculados or totais_calculados == {}:
