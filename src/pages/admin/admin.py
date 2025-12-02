@@ -890,14 +890,9 @@ def api_dados_bpo(empresa_id):
         labels_meses.append(f"{mes_num}/{ano}")
 
         print(f"\n📅 MÊS {mes_num}/{ano}:")
-        print(f"   Tipo de 'dados': {type(dados)}")
-        print(f"   Chaves em 'dados': {list(dados.keys()) if isinstance(dados, dict) else 'N/A'}")
 
         # Extrair totais_calculados (nova estrutura)
         totais_calculados = dados.get('totais_calculados', {})
-
-        print(f"   Tipo de 'totais_calculados': {type(totais_calculados)}")
-        print(f"   Valor de 'totais_calculados': {totais_calculados}")
 
         # Verificar se totais_calculados está vazio ou None
         if not totais_calculados or totais_calculados == {}:
@@ -922,8 +917,9 @@ def api_dados_bpo(empresa_id):
                 print(f"   ⚠️  {cenario_key.upper()}: cenário vazio ou inválido")
                 continue
 
-            # Pegar dados do mês (a chave é o número do mês)
-            mes_dados = cenario_data.get(mes_num, {})
+            # Pegar dados do mês (a chave pode ser string ou int)
+            # Tentar primeiro como int, depois como string
+            mes_dados = cenario_data.get(mes_num, cenario_data.get(str(mes_num), {}))
 
             if mes_dados and isinstance(mes_dados, dict):
                 # Extrair valores realizados
