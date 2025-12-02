@@ -158,20 +158,9 @@ function atualizarDados() {
         .then(data => {
             console.log('Dados recebidos da API:', data);
             console.log('totais_acumulados:', data.totais_acumulados);
-            console.log('fluxo_caixa:', data.totais_acumulados.fluxo_caixa);
-
-            // Verificar se há dados
-            const tot = data.totais_acumulados;
-            const temDados = tot.fluxo_caixa.receita !== 0 ||
-                             tot.fluxo_caixa.despesa !== 0 ||
-                             tot.real.receita !== 0 ||
-                             tot.real_mp.receita !== 0;
-
-            if (!temDados) {
-                alert('⚠️ ATENÇÃO: Os dados estão vazios!\n\nIsso pode acontecer se:\n1. A planilha foi carregada antes da atualização do sistema\n2. Os dados não foram processados corretamente\n\nSOLUÇÃO: Faça upload da planilha BPO novamente para recalcular os totais.');
-            }
 
             // Atualizar cards
+            const tot = data.totais_acumulados;
             document.getElementById('card_fc_rec').textContent = formatMoney(tot.fluxo_caixa.receita || 0);
             document.getElementById('card_fc_desp').textContent = formatMoney(tot.fluxo_caixa.despesa || 0);
             document.getElementById('card_fc_ger').textContent = formatMoney(tot.fluxo_caixa.geral || 0);
