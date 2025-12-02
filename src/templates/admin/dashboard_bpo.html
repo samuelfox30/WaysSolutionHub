@@ -94,7 +94,7 @@
                 <tr>
                     <th>Total Receita</th>
                     <th>Total Despesa</th>
-                    <th>Total Geral</th>
+                    <th>Total Resultado</th>
                 </tr>
             </thead>
             <tbody>
@@ -175,9 +175,18 @@ function atualizarDados() {
 
             // Atualizar tabela do DRE selecionado
             const dre_sel = tot[tipo_dre];
-            document.getElementById('tab_rec').textContent = formatMoney(dre_sel.receita || 0);
-            document.getElementById('tab_desp').textContent = formatMoney(dre_sel.despesa || 0);
-            document.getElementById('tab_ger').textContent = formatMoney(dre_sel.geral || 0);
+            const receita_val = dre_sel.receita || 0;
+            const despesa_val = dre_sel.despesa || 0;
+            const geral_val = dre_sel.geral || 0;
+
+            // Calcular porcentagens
+            const perc_despesa = receita_val !== 0 ? (Math.abs(despesa_val) / receita_val * 100).toFixed(2) : '0.00';
+            const perc_resultado = receita_val !== 0 ? (geral_val / receita_val * 100).toFixed(2) : '0.00';
+
+            // Atualizar com porcentagens
+            document.getElementById('tab_rec').textContent = formatMoney(receita_val) + ' (100%)';
+            document.getElementById('tab_desp').textContent = formatMoney(despesa_val) + ` (${perc_despesa}%)`;
+            document.getElementById('tab_ger').textContent = formatMoney(geral_val) + ` (${perc_resultado}%)`;
 
             // Atualizar gráficos
             atualizarGraficos(data.meses, data.receitas, data.despesas, data.gerais);
