@@ -888,13 +888,22 @@ def api_dados_bpo(empresa_id):
     despesas_mensais = []
     gerais_mensais = []
 
+    # Nomes dos meses
+    nomes_meses = {
+        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+    }
+
     for mes_data in meses_data:
         mes_num = mes_data['mes']
         ano = mes_data['ano']
         dados = mes_data['dados']
 
-        # Label para gráfico
-        labels_meses.append(f"{mes_num}/{ano}")
+        # Label para gráfico (formato: Janeiro/25)
+        nome_mes = nomes_meses.get(mes_num, str(mes_num))
+        ano_curto = str(ano)[-2:]  # Pega só os 2 últimos dígitos
+        labels_meses.append(f"{nome_mes}/{ano_curto}")
 
         print(f"\n📅 MÊS {mes_num}/{ano}:")
 
