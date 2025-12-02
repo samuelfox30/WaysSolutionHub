@@ -227,18 +227,34 @@ function atualizarDados() {
             const dif_desp = media_real_desp - media_prev_desp;
             const dif_res = media_real_res - media_prev_res;
 
-            // Atualizar tabela
-            document.getElementById('tab_rec_prev').textContent = formatMoney(media_prev_rec);
-            document.getElementById('tab_rec_real').textContent = formatMoney(media_real_rec);
-            document.getElementById('tab_rec_dif').textContent = formatMoney(dif_rec);
+            // Calcular porcentagens para Média Prevista
+            const prev_perc_desp = media_prev_rec !== 0 ? (Math.abs(media_prev_desp) / media_prev_rec * 100).toFixed(2) : '0.00';
+            const prev_perc_res = media_prev_rec !== 0 ? (media_prev_res / media_prev_rec * 100).toFixed(2) : '0.00';
 
-            document.getElementById('tab_desp_prev').textContent = formatMoney(media_prev_desp);
-            document.getElementById('tab_desp_real').textContent = formatMoney(media_real_desp);
-            document.getElementById('tab_desp_dif').textContent = formatMoney(dif_desp);
+            // Calcular porcentagens para Média Realizada
+            const real_perc_desp = media_real_rec !== 0 ? (Math.abs(media_real_desp) / media_real_rec * 100).toFixed(2) : '0.00';
+            const real_perc_res = media_real_rec !== 0 ? (media_real_res / media_real_rec * 100).toFixed(2) : '0.00';
 
-            document.getElementById('tab_res_prev').textContent = formatMoney(media_prev_res);
-            document.getElementById('tab_res_real').textContent = formatMoney(media_real_res);
-            document.getElementById('tab_res_dif').textContent = formatMoney(dif_res);
+            // Calcular porcentagens para Diferença (prevista / realizada)
+            const dif_perc_rec = media_real_rec !== 0 ? (media_prev_rec / media_real_rec * 100).toFixed(2) : '0.00';
+            const dif_perc_desp = media_real_desp !== 0 ? (media_prev_desp / media_real_desp * 100).toFixed(2) : '0.00';
+            const dif_perc_res = media_real_res !== 0 ? (media_prev_res / media_real_res * 100).toFixed(2) : '0.00';
+
+            // Atualizar tabela com porcentagens
+            // Média Prevista
+            document.getElementById('tab_rec_prev').textContent = formatMoney(media_prev_rec) + ' (100%)';
+            document.getElementById('tab_desp_prev').textContent = formatMoney(media_prev_desp) + ` (${prev_perc_desp}%)`;
+            document.getElementById('tab_res_prev').textContent = formatMoney(media_prev_res) + ` (${prev_perc_res}%)`;
+
+            // Média Realizada
+            document.getElementById('tab_rec_real').textContent = formatMoney(media_real_rec) + ' (100%)';
+            document.getElementById('tab_desp_real').textContent = formatMoney(media_real_desp) + ` (${real_perc_desp}%)`;
+            document.getElementById('tab_res_real').textContent = formatMoney(media_real_res) + ` (${real_perc_res}%)`;
+
+            // Diferença
+            document.getElementById('tab_rec_dif').textContent = formatMoney(dif_rec) + ` (${dif_perc_rec}%)`;
+            document.getElementById('tab_desp_dif').textContent = formatMoney(dif_desp) + ` (${dif_perc_desp}%)`;
+            document.getElementById('tab_res_dif').textContent = formatMoney(dif_res) + ` (${dif_perc_res}%)`;
 
             // Atualizar gráficos
             atualizarGraficos(data.meses, data.receitas, data.despesas, data.gerais);
