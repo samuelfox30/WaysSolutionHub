@@ -875,6 +875,13 @@ def api_dados_bpo(empresa_id):
         'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
     }
 
+    # Totais de orçamento (para média prevista)
+    totais_orcamento = {
+        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+    }
+
     # Arrays para gráficos (por mês, do DRE selecionado)
     labels_meses = []
     receitas_mensais = []
@@ -946,6 +953,18 @@ def api_dados_bpo(empresa_id):
                         geral_grafico = geral
                 else:
                     print(f"   ⚠️  {cenario_key.upper()}: estrutura 'realizado' inválida")
+
+                # Extrair valores de orçamento
+                orcamento = mes_dados.get('orcamento', {})
+                if isinstance(orcamento, dict):
+                    receita_orc = orcamento.get('receita', 0) or 0
+                    despesa_orc = orcamento.get('despesa', 0) or 0
+                    geral_orc = orcamento.get('geral', 0) or 0
+
+                    # Acumular orçamento
+                    totais_orcamento[cenario_key]['receita'] += receita_orc
+                    totais_orcamento[cenario_key]['despesa'] += despesa_orc
+                    totais_orcamento[cenario_key]['geral'] += geral_orc
             else:
                 print(f"   ⚠️  {cenario_key.upper()}: sem dados para mês {mes_num}")
 
@@ -966,6 +985,8 @@ def api_dados_bpo(empresa_id):
 
     return jsonify({
         'totais_acumulados': totais,
+        'totais_orcamento': totais_orcamento,
+        'num_meses': len(meses_data),
         'meses': labels_meses,
         'receitas': receitas_mensais,
         'despesas': despesas_mensais,
