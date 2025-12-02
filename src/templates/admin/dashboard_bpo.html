@@ -61,7 +61,7 @@
                     <h6>Resultado por Fluxo de Caixa</h6>
                     <div class="small">Receita: <strong id="card_fc_rec">R$ 0,00</strong></div>
                     <div class="small">Despesa: <strong id="card_fc_desp">R$ 0,00</strong></div>
-                    <div class="small">Geral: <strong id="card_fc_ger">R$ 0,00</strong></div>
+                    <div class="small">Resultado: <strong id="card_fc_ger">R$ 0,00</strong></div>
                 </div>
             </div>
         </div>
@@ -71,7 +71,7 @@
                     <h6>Resultado Real</h6>
                     <div class="small">Receita: <strong id="card_real_rec">R$ 0,00</strong></div>
                     <div class="small">Despesa: <strong id="card_real_desp">R$ 0,00</strong></div>
-                    <div class="small">Geral: <strong id="card_real_ger">R$ 0,00</strong></div>
+                    <div class="small">Resultado: <strong id="card_real_ger">R$ 0,00</strong></div>
                 </div>
             </div>
         </div>
@@ -81,7 +81,7 @@
                     <h6>Resultado Real + Custo MP</h6>
                     <div class="small">Receita: <strong id="card_mp_rec">R$ 0,00</strong></div>
                     <div class="small">Despesa: <strong id="card_mp_desp">R$ 0,00</strong></div>
-                    <div class="small">Geral: <strong id="card_mp_ger">R$ 0,00</strong></div>
+                    <div class="small">Resultado: <strong id="card_mp_ger">R$ 0,00</strong></div>
                 </div>
             </div>
         </div>
@@ -159,19 +159,38 @@ function atualizarDados() {
             console.log('Dados recebidos da API:', data);
             console.log('totais_acumulados:', data.totais_acumulados);
 
-            // Atualizar cards
+            // Atualizar cards com porcentagens
             const tot = data.totais_acumulados;
-            document.getElementById('card_fc_rec').textContent = formatMoney(tot.fluxo_caixa.receita || 0);
-            document.getElementById('card_fc_desp').textContent = formatMoney(tot.fluxo_caixa.despesa || 0);
-            document.getElementById('card_fc_ger').textContent = formatMoney(tot.fluxo_caixa.geral || 0);
 
-            document.getElementById('card_real_rec').textContent = formatMoney(tot.real.receita || 0);
-            document.getElementById('card_real_desp').textContent = formatMoney(tot.real.despesa || 0);
-            document.getElementById('card_real_ger').textContent = formatMoney(tot.real.geral || 0);
+            // Card Fluxo de Caixa
+            const fc_rec = tot.fluxo_caixa.receita || 0;
+            const fc_desp = tot.fluxo_caixa.despesa || 0;
+            const fc_ger = tot.fluxo_caixa.geral || 0;
+            const fc_perc_desp = fc_rec !== 0 ? (Math.abs(fc_desp) / fc_rec * 100).toFixed(2) : '0.00';
+            const fc_perc_ger = fc_rec !== 0 ? (fc_ger / fc_rec * 100).toFixed(2) : '0.00';
+            document.getElementById('card_fc_rec').textContent = formatMoney(fc_rec) + ' (100%)';
+            document.getElementById('card_fc_desp').textContent = formatMoney(fc_desp) + ` (${fc_perc_desp}%)`;
+            document.getElementById('card_fc_ger').textContent = formatMoney(fc_ger) + ` (${fc_perc_ger}%)`;
 
-            document.getElementById('card_mp_rec').textContent = formatMoney(tot.real_mp.receita || 0);
-            document.getElementById('card_mp_desp').textContent = formatMoney(tot.real_mp.despesa || 0);
-            document.getElementById('card_mp_ger').textContent = formatMoney(tot.real_mp.geral || 0);
+            // Card Real
+            const real_rec = tot.real.receita || 0;
+            const real_desp = tot.real.despesa || 0;
+            const real_ger = tot.real.geral || 0;
+            const real_perc_desp = real_rec !== 0 ? (Math.abs(real_desp) / real_rec * 100).toFixed(2) : '0.00';
+            const real_perc_ger = real_rec !== 0 ? (real_ger / real_rec * 100).toFixed(2) : '0.00';
+            document.getElementById('card_real_rec').textContent = formatMoney(real_rec) + ' (100%)';
+            document.getElementById('card_real_desp').textContent = formatMoney(real_desp) + ` (${real_perc_desp}%)`;
+            document.getElementById('card_real_ger').textContent = formatMoney(real_ger) + ` (${real_perc_ger}%)`;
+
+            // Card Real + MP
+            const mp_rec = tot.real_mp.receita || 0;
+            const mp_desp = tot.real_mp.despesa || 0;
+            const mp_ger = tot.real_mp.geral || 0;
+            const mp_perc_desp = mp_rec !== 0 ? (Math.abs(mp_desp) / mp_rec * 100).toFixed(2) : '0.00';
+            const mp_perc_ger = mp_rec !== 0 ? (mp_ger / mp_rec * 100).toFixed(2) : '0.00';
+            document.getElementById('card_mp_rec').textContent = formatMoney(mp_rec) + ' (100%)';
+            document.getElementById('card_mp_desp').textContent = formatMoney(mp_desp) + ` (${mp_perc_desp}%)`;
+            document.getElementById('card_mp_ger').textContent = formatMoney(mp_ger) + ` (${mp_perc_ger}%)`;
 
             // Atualizar tabela do DRE selecionado
             const dre_sel = tot[tipo_dre];
