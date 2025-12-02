@@ -208,9 +208,13 @@ function atualizarDados() {
 
             // Atualizar tabela do DRE selecionado com médias
             const num_meses = data.num_meses || 1; // Evitar divisão por zero
-            const tot_orc = data.totais_orcamento;
+            const tot_orc = data.totais_orcamento || {
+                'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+                'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+                'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+            };
             const dre_sel = tot[tipo_dre];
-            const dre_orc = tot_orc[tipo_dre];
+            const dre_orc = tot_orc[tipo_dre] || {'receita': 0, 'despesa': 0, 'geral': 0};
 
             // Calcular médias previstas (orçamento / num_meses)
             const media_prev_rec = (dre_orc.receita || 0) / num_meses;
