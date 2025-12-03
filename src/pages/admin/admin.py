@@ -996,15 +996,26 @@ def api_dados_bpo(empresa_id):
     categorias_despesa = {}
     total_receita_orcado = 0
 
+    print("\n" + "="*80)
+    print("🔍 PROCESSANDO CATEGORIAS DE DESPESA")
+    print("="*80)
+
     try:
         for mes_data in meses_data:
             dados = mes_data['dados']
             itens = dados.get('itens_hierarquicos', {})
 
+            print(f"\n📦 Mês {mes_data['mes']}/{mes_data['ano']}: {len(itens)} itens encontrados")
+
+            # Mostrar alguns códigos para debug
+            codigos_exemplo = list(itens.keys())[:5]
+            print(f"   Exemplo de códigos: {codigos_exemplo}")
+
             # Processar cada item
             for codigo, item_data in itens.items():
                 # Filtrar apenas itens 2.0X (ex: 2.01, 2.02, não 2.01.01)
-                if codigo.startswith('2.0') and codigo.count('.') == 1:
+                if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
+                    print(f"   ✓ Despesa encontrada: {codigo} - {item_data.get('nome', 'Sem nome')}")
                     if codigo not in categorias_despesa:
                         categorias_despesa[codigo] = {
                             'nome': item_data.get('nome', codigo),
@@ -1042,8 +1053,12 @@ def api_dados_bpo(empresa_id):
         for codigo in categorias_despesa:
             cat = categorias_despesa[codigo]
             cat['diferenca'] = cat['realizado'] - cat['orcado']
+
+        print(f"\n✅ Total de categorias de despesa encontradas: {len(categorias_despesa)}")
+        print(f"💰 Total receita orçado: R$ {total_receita_orcado:,.2f}")
+        print("="*80 + "\n")
     except Exception as e:
-        print(f"Erro ao processar categorias de despesa: {e}")
+        print(f"❌ Erro ao processar categorias de despesa: {e}")
         import traceback
         traceback.print_exc()
         categorias_despesa = {}
