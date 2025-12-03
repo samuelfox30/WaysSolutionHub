@@ -1095,13 +1095,18 @@ def api_dados_bpo(empresa_id):
                         print(f"Erro ao buscar total_receita_orcado: {e}")
                         pass
 
-        # Calcular diferenças
+        # Calcular médias e diferenças
+        num_meses = len(meses_data)
         for codigo in categorias_despesa:
             cat = categorias_despesa[codigo]
+            # Dividir realizado pela quantidade de meses para ter a MÉDIA
+            cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
+            # Diferença entre média realizada e média prevista (orçado)
             cat['diferenca'] = cat['realizado'] - cat['orcado']
 
         print(f"\n✅ Total de categorias de despesa encontradas: {len(categorias_despesa)}")
         print(f"💰 Total receita orçado: R$ {total_receita_orcado:,.2f}")
+        print(f"📊 Quantidade de meses processados: {num_meses}")
         print("="*80 + "\n")
     except Exception as e:
         print(f"❌ Erro ao processar categorias de despesa: {e}")
