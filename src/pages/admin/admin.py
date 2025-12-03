@@ -1003,16 +1003,34 @@ def api_dados_bpo(empresa_id):
     try:
         for mes_data in meses_data:
             dados = mes_data['dados']
-            itens = dados.get('itens_hierarquicos', {})
+            itens = dados.get('itens_hierarquicos', [])
 
             print(f"\n📦 Mês {mes_data['mes']}/{mes_data['ano']}: {len(itens)} itens encontrados")
 
-            # Mostrar alguns códigos para debug
-            codigos_exemplo = list(itens.keys())[:5]
-            print(f"   Exemplo de códigos: {codigos_exemplo}")
+            # Verificar se é lista ou dicionário
+            if isinstance(itens, list):
+                print(f"   Tipo: Lista com {len(itens)} elementos")
+                # Mostrar alguns códigos para debug
+                if len(itens) > 0:
+                    codigos_exemplo = [item.get('codigo', 'sem codigo') for item in itens[:5]]
+                    print(f"   Exemplo de códigos: {codigos_exemplo}")
+            else:
+                print(f"   Tipo: Dicionário com {len(itens)} chaves")
+                codigos_exemplo = list(itens.keys())[:5]
+                print(f"   Exemplo de códigos: {codigos_exemplo}")
 
-            # Processar cada item
-            for codigo, item_data in itens.items():
+            # Processar cada item (funciona para lista ou dicionário)
+            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+            for item in items_to_process:
+                # Se for lista, item é o objeto direto
+                # Se for dicionário, item é tupla (codigo, item_data)
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
+
                 # Filtrar apenas itens 2.0X (ex: 2.01, 2.02, não 2.01.01)
                 if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
                     print(f"   ✓ Despesa encontrada: {codigo} - {item_data.get('nome', 'Sem nome')}")
