@@ -1115,6 +1115,70 @@ def api_dados_bpo(empresa_id):
         categorias_despesa = {}
         total_receita_orcado = 0
 
+    # Processar categorias de receita (itens 1.0X)
+    categorias_receita = {}
+
+    print("\n" + "="*80)
+    print("🔍 PROCESSANDO CATEGORIAS DE RECEITA")
+    print("="*80)
+
+    try:
+        for mes_data in meses_data:
+            dados = mes_data['dados']
+            itens = dados.get('itens_hierarquicos', [])
+
+            # Processar cada item (funciona para lista ou dicionário)
+            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+            for item in items_to_process:
+                # Se for lista, item é o objeto direto
+                # Se for dicionário, item é tupla (codigo, item_data)
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
+
+                # Filtrar apenas itens 1.0X (ex: 1.01, 1.02, não 1.01.01)
+                if codigo.startswith('1.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '1' and codigo.split('.')[1].startswith('0'):
+                    if codigo not in categorias_receita:
+                        categorias_receita[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
+
+                    # Pegar valores de dados_mensais (lista com dados do mês atual)
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]  # Primeiro elemento tem os dados do mês
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+
+                        # Orçado (pegar apenas uma vez, pois se repete para todos os meses)
+                        if categorias_receita[codigo]['orcado'] == 0:
+                            categorias_receita[codigo]['orcado'] = orcado_val
+
+                        # Realizado (somar todos os meses)
+                        categorias_receita[codigo]['realizado'] += realizado_val
+
+        # Calcular médias e diferenças
+        num_meses = len(meses_data)
+        for codigo in categorias_receita:
+            cat = categorias_receita[codigo]
+            # Dividir realizado pela quantidade de meses para ter a MÉDIA
+            cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
+            # Diferença entre média realizada e média prevista (orçado)
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
+
+        print(f"\n✅ Total de categorias de receita encontradas: {len(categorias_receita)}")
+        print("="*80 + "\n")
+    except Exception as e:
+        print(f"❌ Erro ao processar categorias de receita: {e}")
+        import traceback
+        traceback.print_exc()
+        categorias_receita = {}
+
     return jsonify({
         'totais_acumulados': totais,
         'totais_orcamento': totais_orcamento,
@@ -1124,6 +1188,7 @@ def api_dados_bpo(empresa_id):
         'despesas': despesas_mensais,
         'gerais': gerais_mensais,
         'categorias_despesa': categorias_despesa,
+        'categorias_receita': categorias_receita,
         'total_receita_orcado': total_receita_orcado
     })
 
