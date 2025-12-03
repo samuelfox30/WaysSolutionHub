@@ -1043,13 +1043,19 @@ def api_dados_bpo(empresa_id):
 
                     # Pegar valores dos meses
                     meses_item = item_data.get('meses', {})
+                    print(f"      Meses encontrados: {len(meses_item)} | Chaves: {list(meses_item.keys())[:3] if meses_item else 'vazio'}")
+
                     for mes_key, mes_valores in meses_item.items():
+                        orcado_val = mes_valores.get('orcado', 0) or 0
+                        realizado_val = mes_valores.get('realizado', 0) or 0
+                        print(f"         Mês {mes_key}: Orçado={orcado_val}, Realizado={realizado_val}")
+
                         # Orçado (pegar apenas uma vez, pois se repete)
                         if categorias_despesa[codigo]['orcado'] == 0:
-                            categorias_despesa[codigo]['orcado'] = mes_valores.get('orcado', 0) or 0
+                            categorias_despesa[codigo]['orcado'] = orcado_val
 
                         # Realizado (somar todos os meses)
-                        categorias_despesa[codigo]['realizado'] += mes_valores.get('realizado', 0) or 0
+                        categorias_despesa[codigo]['realizado'] += realizado_val
 
             # Pegar total receita orçado (pegar só do primeiro mês, pois se repete)
             if total_receita_orcado == 0:
