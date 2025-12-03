@@ -1034,6 +1034,18 @@ def api_dados_bpo(empresa_id):
                 # Filtrar apenas itens 2.0X (ex: 2.01, 2.02, não 2.01.01)
                 if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
                     print(f"   ✓ Despesa encontrada: {codigo} - {item_data.get('nome', 'Sem nome')}")
+
+                    # DEBUG: Mostrar estrutura completa do primeiro item encontrado
+                    if codigo == '2.01' and mes_data['mes'] == 1:
+                        print(f"      🔍 DEBUG - Estrutura completa do item 2.01:")
+                        print(f"         Chaves disponíveis: {list(item_data.keys())}")
+                        for key in item_data.keys():
+                            value = item_data[key]
+                            if isinstance(value, (dict, list)):
+                                print(f"         {key}: {type(value).__name__} com {len(value)} elementos")
+                            else:
+                                print(f"         {key}: {value}")
+
                     if codigo not in categorias_despesa:
                         categorias_despesa[codigo] = {
                             'nome': item_data.get('nome', codigo),
