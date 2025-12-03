@@ -992,6 +992,53 @@ def api_dados_bpo(empresa_id):
         print(f"   Geral:   R$ {valores['geral']:,.2f}")
     print("="*80 + "\n")
 
+    # Processar categorias de despesa (itens 2.0X)
+    categorias_despesa = {}
+    total_receita_orcado = 0
+
+    for mes_data in meses_data:
+        dados = mes_data['dados']
+        itens = dados.get('itens_hierarquicos', {})
+
+        # Processar cada item
+        for codigo, item_data in itens.items():
+            # Filtrar apenas itens 2.0X (ex: 2.01, 2.02, não 2.01.01)
+            if codigo.startswith('2.0') and codigo.count('.') == 1:
+                if codigo not in categorias_despesa:
+                    categorias_despesa[codigo] = {
+                        'nome': item_data.get('nome', codigo),
+                        'orcado': 0,
+                        'realizado': 0
+                    }
+
+                # Pegar valores dos meses
+                meses_item = item_data.get('meses', {})
+                for mes_key, mes_valores in meses_item.items():
+                    # Orçado (pegar apenas uma vez, pois se repete)
+                    if categorias_despesa[codigo]['orcado'] == 0:
+                        categorias_despesa[codigo]['orcado'] = mes_valores.get('orcado', 0) or 0
+
+                    # Realizado (somar todos os meses)
+                    categorias_despesa[codigo]['realizado'] += mes_valores.get('realizado', 0) or 0
+
+        # Pegar total receita orçado (pegar só do primeiro mês, pois se repete)
+        if total_receita_orcado == 0:
+            totais_calc = dados.get('totais_calculados', {})
+            cenario_fc = totais_calc.get(tipo_dre, {})
+            if cenario_fc:
+                primeiro_mes = list(cenario_fc.keys())[0] if cenario_fc else None
+                if primeiro_mes:
+                    mes_info = cenario_fc.get(primeiro_mes, {})
+                    if isinstance(mes_info, dict):
+                        orcamento_info = mes_info.get('orcamento', {})
+                        if isinstance(orcamento_info, dict):
+                            total_receita_orcado = orcamento_info.get('receita', 0) or 0
+
+    # Calcular diferenças
+    for codigo in categorias_despesa:
+        cat = categorias_despesa[codigo]
+        cat['diferenca'] = cat['realizado'] - cat['orcado']
+
     return jsonify({
         'totais_acumulados': totais,
         'totais_orcamento': totais_orcamento,
@@ -999,6 +1046,8 @@ def api_dados_bpo(empresa_id):
         'meses': labels_meses,
         'receitas': receitas_mensais,
         'despesas': despesas_mensais,
-        'gerais': gerais_mensais
+        'gerais': gerais_mensais,
+        'categorias_despesa': categorias_despesa,
+        'total_receita_orcado': total_receita_orcado
     })
 
