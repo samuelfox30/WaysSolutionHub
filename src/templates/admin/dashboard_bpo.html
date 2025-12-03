@@ -167,8 +167,8 @@
                 <div class="card-body d-flex flex-column">
                     <h6>Detalhamento</h6>
                     <div class="table-responsive flex-grow-1" style="max-height: 450px; overflow-y: auto;">
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light sticky-top">
+                        <table class="table table-hover table-categorias">
+                            <thead class="sticky-top">
                                 <tr>
                                     <th>Natureza</th>
                                     <th>Média Prevista</th>
@@ -204,8 +204,8 @@
                 <div class="card-body d-flex flex-column">
                     <h6>Detalhamento</h6>
                     <div class="table-responsive flex-grow-1" style="max-height: 450px; overflow-y: auto;">
-                        <table class="table table-sm table-bordered">
-                            <thead class="table-light sticky-top">
+                        <table class="table table-hover table-categorias">
+                            <thead class="sticky-top">
                                 <tr>
                                     <th>Natureza</th>
                                     <th>Média Prevista</th>
@@ -223,6 +223,73 @@
         </div>
     </div>
 </div>
+
+<style>
+.table-categorias {
+    margin-bottom: 0;
+    font-size: 0.9rem;
+}
+
+.table-categorias thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.table-categorias thead th {
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 12px 8px;
+    border: none;
+    vertical-align: middle;
+}
+
+.table-categorias tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.table-categorias tbody tr:hover {
+    background-color: #f8f9ff;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.table-categorias tbody td {
+    padding: 10px 8px;
+    vertical-align: middle;
+    border: none;
+}
+
+.table-categorias tbody td:first-child {
+    font-weight: 500;
+    color: #495057;
+}
+
+.table-categorias tbody td small {
+    display: block;
+    line-height: 1.4;
+}
+
+.table-responsive::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+</style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
