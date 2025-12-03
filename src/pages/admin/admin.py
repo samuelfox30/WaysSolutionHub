@@ -1046,6 +1046,18 @@ def api_dados_bpo(empresa_id):
                             else:
                                 print(f"         {key}: {value}")
 
+                        # Mostrar detalhes de dados_mensais
+                        if 'dados_mensais' in item_data:
+                            print(f"      📊 Conteúdo de dados_mensais:")
+                            for idx, mes_dados in enumerate(item_data['dados_mensais']):
+                                print(f"         [{idx}]: {mes_dados}")
+
+                        # Mostrar detalhes de resultados_totais
+                        if 'resultados_totais' in item_data:
+                            print(f"      📊 Conteúdo de resultados_totais:")
+                            for key, value in item_data['resultados_totais'].items():
+                                print(f"         {key}: {value}")
+
                     if codigo not in categorias_despesa:
                         categorias_despesa[codigo] = {
                             'nome': item_data.get('nome', codigo),
