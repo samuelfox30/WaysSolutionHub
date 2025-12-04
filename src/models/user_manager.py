@@ -178,6 +178,48 @@ class UserManager:
             # Mantém a conexão ativa para outras operações
             pass
 
+    def update_user_password(self, user_id, new_password):
+        """
+        Atualiza apenas a senha de um usuário existente no banco de dados.
+
+        Args:
+            user_id (int): ID do usuário a ter a senha atualizada.
+            new_password (str): Nova senha em texto plano (será hasheada).
+
+        Returns:
+            bool: True em caso de sucesso, False em caso de falha.
+        """
+        if not self.db_connection or not self.db_connection.is_connected():
+            print("Erro: Conexão com o banco de dados não está ativa.")
+            return False
+
+        try:
+            if not self.cursor:
+                self.cursor = self.db_connection.cursor(dictionary=True)
+
+            # Hash da nova senha
+            from controllers.auth.hash import hash_senha_sha256
+            hashed_password = hash_senha_sha256(new_password)
+
+            query = """
+                UPDATE users
+                SET password = %s
+                WHERE id = %s
+            """
+            self.cursor.execute(query, (hashed_password, user_id))
+            self.db_connection.commit()
+            print(f"Senha do usuário com ID {user_id} atualizada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            print(f"Erro ao atualizar senha do usuário: {err}")
+            self.db_connection.rollback()
+            return False
+
+        finally:
+            # Mantém a conexão ativa para outras operações
+            pass
+
 
     # ============================
     # MÉTODOS PARA GERENCIAR RELACIONAMENTO USER-EMPRESA (MUITOS PARA MUITOS)

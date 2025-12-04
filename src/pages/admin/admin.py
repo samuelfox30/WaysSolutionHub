@@ -99,6 +99,7 @@ def editar_usuario():
     email = request.form.get('email')
     telefone = request.form.get('telefone')
     perfil = request.form.get('perfil')
+    nova_senha = request.form.get('senha')  # Campo opcional
 
     # ----------------------------- Validações -----------------------------
     from controllers.auth.validation import validar_email, validar_tipo_usuario, validar_telefone
@@ -118,11 +119,22 @@ def editar_usuario():
     # ----------------------------- Atualização no banco -----------------------------
     from models.user_manager import UserManager
     user_manager = UserManager()
+
+    # Atualizar dados básicos
     success = user_manager.update_user(user_id, nome, email, telefone, perfil)
+
+    # Atualizar senha se foi fornecida
+    password_updated = True
+    if nova_senha and nova_senha.strip():  # Se senha foi fornecida e não está vazia
+        password_updated = user_manager.update_user_password(user_id, nova_senha)
+
     user_manager.close()
 
-    if success:
-        flash("Usuário atualizado com sucesso!", "success")
+    if success and password_updated:
+        if nova_senha and nova_senha.strip():
+            flash("Usuário e senha atualizados com sucesso!", "success")
+        else:
+            flash("Usuário atualizado com sucesso!", "success")
     else:
         flash("Erro ao atualizar usuário. Verifique os dados e tente novamente.", "danger")
 
