@@ -1,0 +1,703 @@
+{% extends "user/base.html" %}
+
+{% block header_title %}Dashboard BPO{% endblock %}
+{% block header_subtitle %}Análise de desempenho orçamentário{% endblock %}
+
+{% block content %}
+
+<!-- Banner Empresa Selecionada -->
+<div class="alert alert-info mb-4" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #ff9900; border-radius: 8px;">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <h5 class="mb-1" style="color: #92400e;">
+                <i class="bi bi-building-fill me-2"></i>
+                Visualizando BPO de: <strong>{{ empresa_nome }}</strong>
+            </h5>
+            <p class="mb-0 small" style="color: #92400e;">
+                Você está acessando os dados de BPO desta empresa. Para trocar de empresa, use o menu lateral.
+            </p>
+        </div>
+        <a href="{{ url_for('user.trocar_empresa') }}" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-arrow-left-right me-1"></i> Trocar Empresa
+        </a>
+    </div>
+</div>
+
+<div class="container-fluid px-4">
+    <!-- FILTROS -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5>Filtros</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Tipo de DRE</label>
+                    <select id="tipo_dre" class="form-select">
+                        <option value="fluxo_caixa">Resultado por Fluxo de Caixa</option>
+                        <option value="real">Resultado Real</option>
+                        <option value="real_mp">Resultado Real + Custo MP</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Mês Início</label>
+                    <select id="mes_inicio" class="form-select">
+                        {% for i in range(1, 13) %}
+                        <option value="{{ i }}" {% if i == 1 %}selected{% endif %}>{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ano Início</label>
+                    <input type="number" id="ano_inicio" class="form-control" value="2025" min="2000" max="2100">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Mês Fim</label>
+                    <select id="mes_fim" class="form-select">
+                        {% for i in range(1, 13) %}
+                        <option value="{{ i }}" {% if i == 12 %}selected{% endif %}>{{ i }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Ano Fim</label>
+                    <input type="number" id="ano_fim" class="form-control" value="2025" min="2000" max="2100">
+                </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-primary w-100" onclick="atualizarDados()">Filtrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RESULTADO GERAL -->
+    <h5 class="mb-3">Resultado Geral</h5>
+
+    <!-- 3 CARDS DOS DREs -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Resultado por Fluxo de Caixa</h6>
+                    <div class="small">Receita: <strong id="card_fc_rec">R$ 0,00</strong></div>
+                    <div class="small">Despesa: <strong id="card_fc_desp">R$ 0,00</strong></div>
+                    <div class="small">Resultado: <strong id="card_fc_ger">R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Resultado Real</h6>
+                    <div class="small">Receita: <strong id="card_real_rec">R$ 0,00</strong></div>
+                    <div class="small">Despesa: <strong id="card_real_desp">R$ 0,00</strong></div>
+                    <div class="small">Resultado: <strong id="card_real_ger">R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Resultado Real + Custo MP</h6>
+                    <div class="small">Receita: <strong id="card_mp_rec">R$ 0,00</strong></div>
+                    <div class="small">Despesa: <strong id="card_mp_desp">R$ 0,00</strong></div>
+                    <div class="small">Resultado: <strong id="card_mp_ger">R$ 0,00</strong></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA DO DRE SELECIONADO -->
+    <div class="table-responsive mb-4">
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Média Prevista</th>
+                    <th>Média Realizada</th>
+                    <th>Diferença</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <th>Total Receitas</th>
+                    <td id="tab_rec_prev">R$ 0,00</td>
+                    <td id="tab_rec_real">R$ 0,00</td>
+                    <td id="tab_rec_dif">R$ 0,00</td>
+                </tr>
+                <tr>
+                    <th>Total Despesas</th>
+                    <td id="tab_desp_prev">R$ 0,00</td>
+                    <td id="tab_desp_real">R$ 0,00</td>
+                    <td id="tab_desp_dif">R$ 0,00</td>
+                </tr>
+                <tr>
+                    <th>Total Resultado</th>
+                    <td id="tab_res_prev">R$ 0,00</td>
+                    <td id="tab_res_real">R$ 0,00</td>
+                    <td id="tab_res_dif">R$ 0,00</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div class="row">
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Total Receita por Mês</h6>
+                    <canvas id="chartReceita"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Total Despesas por Mês</h6>
+                    <canvas id="chartDespesa"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6>Total Geral por Mês</h6>
+                    <canvas id="chartGeral"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CATEGORIAS DE DESPESA -->
+    <h5 class="mb-3 mt-4">Categorias de Despesa</h5>
+    <div class="row mb-4">
+        <!-- Gráfico de Pizza -->
+        <div class="col-md-6 d-flex">
+            <div class="card w-100">
+                <div class="card-body">
+                    <h6>Distribuição por Categoria</h6>
+                    <canvas id="chartPizzaDespesa"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Tabela -->
+        <div class="col-md-6 d-flex">
+            <div class="card w-100">
+                <div class="card-body d-flex flex-column">
+                    <h6>Detalhamento</h6>
+                    <div class="table-responsive flex-grow-1" style="max-height: 450px; overflow-y: auto;">
+                        <table class="table table-hover table-categorias">
+                            <thead class="sticky-top">
+                                <tr>
+                                    <th>Natureza</th>
+                                    <th>Média Prevista</th>
+                                    <th>Média Realizada</th>
+                                    <th>Média Diferença</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaDespesas">
+                                <tr><td colspan="4" class="text-center">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CATEGORIAS DE RECEITA -->
+    <h5 class="mb-3 mt-4">Categorias de Receita</h5>
+    <div class="row mb-4">
+        <!-- Gráfico de Pizza -->
+        <div class="col-md-6 d-flex">
+            <div class="card w-100">
+                <div class="card-body">
+                    <h6>Distribuição por Categoria</h6>
+                    <canvas id="chartPizzaReceita"></canvas>
+                </div>
+            </div>
+        </div>
+        <!-- Tabela -->
+        <div class="col-md-6 d-flex">
+            <div class="card w-100">
+                <div class="card-body d-flex flex-column">
+                    <h6>Detalhamento</h6>
+                    <div class="table-responsive flex-grow-1" style="max-height: 450px; overflow-y: auto;">
+                        <table class="table table-hover table-categorias">
+                            <thead class="sticky-top">
+                                <tr>
+                                    <th>Natureza</th>
+                                    <th>Média Prevista</th>
+                                    <th>Média Realizada</th>
+                                    <th>Média Diferença</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabelaReceitas">
+                                <tr><td colspan="4" class="text-center">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.table-categorias {
+    margin-bottom: 0;
+    font-size: 0.95rem;
+}
+
+.table-categorias thead {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.table-categorias thead th {
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    padding: 14px 12px;
+    border: none;
+    vertical-align: middle;
+    text-align: center;
+}
+
+.table-categorias tbody tr {
+    border-bottom: 1px solid #f0f0f0;
+    transition: all 0.2s ease;
+}
+
+.table-categorias tbody tr:hover {
+    background-color: #f8f9ff;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+}
+
+.table-categorias tbody td {
+    padding: 18px 12px;
+    vertical-align: middle;
+    border: none;
+    text-align: center;
+    font-weight: 500;
+}
+
+.table-categorias tbody td:first-child {
+    font-weight: 600;
+    color: #495057;
+}
+
+.table-categorias tbody td small {
+    display: block;
+    line-height: 1.5;
+    font-weight: 500;
+}
+
+.table-responsive::-webkit-scrollbar {
+    width: 8px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let chartReceita, chartDespesa, chartGeral, chartPizzaDespesa, chartPizzaReceita;
+
+function formatMoney(val) {
+    return 'R$ ' + val.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function atualizarDados() {
+    const tipo_dre = document.getElementById('tipo_dre').value;
+    const mes_inicio = document.getElementById('mes_inicio').value;
+    const ano_inicio = document.getElementById('ano_inicio').value;
+    const mes_fim = document.getElementById('mes_fim').value;
+    const ano_fim = document.getElementById('ano_fim').value;
+
+    const url = `/user/api/dados-bpo?tipo_dre=${tipo_dre}&mes_inicio=${mes_inicio}&ano_inicio=${ano_inicio}&mes_fim=${mes_fim}&ano_fim=${ano_fim}`;
+
+    fetch(url)
+        .then(r => r.json())
+        .then(data => {
+            console.log('Dados recebidos da API:', data);
+            console.log('totais_acumulados:', data.totais_acumulados);
+
+            // Atualizar cards com porcentagens
+            const tot = data.totais_acumulados;
+
+            // Card Fluxo de Caixa
+            const fc_rec = tot.fluxo_caixa.receita || 0;
+            const fc_desp = tot.fluxo_caixa.despesa || 0;
+            const fc_ger = tot.fluxo_caixa.geral || 0;
+            const fc_perc_desp = fc_rec !== 0 ? (Math.abs(fc_desp) / fc_rec * 100).toFixed(2) : '0.00';
+            const fc_perc_ger = fc_rec !== 0 ? (fc_ger / fc_rec * 100).toFixed(2) : '0.00';
+            document.getElementById('card_fc_rec').textContent = formatMoney(fc_rec) + ' (100%)';
+            document.getElementById('card_fc_desp').textContent = formatMoney(fc_desp) + ` (${fc_perc_desp}%)`;
+            document.getElementById('card_fc_ger').textContent = formatMoney(fc_ger) + ` (${fc_perc_ger}%)`;
+
+            // Card Real
+            const real_rec = tot.real.receita || 0;
+            const real_desp = tot.real.despesa || 0;
+            const real_ger = tot.real.geral || 0;
+            const real_perc_desp = real_rec !== 0 ? (Math.abs(real_desp) / real_rec * 100).toFixed(2) : '0.00';
+            const real_perc_ger = real_rec !== 0 ? (real_ger / real_rec * 100).toFixed(2) : '0.00';
+            document.getElementById('card_real_rec').textContent = formatMoney(real_rec) + ' (100%)';
+            document.getElementById('card_real_desp').textContent = formatMoney(real_desp) + ` (${real_perc_desp}%)`;
+            document.getElementById('card_real_ger').textContent = formatMoney(real_ger) + ` (${real_perc_ger}%)`;
+
+            // Card Real + MP
+            const mp_rec = tot.real_mp.receita || 0;
+            const mp_desp = tot.real_mp.despesa || 0;
+            const mp_ger = tot.real_mp.geral || 0;
+            const mp_perc_desp = mp_rec !== 0 ? (Math.abs(mp_desp) / mp_rec * 100).toFixed(2) : '0.00';
+            const mp_perc_ger = mp_rec !== 0 ? (mp_ger / mp_rec * 100).toFixed(2) : '0.00';
+            document.getElementById('card_mp_rec').textContent = formatMoney(mp_rec) + ' (100%)';
+            document.getElementById('card_mp_desp').textContent = formatMoney(mp_desp) + ` (${mp_perc_desp}%)`;
+            document.getElementById('card_mp_ger').textContent = formatMoney(mp_ger) + ` (${mp_perc_ger}%)`;
+
+            // Atualizar tabela do DRE selecionado com médias
+            const num_meses = data.num_meses || 1;
+            const tot_orc = data.totais_orcamento || {
+                'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+                'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+                'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+            };
+            const dre_sel = tot[tipo_dre];
+            const dre_orc = tot_orc[tipo_dre] || {'receita': 0, 'despesa': 0, 'geral': 0};
+
+            // Calcular médias previstas (orçamento / num_meses)
+            const media_prev_rec = (dre_orc.receita || 0) / num_meses;
+            const media_prev_desp = (dre_orc.despesa || 0) / num_meses;
+            const media_prev_res = (dre_orc.geral || 0) / num_meses;
+
+            // Calcular médias realizadas (realizado / num_meses)
+            const media_real_rec = (dre_sel.receita || 0) / num_meses;
+            const media_real_desp = (dre_sel.despesa || 0) / num_meses;
+            const media_real_res = (dre_sel.geral || 0) / num_meses;
+
+            // Calcular diferenças
+            const dif_rec = media_real_rec - media_prev_rec;
+            const dif_desp = media_real_desp - media_prev_desp;
+            const dif_res = media_real_res - media_prev_res;
+
+            // Calcular porcentagens para Média Prevista
+            const tab_prev_perc_desp = media_prev_rec !== 0 ? (Math.abs(media_prev_desp) / media_prev_rec * 100).toFixed(2) : '0.00';
+            const tab_prev_perc_res = media_prev_rec !== 0 ? (media_prev_res / media_prev_rec * 100).toFixed(2) : '0.00';
+
+            // Calcular porcentagens para Média Realizada
+            const tab_real_perc_desp = media_real_rec !== 0 ? (Math.abs(media_real_desp) / media_real_rec * 100).toFixed(2) : '0.00';
+            const tab_real_perc_res = media_real_rec !== 0 ? (media_real_res / media_real_rec * 100).toFixed(2) : '0.00';
+
+            // Calcular porcentagens para Diferença (prevista / realizada)
+            const tab_dif_perc_rec = media_real_rec !== 0 ? (media_prev_rec / media_real_rec * 100).toFixed(2) : '0.00';
+            const tab_dif_perc_desp = media_real_desp !== 0 ? (media_prev_desp / media_real_desp * 100).toFixed(2) : '0.00';
+            const tab_dif_perc_res = media_real_res !== 0 ? (media_prev_res / media_real_res * 100).toFixed(2) : '0.00';
+
+            // Atualizar tabela com porcentagens
+            // Média Prevista
+            document.getElementById('tab_rec_prev').textContent = formatMoney(media_prev_rec) + ' (100%)';
+            document.getElementById('tab_desp_prev').textContent = formatMoney(media_prev_desp) + ` (${tab_prev_perc_desp}%)`;
+            document.getElementById('tab_res_prev').textContent = formatMoney(media_prev_res) + ` (${tab_prev_perc_res}%)`;
+
+            // Média Realizada
+            document.getElementById('tab_rec_real').textContent = formatMoney(media_real_rec) + ' (100%)';
+            document.getElementById('tab_desp_real').textContent = formatMoney(media_real_desp) + ` (${tab_real_perc_desp}%)`;
+            document.getElementById('tab_res_real').textContent = formatMoney(media_real_res) + ` (${tab_real_perc_res}%)`;
+
+            // Diferença
+            document.getElementById('tab_rec_dif').textContent = formatMoney(dif_rec) + ` (${tab_dif_perc_rec}%)`;
+            document.getElementById('tab_desp_dif').textContent = formatMoney(dif_desp) + ` (${tab_dif_perc_desp}%)`;
+            document.getElementById('tab_res_dif').textContent = formatMoney(dif_res) + ` (${tab_dif_perc_res}%)`;
+
+            // Atualizar gráficos
+            atualizarGraficos(data.meses, data.receitas, data.despesas, data.gerais);
+
+            // Atualizar categorias de despesa
+            atualizarCategoriasDespesa(data.categorias_despesa, data.total_receita_orcado, data.num_meses);
+
+            // Atualizar categorias de receita
+            atualizarCategoriasReceita(data.categorias_receita, data.num_meses);
+        })
+        .catch(error => {
+            console.error('Erro ao carregar dados:', error);
+            alert('Erro ao carregar dados do dashboard. Verifique o console para mais detalhes.');
+        });
+}
+
+function atualizarGraficos(labels, receitas, despesas, gerais) {
+    // Receita
+    if (chartReceita) chartReceita.destroy();
+    chartReceita = new Chart(document.getElementById('chartReceita'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Receita',
+                data: receitas,
+                backgroundColor: '#28a745'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    // Despesa
+    if (chartDespesa) chartDespesa.destroy();
+    chartDespesa = new Chart(document.getElementById('chartDespesa'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Despesa',
+                data: despesas,
+                backgroundColor: '#dc3545'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {legend: {display: false}}
+        }
+    });
+
+    // Geral
+    if (chartGeral) chartGeral.destroy();
+    chartGeral = new Chart(document.getElementById('chartGeral'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Geral',
+                data: gerais,
+                backgroundColor: '#007bff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {legend: {display: false}}
+        }
+    });
+}
+
+function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, numMeses) {
+    if (!categorias || Object.keys(categorias).length === 0) {
+        document.getElementById('tabelaDespesas').innerHTML = '<tr><td colspan="4" class="text-center">Sem dados</td></tr>';
+        return;
+    }
+
+    // Preparar dados para o gráfico de pizza
+    const labels = [];
+    const valores = [];
+    const cores = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'];
+    let totalRealizado = 0;
+
+    // Calcular total realizado
+    for (const codigo in categorias) {
+        totalRealizado += categorias[codigo].realizado;
+    }
+
+    // Ordenar por código
+    const codigosOrdenados = Object.keys(categorias).sort();
+
+    // Preparar dados do gráfico
+    codigosOrdenados.forEach((codigo, index) => {
+        const cat = categorias[codigo];
+        labels.push(cat.nome);
+        valores.push(Math.abs(cat.realizado));
+    });
+
+    // Atualizar gráfico de pizza
+    if (chartPizzaDespesa) chartPizzaDespesa.destroy();
+    chartPizzaDespesa = new Chart(document.getElementById('chartPizzaDespesa'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: cores
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            return data.labels.map((label, i) => {
+                                const value = data.datasets[0].data[i];
+                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return {
+                                    text: `${label}: ${formatMoney(value)} (${percent}%)`,
+                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                    hidden: false,
+                                    index: i
+                                };
+                            });
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${formatMoney(value)} (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Atualizar tabela
+    let htmlTabela = '';
+    codigosOrdenados.forEach(codigo => {
+        const cat = categorias[codigo];
+        const orcado = cat.orcado;
+        const realizado = cat.realizado;
+        const diferenca = cat.diferenca;
+
+        // Calcular porcentagens
+        const percPrev = totalReceitaOrcado !== 0 ? (Math.abs(orcado) / totalReceitaOrcado * 100).toFixed(2) : '0.00';
+        const percReal = orcado !== 0 ? (realizado / orcado * 100).toFixed(2) : '0.00';
+        const percDif = orcado !== 0 ? ((realizado - orcado) / orcado * 100).toFixed(2) : '0.00';
+
+        htmlTabela += `
+            <tr>
+                <td><small>${cat.nome}</small></td>
+                <td><small>${formatMoney(orcado)} (${percPrev}%)</small></td>
+                <td><small>${formatMoney(realizado)} (${percReal}%)</small></td>
+                <td><small>${formatMoney(diferenca)} (${percDif}%)</small></td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('tabelaDespesas').innerHTML = htmlTabela;
+}
+
+function atualizarCategoriasReceita(categorias, numMeses) {
+    if (!categorias || Object.keys(categorias).length === 0) {
+        document.getElementById('tabelaReceitas').innerHTML = '<tr><td colspan="4" class="text-center">Sem dados</td></tr>';
+        return;
+    }
+
+    // Preparar dados para o gráfico de pizza
+    const labels = [];
+    const valores = [];
+    const cores = ['#4BC0C0', '#36A2EB', '#FFCE56', '#FF6384', '#9966FF', '#FF9F40', '#C9CBCF', '#8DD1E1'];
+    let totalRealizado = 0;
+    let totalOrcado = 0;
+
+    // Calcular totais
+    for (const codigo in categorias) {
+        totalRealizado += categorias[codigo].realizado;
+        totalOrcado += categorias[codigo].orcado;
+    }
+
+    // Ordenar por código
+    const codigosOrdenados = Object.keys(categorias).sort();
+
+    // Preparar dados do gráfico
+    codigosOrdenados.forEach((codigo, index) => {
+        const cat = categorias[codigo];
+        labels.push(cat.nome);
+        valores.push(Math.abs(cat.realizado));
+    });
+
+    // Atualizar gráfico de pizza
+    if (chartPizzaReceita) chartPizzaReceita.destroy();
+    chartPizzaReceita = new Chart(document.getElementById('chartPizzaReceita'), {
+        type: 'pie',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: valores,
+                backgroundColor: cores
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        generateLabels: function(chart) {
+                            const data = chart.data;
+                            const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                            return data.labels.map((label, i) => {
+                                const value = data.datasets[0].data[i];
+                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return {
+                                    text: `${label}: ${formatMoney(value)} (${percent}%)`,
+                                    fillStyle: data.datasets[0].backgroundColor[i],
+                                    hidden: false,
+                                    index: i
+                                };
+                            });
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const value = context.parsed;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                            return `${formatMoney(value)} (${percent}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // Atualizar tabela
+    let htmlTabela = '';
+    codigosOrdenados.forEach(codigo => {
+        const cat = categorias[codigo];
+        const orcado = cat.orcado;
+        const realizado = cat.realizado;
+        const diferenca = cat.diferenca;
+
+        // Calcular porcentagens
+        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / totalOrcado * 100).toFixed(2) : '0.00';
+        const percReal = orcado !== 0 ? (realizado / orcado * 100).toFixed(2) : '0.00';
+        const percDif = orcado !== 0 ? (diferenca / orcado * 100).toFixed(2) : '0.00';
+
+        htmlTabela += `
+            <tr>
+                <td><small>${cat.nome}</small></td>
+                <td><small>${formatMoney(orcado)} (${percPrev}%)</small></td>
+                <td><small>${formatMoney(realizado)} (${percReal}%)</small></td>
+                <td><small>${formatMoney(diferenca)} (${percDif}%)</small></td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
+}
+
+// Carregar ao iniciar
+atualizarDados();
+</script>
+
+{% endblock %}

@@ -354,6 +354,39 @@ def api_dados_ano(ano):
     })
 
 
+@user_bp.route('/user/bpo')
+def visualizar_bpo():
+    """Página de visualização do BPO da empresa selecionada"""
+    if 'user_email' in session and session.get('user_role') == 'user':
+        from models.user_manager import UserManager
+
+        # Verifica se tem empresa selecionada
+        if 'empresa_id' not in session:
+            return redirect(url_for('user.selecionar_empresa'))
+
+        # Pega informações do usuário logado
+        user_manager = UserManager()
+        user_data = user_manager.find_user_by_email(session.get('user_email'))
+        user_manager.close()
+
+        if not user_data:
+            flash("Erro ao carregar dados do usuário.", "danger")
+            return redirect(url_for('index.login'))
+
+        empresa_id = session.get('empresa_id')
+        empresa_nome = session.get('empresa_nome')
+
+        return render_template(
+            'user/bpo.html',
+            user=user_data,
+            empresa_id=empresa_id,
+            empresa_nome=empresa_nome
+        )
+    else:
+        flash("Acesso negado. Faça login como usuário.", "danger")
+        return redirect(url_for('index.login'))
+
+
 @user_bp.route('/user/trocar-empresa')
 def trocar_empresa():
     """Permite o usuário trocar de empresa"""
@@ -365,6 +398,263 @@ def trocar_empresa():
     else:
         flash("Acesso negado. Faça login como usuário.", "danger")
         return redirect(url_for('index.login'))
+
+
+@user_bp.route('/user/api/dados-bpo')
+def api_dados_bpo_user():
+    """API retorna dados BPO processados para dashboard do usuário"""
+    if not ('user_email' in session and session.get('user_role') == 'user'):
+        return jsonify({"error": "Não autorizado"}), 403
+
+    # Verifica se tem empresa selecionada na sessão
+    if 'empresa_id' not in session:
+        return jsonify({"error": "Empresa não selecionada"}), 400
+
+    empresa_id = session.get('empresa_id')
+
+    ano_inicio = int(request.args.get('ano_inicio', 2025))
+    mes_inicio = int(request.args.get('mes_inicio', 1))
+    ano_fim = int(request.args.get('ano_fim', 2025))
+    mes_fim = int(request.args.get('mes_fim', 12))
+    tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    # Buscar todos os meses
+    meses_data = []
+    ano_atual = ano_inicio
+    mes_atual = mes_inicio
+
+    while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
+        dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
+        if dados:
+            meses_data.append({
+                'ano': ano_atual,
+                'mes': mes_atual,
+                'dados': dados['dados']
+            })
+        mes_atual += 1
+        if mes_atual > 12:
+            mes_atual = 1
+            ano_atual += 1
+
+    company_manager.close()
+
+    # Inicializar totais acumulados
+    totais = {
+        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+    }
+
+    # Totais de orçamento (para média prevista)
+    totais_orcamento = {
+        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+    }
+
+    # Arrays para gráficos (por mês, do DRE selecionado)
+    labels_meses = []
+    receitas_mensais = []
+    despesas_mensais = []
+    gerais_mensais = []
+
+    # Nomes dos meses
+    nomes_meses = {
+        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+    }
+
+    for mes_data in meses_data:
+        mes_num = mes_data['mes']
+        ano = mes_data['ano']
+        dados = mes_data['dados']
+
+        # Label para gráfico (formato: Janeiro/25)
+        nome_mes = nomes_meses.get(mes_num, str(mes_num))
+        ano_curto = str(ano)[-2:]
+        labels_meses.append(f"{nome_mes}/{ano_curto}")
+
+        # Extrair totais_calculados
+        totais_calculados = dados.get('totais_calculados', {})
+
+        if not totais_calculados or totais_calculados == {}:
+            receitas_mensais.append(0)
+            despesas_mensais.append(0)
+            gerais_mensais.append(0)
+            continue
+
+        # Variáveis para gráfico deste mês
+        receita_grafico = 0
+        despesa_grafico = 0
+        geral_grafico = 0
+
+        # Processar cada cenário (fluxo_caixa, real, real_mp)
+        for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
+            cenario_data = totais_calculados.get(cenario_key, {})
+
+            if not cenario_data or not isinstance(cenario_data, dict):
+                continue
+
+            mes_dados = cenario_data.get(mes_num, cenario_data.get(str(mes_num), {}))
+
+            if mes_dados and isinstance(mes_dados, dict):
+                # Extrair valores realizados
+                realizado = mes_dados.get('realizado', {})
+                if isinstance(realizado, dict):
+                    receita = realizado.get('receita', 0) or 0
+                    despesa = realizado.get('despesa', 0) or 0
+                    geral = realizado.get('geral', 0) or 0
+
+                    totais[cenario_key]['receita'] += receita
+                    totais[cenario_key]['despesa'] += despesa
+                    totais[cenario_key]['geral'] += geral
+
+                    if cenario_key == tipo_dre:
+                        receita_grafico = receita
+                        despesa_grafico = despesa
+                        geral_grafico = geral
+
+                # Extrair valores de orçamento
+                orcamento = mes_dados.get('orcamento', {})
+                if isinstance(orcamento, dict):
+                    receita_orc = orcamento.get('receita', 0) or 0
+                    despesa_orc = orcamento.get('despesa', 0) or 0
+                    geral_orc = orcamento.get('geral', 0) or 0
+
+                    totais_orcamento[cenario_key]['receita'] += receita_orc
+                    totais_orcamento[cenario_key]['despesa'] += despesa_orc
+                    totais_orcamento[cenario_key]['geral'] += geral_orc
+
+        # Adicionar aos arrays do gráfico
+        receitas_mensais.append(receita_grafico)
+        despesas_mensais.append(despesa_grafico)
+        gerais_mensais.append(geral_grafico)
+
+    # Processar categorias de despesa (itens 2.0X)
+    categorias_despesa = {}
+    total_receita_orcado = 0
+
+    try:
+        for mes_data in meses_data:
+            dados = mes_data['dados']
+            itens = dados.get('itens_hierarquicos', [])
+
+            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+            for item in items_to_process:
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
+
+                if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
+                    if codigo not in categorias_despesa:
+                        categorias_despesa[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
+
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+
+                        if categorias_despesa[codigo]['orcado'] == 0:
+                            categorias_despesa[codigo]['orcado'] = orcado_val
+
+                        categorias_despesa[codigo]['realizado'] += realizado_val
+
+            # Pegar total receita orçado
+            if total_receita_orcado == 0:
+                totais_calc = dados.get('totais_calculados', {})
+                cenario_fc = totais_calc.get(tipo_dre, {})
+                if cenario_fc and isinstance(cenario_fc, dict) and len(cenario_fc) > 0:
+                    try:
+                        primeiro_mes = list(cenario_fc.keys())[0]
+                        mes_info = cenario_fc.get(primeiro_mes, {})
+                        if isinstance(mes_info, dict):
+                            orcamento_info = mes_info.get('orcamento', {})
+                            if isinstance(orcamento_info, dict):
+                                total_receita_orcado = orcamento_info.get('receita', 0) or 0
+                    except (IndexError, KeyError, TypeError):
+                        pass
+
+        # Calcular médias e diferenças
+        num_meses = len(meses_data)
+        for codigo in categorias_despesa:
+            cat = categorias_despesa[codigo]
+            cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
+
+    except Exception:
+        categorias_despesa = {}
+        total_receita_orcado = 0
+
+    # Processar categorias de receita (itens 1.0X)
+    categorias_receita = {}
+
+    try:
+        for mes_data in meses_data:
+            dados = mes_data['dados']
+            itens = dados.get('itens_hierarquicos', [])
+
+            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+            for item in items_to_process:
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
+
+                if codigo.startswith('1.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '1' and codigo.split('.')[1].startswith('0'):
+                    if codigo not in categorias_receita:
+                        categorias_receita[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
+
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+
+                        if categorias_receita[codigo]['orcado'] == 0:
+                            categorias_receita[codigo]['orcado'] = orcado_val
+
+                        categorias_receita[codigo]['realizado'] += realizado_val
+
+        # Calcular médias e diferenças
+        num_meses = len(meses_data)
+        for codigo in categorias_receita:
+            cat = categorias_receita[codigo]
+            cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
+
+    except Exception:
+        categorias_receita = {}
+
+    return jsonify({
+        'totais_acumulados': totais,
+        'totais_orcamento': totais_orcamento,
+        'num_meses': len(meses_data),
+        'meses': labels_meses,
+        'receitas': receitas_mensais,
+        'despesas': despesas_mensais,
+        'gerais': gerais_mensais,
+        'categorias_despesa': categorias_despesa,
+        'categorias_receita': categorias_receita,
+        'total_receita_orcado': total_receita_orcado
+    })
 
 
 @user_bp.route('/user/logout')
