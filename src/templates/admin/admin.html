@@ -208,6 +208,14 @@
                     <input type="tel" class="form-control" id="editUserTelefone" name="telefone" placeholder="(XX) XXXXX-XXXX" required>
                 </div>
                 <div class="mb-3">
+                    <label for="editUserSenha" class="form-label">Nova Senha (opcional)</label>
+                    <input type="password" class="form-control" id="editUserSenha" name="senha" placeholder="Deixe em branco para não alterar">
+                    <div class="form-text">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Preencha apenas se desejar alterar a senha do usuário. A senha será criptografada automaticamente.
+                    </div>
+                </div>
+                <div class="mb-3">
                     <label for="editUserPerfil" class="form-label">Perfil</label>
                     <select class="form-select" id="editUserPerfil" name="perfil" required>
                         <option value="user">Cliente</option>
@@ -374,6 +382,7 @@
                 const nome = document.getElementById('editUserName').value.trim();
                 const email = document.getElementById('editUserEmail').value.trim();
                 const telefone = document.getElementById('editUserTelefone').value;
+                const senha = document.getElementById('editUserSenha').value;
                 const perfil = document.getElementById('editUserPerfil').value;
 
                 if (!nome || nome.length < 3) {
@@ -394,6 +403,14 @@
                     e.preventDefault();
                     alert('Telefone inválido. Use o formato (XX) XXXXX-XXXX.');
                     document.getElementById('editUserTelefone').focus();
+                    return false;
+                }
+
+                // Validar senha apenas se foi preenchida
+                if (senha && senha.trim().length > 0 && !validarSenha(senha)) {
+                    e.preventDefault();
+                    alert('A senha deve ter no mínimo 8 caracteres e conter pelo menos:\n- 1 letra maiúscula\n- 1 letra minúscula\n- 1 número\n- 1 caractere especial (!@#$%^&* etc.)');
+                    document.getElementById('editUserSenha').focus();
                     return false;
                 }
 
