@@ -169,6 +169,13 @@
                     <span>Dashboard BPO</span>
                 </a>
             </li>
+            <li class="nav-item">
+                <a href="{{ url_for('user.consultar_dados_bpo') }}"
+                   class="nav-link {% if request.endpoint == 'user.consultar_dados_bpo' %}active{% endif %}">
+                    <i class="bi bi-table me-2"></i>
+                    <span>Consultar BPO (Tabela)</span>
+                </a>
+            </li>
 
             <!-- EMPRESA -->
             <li class="mb-2 mt-3">

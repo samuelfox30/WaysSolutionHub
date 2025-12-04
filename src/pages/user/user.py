@@ -657,6 +657,60 @@ def api_dados_bpo_user():
     })
 
 
+@user_bp.route('/user/consultar-bpo', methods=['GET', 'POST'])
+def consultar_dados_bpo():
+    """Consulta dados de BPO em formato de tabela para a empresa do usuário"""
+    if not ('user_email' in session and session.get('user_role') == 'user'):
+        flash("Acesso negado. Faça login como usuário.", "danger")
+        return redirect(url_for('index.login'))
+
+    # Verifica se tem empresa selecionada
+    if 'empresa_id' not in session:
+        return redirect(url_for('user.selecionar_empresa'))
+
+    from models.user_manager import UserManager
+    from models.company_manager import CompanyManager
+
+    # Pega informações do usuário logado
+    user_manager = UserManager()
+    user_data = user_manager.find_user_by_email(session.get('user_email'))
+    user_manager.close()
+
+    if not user_data:
+        flash("Erro ao carregar dados do usuário.", "danger")
+        return redirect(url_for('index.login'))
+
+    empresa_id = session.get('empresa_id')
+    empresa_nome = session.get('empresa_nome')
+
+    data_results = None
+    ano_selecionado = None
+    mes_selecionado = None
+
+    if request.method == 'POST':
+        ano_selecionado = request.form.get('ano')
+        mes_selecionado = request.form.get('mes')
+
+        if ano_selecionado and mes_selecionado:
+            company_manager = CompanyManager()
+            data_results = company_manager.buscar_dados_bpo_empresa(
+                empresa_id,
+                int(ano_selecionado),
+                int(mes_selecionado)
+            )
+            company_manager.close()
+
+    return render_template(
+        'user/consultar_bpo.html',
+        user=user_data,
+        empresa_id=empresa_id,
+        empresa_nome=empresa_nome,
+        data_results=data_results,
+        ano_selecionado=ano_selecionado,
+        mes_selecionado=mes_selecionado
+    )
+
+
 @user_bp.route('/user/logout')
 def logout():
     """Logout do usuário"""
