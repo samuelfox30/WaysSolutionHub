@@ -605,7 +605,7 @@ function atualizarGraficos(dadosGrupo) {
                             <div class="chart-header">
                                 <h3 class="chart-title">
                                     <i class="bi bi-graph-up-arrow"></i>
-                                    Receita
+                                    Receitas
                                 </h3>
                             </div>
                             <canvas id="receitaChart" height="100"></canvas>
@@ -634,7 +634,7 @@ function atualizarGraficos(dadosGrupo) {
                             <div class="chart-header">
                                 <h3 class="chart-title">
                                     <i class="bi bi-pie-chart-fill"></i>
-                                    Controle de Despesas
+                                    Despesas
                                 </h3>
                             </div>
                             <div style="max-width: 600px; margin: 0 auto;"><canvas id="controleChart"></canvas></div>
@@ -687,19 +687,28 @@ function atualizarGraficos(dadosGrupo) {
 
     // 4. Todos os outros subgrupos (exceto os já exibidos e os da lista de ignorar)
     const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigacoes'];
-    
+
+    // Mapeamento de nomes técnicos para nomes de exibição
+    const nomesMapeados = {
+        'GastosAdm': 'Gastos Administrativos',
+        'GastosOperacionais': 'Gastos Operacionais',
+        'MateriaPrima': 'Matéria Prima',
+        'Materia Prima': 'Matéria Prima'
+    };
+
     Object.keys(dadosGrupo).forEach(subgrupo => {
         // Pular subgrupos já exibidos ou que devem ser ignorados
         if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
             return;
         }
 
-        const itensSemTotal = dadosGrupo[subgrupo].filter(item => 
+        const itensSemTotal = dadosGrupo[subgrupo].filter(item =>
             !item.descricao.toUpperCase().includes('TOTAL')
         );
 
         if (itensSemTotal.length > 0) {
             const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+            const nomeExibicao = nomesMapeados[subgrupo] || subgrupo; // Usar nome mapeado ou original
 
             // Todos os subgrupos agora são gráficos (incluindo Investimentos e Dívidas)
             // Se for Pessoal (pizza), centralizar e limitar largura
@@ -711,7 +720,7 @@ function atualizarGraficos(dadosGrupo) {
                                 <div class="chart-header">
                                     <h3 class="chart-title">
                                         <i class="bi bi-pie-chart-fill"></i>
-                                        ${subgrupo}
+                                        ${nomeExibicao}
                                     </h3>
                                 </div>
                                 <div style="max-width: 600px; margin: 0 auto;">
@@ -729,7 +738,7 @@ function atualizarGraficos(dadosGrupo) {
                                 <div class="chart-header">
                                     <h3 class="chart-title">
                                         <i class="bi bi-bar-chart-fill"></i>
-                                        ${subgrupo}
+                                        ${nomeExibicao}
                                     </h3>
                                 </div>
                                 <canvas id="${chartId}Chart" height="100"></canvas>
