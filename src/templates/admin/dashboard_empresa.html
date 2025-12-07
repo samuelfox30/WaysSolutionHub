@@ -16,9 +16,15 @@
                 Visualização administrativa dos dados financeiros da empresa.
             </p>
         </div>
+        {% if is_user_view %}
+        <a href="{{ url_for('user.trocar_empresa') }}" class="btn btn-sm btn-outline-warning">
+            <i class="bi bi-arrow-left-right me-1"></i> Trocar Empresa
+        </a>
+        {% else %}
         <a href="{{ url_for('admin.gerenciar_empresas') }}" class="btn btn-sm btn-outline-secondary">
             <i class="bi bi-arrow-left me-1"></i> Voltar para Empresas
         </a>
+        {% endif %}
     </div>
 </div>
 
@@ -412,9 +418,13 @@ async function selecionarGrupoViabilidade(grupo, buttonElement) {
 
 async function carregarDadosGrupo() {
     try {
-        // Fazer requisição dos dados (rota admin com empresa_id)
+        // Fazer requisição dos dados (rota admin ou user dependendo do contexto)
         const empresaId = {{ empresa_id }};
+        {% if is_user_view %}
+        const response = await fetch(`/user/api/dados-empresa/${empresaId}/${anoSelecionado}`);
+        {% else %}
         const response = await fetch(`/admin/api/dados-empresa/${empresaId}/${anoSelecionado}`);
+        {% endif %}
         const dados = await response.json();
 
         if (dados.error) {
