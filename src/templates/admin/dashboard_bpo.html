@@ -310,7 +310,11 @@ function atualizarDados() {
     const mes_fim = document.getElementById('mes_fim').value;
     const ano_fim = document.getElementById('ano_fim').value;
 
+    {% if is_user_view %}
+    const url = `/user/api/dados-bpo/{{ empresa_id }}?tipo_dre=${tipo_dre}&mes_inicio=${mes_inicio}&ano_inicio=${ano_inicio}&mes_fim=${mes_fim}&ano_fim=${ano_fim}`;
+    {% else %}
     const url = `/admin/api/dados-bpo/{{ empresa_id }}?tipo_dre=${tipo_dre}&mes_inicio=${mes_inicio}&ano_inicio=${ano_inicio}&mes_fim=${mes_fim}&ano_fim=${ano_fim}`;
+    {% endif %}
 
     fetch(url)
         .then(r => r.json())

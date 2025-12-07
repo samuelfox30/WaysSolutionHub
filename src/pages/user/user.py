@@ -432,11 +432,16 @@ def visualizar_bpo():
         empresa_id = session.get('empresa_id')
         empresa_nome = session.get('empresa_nome')
 
+        # Criar objeto empresa compatível com o template do admin
+        empresa = {'nome': empresa_nome}
+
+        # Renderizar o mesmo template do admin para garantir consistência
         return render_template(
-            'user/bpo.html',
+            'admin/dashboard_bpo.html',
             user=user_data,
+            empresa=empresa,
             empresa_id=empresa_id,
-            empresa_nome=empresa_nome
+            is_user_view=True  # Flag para o template saber que é visualização de usuário
         )
     else:
         flash("Acesso negado. Faça login como usuário.", "danger")
@@ -456,17 +461,16 @@ def trocar_empresa():
         return redirect(url_for('index.login'))
 
 
-@user_bp.route('/user/api/dados-bpo')
-def api_dados_bpo_user():
-    """API retorna dados BPO processados para dashboard do usuário"""
+@user_bp.route('/user/api/dados-bpo/<int:empresa_id>')
+def api_dados_bpo_user(empresa_id):
+    """API compatível com template do admin - retorna dados BPO processados"""
     if not ('user_email' in session and session.get('user_role') == 'user'):
         return jsonify({"error": "Não autorizado"}), 403
 
-    # Verifica se tem empresa selecionada na sessão
-    if 'empresa_id' not in session:
-        return jsonify({"error": "Empresa não selecionada"}), 400
-
-    empresa_id = session.get('empresa_id')
+    # SEGURANÇA: Verificar se o usuário tem acesso a esta empresa
+    empresa_id_session = session.get('empresa_id')
+    if empresa_id != empresa_id_session:
+        return jsonify({"error": "Acesso negado a esta empresa"}), 403
 
     ano_inicio = int(request.args.get('ano_inicio', 2025))
     mes_inicio = int(request.args.get('mes_inicio', 1))
