@@ -571,7 +571,7 @@ function atualizarGraficos(dadosGrupo) {
                         <div class="chart-header">
                             <h3 class="chart-title">
                                 <i class="bi bi-graph-up-arrow"></i>
-                                Receitas
+                                Receita
                             </h3>
                         </div>
                         <canvas id="receitaChart" height="100"></canvas>
@@ -590,7 +590,7 @@ function atualizarGraficos(dadosGrupo) {
                         <div class="chart-header">
                             <h3 class="chart-title">
                                 <i class="bi bi-pie-chart-fill"></i>
-                                Despesas
+                                Controle de Despesas por Natureza Sintética
                             </h3>
                         </div>
                         <div style="max-width: 600px; margin: 0 auto;">
@@ -602,98 +602,89 @@ function atualizarGraficos(dadosGrupo) {
         `;
     }
 
-    // 3-9. Outros subgrupos em ordem específica
-    // Definir ordem dos gráficos e mapeamento de títulos
-    const ordemGraficos = [
-        { key: 'GastosAdm', titulo: 'Gastos Administrativos' },
-        { key: 'Gastos ADM', titulo: 'Gastos Administrativos' },
-        { key: 'Gastos Operacionais Veículos', titulo: 'Gastos Operacionais' },
-        { key: 'MateriaPrima', titulo: 'Matéria Prima' },
-        { key: 'Materia Prima', titulo: 'Matéria Prima' },
-        { key: 'Obrigacoes', titulo: 'Obrigações' },
-        { key: 'Pessoal', titulo: 'Pessoal' },
-        { key: 'Dividas', titulo: 'Dívidas' },
-        { key: 'Investimentos', titulo: 'Investimentos' }
-    ];
+    // 3. OBRIGAÇÕES (dividido: 3 primeiros pizza, 4 últimos barras, lado a lado)
+    if (dadosGrupo['Obrigações'] && dadosGrupo['Obrigações'].length > 0) {
+        chartsHTML += `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="chart-container h-100">
+                        <div class="chart-header">
+                            <h3 class="chart-title">
+                                <i class="bi bi-file-text-fill"></i>
+                                Obrigações (Primeiros 3)
+                            </h3>
+                        </div>
+                        <div style="max-width: 600px; margin: 0 auto;">
+                            <canvas id="obrigacoesPizzaChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="chart-container h-100">
+                        <div class="chart-header">
+                            <h3 class="chart-title">
+                                <i class="bi bi-bar-chart-line"></i>
+                                Obrigações (Outros 4)
+                            </h3>
+                        </div>
+                        <div style="max-width: 600px; margin: 0 auto;">
+                            <canvas id="obrigacoesBarChart" height="80"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
 
-    // Renderizar gráficos na ordem especificada
-    ordemGraficos.forEach(({ key, titulo }) => {
-        // Verificar se o subgrupo existe nos dados
-        if (!dadosGrupo[key] || dadosGrupo[key].length === 0) {
+    // 4-9. Outros subgrupos em barras (todos os demais, exceto os já exibidos)
+    // Pegar TODOS os subgrupos do dadosGrupo, exceto os que já foram mostrados
+    const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigações', 'Geral', 'Investimento Geral'];
+
+    Object.keys(dadosGrupo).forEach(subgrupo => {
+        // Pular subgrupos já exibidos e "Investimento Geral"
+        if (subgruposJaExibidos.includes(subgrupo)) {
             return;
         }
 
-        const subgrupo = key;
-        const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+        if (dadosGrupo[subgrupo] && dadosGrupo[subgrupo].length > 0) {
+            const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
 
-        // Se for Obrigacoes (dividido: 3 primeiros pizza, 4 últimos barras)
-        if (subgrupo === 'Obrigacoes') {
-            chartsHTML += `
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="chart-container h-100">
-                            <div class="chart-header">
-                                <h3 class="chart-title">
-                                    <i class="bi bi-file-text-fill"></i>
-                                    Obrigações (Primeiros 3)
-                                </h3>
-                            </div>
-                            <div style="max-width: 600px; margin: 0 auto;">
-                                <canvas id="obrigacoesPizzaChart"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="chart-container h-100">
-                            <div class="chart-header">
-                                <h3 class="chart-title">
-                                    <i class="bi bi-bar-chart-line"></i>
-                                    Obrigações (Outros 4)
-                                </h3>
-                            </div>
-                            <div style="max-width: 600px; margin: 0 auto;">
-                                <canvas id="obrigacoesBarChart" height="80"></canvas>
+            // Se for Pessoal (pizza), centralizar e limitar largura
+            if (subgrupo === 'Pessoal') {
+                chartsHTML += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">
+                                        <i class="bi bi-pie-chart-fill"></i>
+                                        ${subgrupo}
+                                    </h3>
+                                </div>
+                                <div style="max-width: 600px; margin: 0 auto;">
+                                    <canvas id="${chartId}Chart"></canvas>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        }
-        // Se for Pessoal (pizza), centralizar e limitar largura
-        else if (subgrupo === 'Pessoal') {
-            chartsHTML += `
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="chart-container">
-                            <div class="chart-header">
-                                <h3 class="chart-title">
-                                    <i class="bi bi-pie-chart-fill"></i>
-                                    ${titulo}
-                                </h3>
-                            </div>
-                            <div style="max-width: 600px; margin: 0 auto;">
-                                <canvas id="${chartId}Chart"></canvas>
+                `;
+            } else {
+                chartsHTML += `
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="chart-container">
+                                <div class="chart-header">
+                                    <h3 class="chart-title">
+                                        <i class="bi bi-bar-chart-fill"></i>
+                                        ${subgrupo}
+                                    </h3>
+                                </div>
+                                <canvas id="${chartId}Chart" height="100"></canvas>
                             </div>
                         </div>
                     </div>
-                </div>
-            `;
-        } else {
-            chartsHTML += `
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="chart-container">
-                            <div class="chart-header">
-                                <h3 class="chart-title">
-                                    <i class="bi bi-bar-chart-fill"></i>
-                                    ${titulo}
-                                </h3>
-                            </div>
-                            <canvas id="${chartId}Chart" height="100"></canvas>
-                        </div>
-                    </div>
-                </div>
-            `;
+                `;
+            }
         }
     });
 
@@ -729,23 +720,31 @@ function atualizarGraficos(dadosGrupo) {
             }
         }
 
-        // 3. Outros subgrupos na ordem especificada
-        const ordemGraficosRender = [
-            'GastosAdm', 'Gastos ADM',
-            'Gastos Operacionais Veículos',
-            'MateriaPrima', 'Materia Prima',
-            'Obrigacoes',
-            'Pessoal',
-            'Dividas',
-            'Investimentos'
-        ];
+        // 3. Obrigações (dividido) - MOSTRAR R$ NA LEGENDA
+        if (dadosGrupo['Obrigações']) {
+            const obrigacoesSemTotal = dadosGrupo['Obrigações'].filter(item =>
+                !item.descricao.toUpperCase().includes('TOTAL')
+            );
 
-        ordemGraficosRender.forEach(subgrupo => {
-            if (subgruposIgnorar.includes(subgrupo)) {
-                return;
+            if (obrigacoesSemTotal.length > 0) {
+                const primeiros3 = obrigacoesSemTotal.slice(0, 3);
+                const resto = obrigacoesSemTotal.slice(3);
+
+                if (primeiros3.length > 0) {
+                    // Criar versão customizada que mostra R$ na legenda
+                    criarGraficoPizzaComValorLegenda('obrigacoesPizzaChart', primeiros3);
+                }
+                if (resto.length > 0) {
+                    criarGraficoBarrasSimples('obrigacoesBarChart', resto);
+                }
             }
+        }
 
-            if (!dadosGrupo[subgrupo] || dadosGrupo[subgrupo].length === 0) {
+        // 4. Outros subgrupos
+        Object.keys(dadosGrupo).forEach(subgrupo => {
+            const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigações'];
+
+            if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
                 return;
             }
 
@@ -778,21 +777,13 @@ function atualizarGraficos(dadosGrupo) {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
                 }
+                // Gastos Operacionais (normal, sem Veículos) - apenas valor R$
+                else if (subgrupo === 'GastosOperacionais') {
+                    criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+                }
                 // Gastos Operacionais Veículos - gráfico especial com custo_km e custo_mensal
                 else if (subgrupo === 'Gastos Operacionais Veículos') {
                     criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
-                }
-                // Obrigacoes (dividido: 3 primeiros pizza, 4 últimos barras)
-                else if (subgrupo === 'Obrigacoes') {
-                    const primeiros3 = itensSemTotal.slice(0, 3);
-                    const resto = itensSemTotal.slice(3);
-
-                    if (primeiros3.length > 0) {
-                        criarGraficoPizzaComValorLegenda('obrigacoesPizzaChart', primeiros3);
-                    }
-                    if (resto.length > 0) {
-                        criarGraficoBarrasSimples('obrigacoesBarChart', resto);
-                    }
                 }
                 // Pessoal (Pizza) - valor R$ na legenda
                 else if (subgrupo === 'Pessoal') {
