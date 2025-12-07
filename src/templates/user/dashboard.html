@@ -611,7 +611,7 @@ function atualizarGraficos(dadosGrupo) {
         { key: 'Gastos Operacionais Veículos', titulo: 'Gastos Operacionais' },
         { key: 'MateriaPrima', titulo: 'Matéria Prima' },
         { key: 'Materia Prima', titulo: 'Matéria Prima' },
-        { key: 'Obrigações', titulo: 'Obrigações' },
+        { key: 'Obrigacoes', titulo: 'Obrigações' },
         { key: 'Pessoal', titulo: 'Pessoal' },
         { key: 'Dividas', titulo: 'Dívidas' },
         { key: 'Investimentos', titulo: 'Investimentos' }
@@ -627,8 +627,8 @@ function atualizarGraficos(dadosGrupo) {
         const subgrupo = key;
         const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
 
-        // Se for Obrigações (dividido: 3 primeiros pizza, 4 últimos barras)
-        if (subgrupo === 'Obrigações') {
+        // Se for Obrigacoes (dividido: 3 primeiros pizza, 4 últimos barras)
+        if (subgrupo === 'Obrigacoes') {
             chartsHTML += `
                 <div class="row mb-4">
                     <div class="col-md-6">
@@ -735,7 +735,7 @@ function atualizarGraficos(dadosGrupo) {
             'GastosAdm', 'Gastos ADM',
             'GastosOperacionais', 'Gastos Operacionais Veículos',
             'MateriaPrima', 'Materia Prima',
-            'Obrigações',
+            'Obrigacoes',
             'Pessoal',
             'Dividas',
             'Investimentos'
@@ -787,8 +787,8 @@ function atualizarGraficos(dadosGrupo) {
                 else if (subgrupo === 'Gastos Operacionais Veículos') {
                     criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
                 }
-                // Obrigações (dividido: 3 primeiros pizza, 4 últimos barras)
-                else if (subgrupo === 'Obrigações') {
+                // Obrigacoes (dividido: 3 primeiros pizza, 4 últimos barras)
+                else if (subgrupo === 'Obrigacoes') {
                     const primeiros3 = itensSemTotal.slice(0, 3);
                     const resto = itensSemTotal.slice(3);
 
