@@ -109,11 +109,14 @@ def user_dashboard():
         anos_disponiveis = company_manager.get_anos_com_dados(empresa_id)
         company_manager.close()
 
+        # Renderizar o mesmo template do admin para garantir consistência
         return render_template(
-            'user/dashboard.html',
+            'admin/dashboard_empresa.html',
             user=user_data,
             empresa_nome=empresa_nome,
-            anos_disponiveis=anos_disponiveis
+            empresa_id=empresa_id,
+            anos_disponiveis=anos_disponiveis,
+            is_user_view=True  # Flag para o template saber que é visualização de usuário
         )
     else:
         flash("Acesso negado. Faça login como usuário.", "danger")
@@ -169,18 +172,19 @@ def visualizar_dados():
         return redirect(url_for('index.login'))
 
 
-@user_bp.route('/user/api/dados-detalhados/<int:ano>')
-def api_dados_detalhados_ano(ano):
-    """API nova que retorna dados organizados por subgrupo para gráficos específicos"""
+@user_bp.route('/user/api/dados-empresa/<int:empresa_id>/<int:ano>')
+def api_dados_empresa_user(empresa_id, ano):
+    """API compatível com template do admin - retorna dados organizados por subgrupo"""
     if not ('user_email' in session and session.get('user_role') == 'user'):
         return jsonify({"error": "Não autorizado"}), 403
 
     from models.user_manager import UserManager
     from models.company_manager import CompanyManager
 
-    # Verifica se tem empresa selecionada
-    if 'empresa_id' not in session:
-        return jsonify({"error": "Empresa não selecionada"}), 400
+    # SEGURANÇA: Verificar se o usuário tem acesso a esta empresa
+    empresa_id_session = session.get('empresa_id')
+    if empresa_id != empresa_id_session:
+        return jsonify({"error": "Acesso negado a esta empresa"}), 403
 
     user_manager = UserManager()
     user_data = user_manager.find_user_by_email(session.get('user_email'))
@@ -189,74 +193,126 @@ def api_dados_detalhados_ano(ano):
     if not user_data:
         return jsonify({"error": "Usuário não encontrado"}), 404
 
-    empresa_id = session.get('empresa_id')
-
     company_manager = CompanyManager()
-    data_results = company_manager.buscar_dados_empresa(
-        empresa_id,
-        ano
-    )
+    data_results = company_manager.buscar_dados_empresa(empresa_id, ano)
     company_manager.close()
 
-    # Organizar dados por SUBGRUPO dentro de cada grupo de viabilidade
+    # Organizar dados por SUBGRUPO dentro de cada grupo de viabilidade (MESMA LÓGICA DO ADMIN)
     dados_organizados = {}
 
     # Processar TbItens
     if data_results and data_results.get('TbItens'):
         for item in data_results['TbItens']:
-            grupo = item[0]  # 'Viabilidade Real', 'Viabilidade PE', ou 'Viabilidade Ideal'
-            subgrupo = item[1]  # 'Geral', 'Receita', 'Controle', etc
+            grupo = item[0]
+            subgrupo = item[1]
             descricao = item[2]
             percentual = float(item[3]) if item[3] else 0
             valor = float(item[4]) if item[4] else 0
 
-            # Inicializar estrutura se não existir
             if grupo not in dados_organizados:
                 dados_organizados[grupo] = {}
 
             if subgrupo not in dados_organizados[grupo]:
                 dados_organizados[grupo][subgrupo] = []
 
-            # Adicionar item (mantendo ordem: descricao, percentual, valor)
             dados_organizados[grupo][subgrupo].append({
                 "descricao": descricao,
                 "percentual": percentual,
                 "valor": valor
             })
 
-    # Processar outras tabelas
-    for tabela in ['TbItensInvestimentos', 'TbItensDividas', 'TbItensInvestimentoGeral', 'TbItensGastosOperacionais']:
-        if data_results and data_results.get(tabela):
-            for item in data_results[tabela]:
-                grupo = item[0]
-                subgrupo = item[1]
-                descricao = item[2]
+    # Processar Investimentos (TODOS OS CAMPOS)
+    if data_results and data_results.get('TbItensInvestimentos'):
+        for item in data_results['TbItensInvestimentos']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            parcela = float(item[3]) if len(item) > 3 and item[3] else 0
+            juros = float(item[4]) if len(item) > 4 and item[4] else 0
+            total = float(item[5]) if len(item) > 5 and item[5] else 0
 
-                # Pegar o valor adequado dependendo da tabela
-                if tabela in ['TbItensInvestimentos', 'TbItensDividas']:
-                    valor_parcela = float(item[3]) if len(item) > 3 and item[3] else 0
-                    valor_juros = float(item[4]) if len(item) > 4 and item[4] else 0
-                    valor = float(item[5]) if len(item) > 5 and item[5] else 0  # valor_total_parc
-                elif tabela == 'TbItensInvestimentoGeral':
-                    valor = float(item[3]) if len(item) > 3 and item[3] else 0
-                elif tabela == 'TbItensGastosOperacionais':
-                    valor = float(item[4]) if len(item) > 4 and item[4] else 0  # valor_mensal
-                else:
-                    continue
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
 
-                # Inicializar estrutura se não existir
-                if grupo not in dados_organizados:
-                    dados_organizados[grupo] = {}
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
 
-                if subgrupo not in dados_organizados[grupo]:
-                    dados_organizados[grupo][subgrupo] = []
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "parcela": parcela,
+                "juros": juros,
+                "valor": total,
+                "percentual": 0
+            })
 
-                # Adicionar item
-                dados_organizados[grupo][subgrupo].append({
-                    "descricao": descricao,
-                    "valor": valor,
-                    "percentual": 0  # Essas tabelas não têm percentual
-                })
+    # Processar Dívidas (TODOS OS CAMPOS)
+    if data_results and data_results.get('TbItensDividas'):
+        for item in data_results['TbItensDividas']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            parcela = float(item[3]) if len(item) > 3 and item[3] else 0
+            juros = float(item[4]) if len(item) > 4 and item[4] else 0
+            total = float(item[5]) if len(item) > 5 and item[5] else 0
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "parcela": parcela,
+                "juros": juros,
+                "valor": total,
+                "percentual": 0
+            })
+
+    # Processar Investimento Geral
+    if data_results and data_results.get('TbItensInvestimentoGeral'):
+        for item in data_results['TbItensInvestimentoGeral']:
+            grupo = item[0]
+            subgrupo = item[1]
+            descricao = item[2]
+            valor = float(item[3]) if len(item) > 3 and item[3] else 0
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "valor": valor,
+                "percentual": 0
+            })
+
+    # Processar Gastos Operacionais (COM NOME DIFERENCIADO)
+    if data_results and data_results.get('TbItensGastosOperacionais'):
+        for item in data_results['TbItensGastosOperacionais']:
+            grupo = item[0]
+            subgrupo_original = item[1]  # Pode ser "GastosOperacionais"
+            descricao = item[2]
+            custo_km = float(item[3]) if len(item) > 3 and item[3] else 0
+            custo_mensal = float(item[4]) if len(item) > 4 and item[4] else 0
+
+            # Renomear subgrupo para "Gastos Operacionais Veículos" para diferenciar
+            subgrupo = 'Gastos Operacionais Veículos'
+
+            if grupo not in dados_organizados:
+                dados_organizados[grupo] = {}
+
+            if subgrupo not in dados_organizados[grupo]:
+                dados_organizados[grupo][subgrupo] = []
+
+            dados_organizados[grupo][subgrupo].append({
+                "descricao": descricao,
+                "custo_km": custo_km,
+                "valor": custo_mensal,
+                "percentual": 0
+            })
 
     return jsonify({
         "ano": ano,
