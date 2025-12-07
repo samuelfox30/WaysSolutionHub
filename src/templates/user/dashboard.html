@@ -607,7 +607,6 @@ function atualizarGraficos(dadosGrupo) {
     const ordemGraficos = [
         { key: 'GastosAdm', titulo: 'Gastos Administrativos' },
         { key: 'Gastos ADM', titulo: 'Gastos Administrativos' },
-        { key: 'GastosOperacionais', titulo: 'Gastos Operacionais' },
         { key: 'Gastos Operacionais Veículos', titulo: 'Gastos Operacionais' },
         { key: 'MateriaPrima', titulo: 'Matéria Prima' },
         { key: 'Materia Prima', titulo: 'Matéria Prima' },
@@ -733,7 +732,7 @@ function atualizarGraficos(dadosGrupo) {
         // 3. Outros subgrupos na ordem especificada
         const ordemGraficosRender = [
             'GastosAdm', 'Gastos ADM',
-            'GastosOperacionais', 'Gastos Operacionais Veículos',
+            'Gastos Operacionais Veículos',
             'MateriaPrima', 'Materia Prima',
             'Obrigacoes',
             'Pessoal',
@@ -778,10 +777,6 @@ function atualizarGraficos(dadosGrupo) {
                     } else {
                         criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                     }
-                }
-                // Gastos Operacionais (normal, sem Veículos) - apenas valor R$
-                else if (subgrupo === 'GastosOperacionais') {
-                    criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                 }
                 // Gastos Operacionais Veículos - gráfico especial com custo_km e custo_mensal
                 else if (subgrupo === 'Gastos Operacionais Veículos') {
