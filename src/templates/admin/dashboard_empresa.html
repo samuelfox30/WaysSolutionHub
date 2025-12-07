@@ -790,12 +790,8 @@ function atualizarGraficos(dadosGrupo) {
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
             if (controleSemTotal.length > 0) {
-                // MULTIPLICAR PERCENTUAL POR 100 APENAS PARA CONTROLE
-                const controleAjustado = controleSemTotal.map(item => ({
-                    ...item,
-                    percentual: (item.percentual || 0) * 100
-                }));
-                criarGraficoPizza('controleChart', controleAjustado, true, false); // mostrarPercNaLegenda=true
+                // Percentual JÁ VEM CORRETO da planilha, não precisa multiplicar
+                criarGraficoPizza('controleChart', controleSemTotal, true, false); // mostrarPercNaLegenda=true
             }
         }
 
@@ -1143,8 +1139,8 @@ function criarGraficoPizza(canvasId, dados, mostrarPercNaLegenda = false, mostra
                         generateLabels: mostrarPercNaLegenda ? (chart) => {
                             const datasets = chart.data.datasets;
                             return chart.data.labels.map((label, i) => {
-                                const total = datasets[0].data.reduce((a, b) => a + b, 0);
-                                const percentage = ((valores[i] / total) * 100).toFixed(2);
+                                // Usar o percentual que JÁ VEM dos dados, não calcular
+                                const percentage = Math.abs(percentuais[i]).toFixed(2);
                                 return {
                                     text: `${label}: ${percentage}%`,
                                     fillStyle: datasets[0].backgroundColor[i],
