@@ -645,13 +645,45 @@ function atualizarGraficos(dadosGrupo) {
         }
     }
 
-    // 3. OBRIGAÇÕES (dividido: primeiros 3 pizza, resto barras)
-    if (dadosGrupo['Obrigacoes'] && dadosGrupo['Obrigacoes'].length > 0) {
-        const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item =>
+    // 3. Processar subgrupos na ORDEM ESPECÍFICA
+    // Ordem: GastosAdm → GastosOperacionais → Gastos Operacionais Veículos → MateriaPrima → Obrigacoes → Pessoal → Dividas → Investimentos
+    const ordemSubgrupos = [
+        'GastosAdm',
+        'GastosOperacionais',
+        'Gastos Operacionais Veículos',
+        'MateriaPrima',
+        'Materia Prima',
+        'Obrigacoes',
+        'Pessoal',
+        'Dividas',
+        'Investimentos'
+    ];
+
+    // Mapeamento de nomes técnicos para nomes de exibição
+    const nomesMapeados = {
+        'GastosAdm': 'Gastos Administrativos',
+        'GastosOperacionais': 'Gastos Operacionais',
+        'MateriaPrima': 'Matéria Prima',
+        'Materia Prima': 'Matéria Prima'
+    };
+
+    // Processar cada subgrupo na ordem definida
+    ordemSubgrupos.forEach(subgrupo => {
+        if (!dadosGrupo[subgrupo] || dadosGrupo[subgrupo].length === 0) {
+            return; // Pular se não existir ou estiver vazio
+        }
+
+        const itensSemTotal = dadosGrupo[subgrupo].filter(item =>
             !item.descricao.toUpperCase().includes('TOTAL')
         );
 
-        if (obrigacoesSemTotal.length > 0) {
+        if (itensSemTotal.length === 0) return;
+
+        const nomeExibicao = nomesMapeados[subgrupo] || subgrupo;
+        const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+
+        // OBRIGAÇÕES - Caso especial (2 gráficos: pizza + barras)
+        if (subgrupo === 'Obrigacoes') {
             chartsHTML += `
                 <div class="row mb-4">
                     <div class="col-md-6">
@@ -683,70 +715,43 @@ function atualizarGraficos(dadosGrupo) {
                 </div>
             `;
         }
-    }
-
-    // 4. Todos os outros subgrupos (exceto os já exibidos e os da lista de ignorar)
-    const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigacoes'];
-
-    // Mapeamento de nomes técnicos para nomes de exibição
-    const nomesMapeados = {
-        'GastosAdm': 'Gastos Administrativos',
-        'GastosOperacionais': 'Gastos Operacionais',
-        'MateriaPrima': 'Matéria Prima',
-        'Materia Prima': 'Matéria Prima'
-    };
-
-    Object.keys(dadosGrupo).forEach(subgrupo => {
-        // Pular subgrupos já exibidos ou que devem ser ignorados
-        if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
-            return;
+        // PESSOAL - Gráfico de pizza centralizado
+        else if (subgrupo === 'Pessoal') {
+            chartsHTML += `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">
+                                    <i class="bi bi-pie-chart-fill"></i>
+                                    ${nomeExibicao}
+                                </h3>
+                            </div>
+                            <div style="max-width: 600px; margin: 0 auto;">
+                                <canvas id="${chartId}Chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         }
-
-        const itensSemTotal = dadosGrupo[subgrupo].filter(item =>
-            !item.descricao.toUpperCase().includes('TOTAL')
-        );
-
-        if (itensSemTotal.length > 0) {
-            const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
-            const nomeExibicao = nomesMapeados[subgrupo] || subgrupo; // Usar nome mapeado ou original
-
-            // Todos os subgrupos agora são gráficos (incluindo Investimentos e Dívidas)
-            // Se for Pessoal (pizza), centralizar e limitar largura
-            if (subgrupo === 'Pessoal') {
-                chartsHTML += `
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="chart-container">
-                                <div class="chart-header">
-                                    <h3 class="chart-title">
-                                        <i class="bi bi-pie-chart-fill"></i>
-                                        ${nomeExibicao}
-                                    </h3>
-                                </div>
-                                <div style="max-width: 600px; margin: 0 auto;">
-                                    <canvas id="${chartId}Chart"></canvas>
-                                </div>
+        // OUTROS SUBGRUPOS - Gráfico de barras normal
+        else {
+            chartsHTML += `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="chart-container">
+                            <div class="chart-header">
+                                <h3 class="chart-title">
+                                    <i class="bi bi-bar-chart-fill"></i>
+                                    ${nomeExibicao}
+                                </h3>
                             </div>
+                            <canvas id="${chartId}Chart" height="100"></canvas>
                         </div>
                     </div>
-                `;
-            } else {
-                chartsHTML += `
-                    <div class="row mb-4">
-                        <div class="col-12">
-                            <div class="chart-container">
-                                <div class="chart-header">
-                                    <h3 class="chart-title">
-                                        <i class="bi bi-bar-chart-fill"></i>
-                                        ${nomeExibicao}
-                                    </h3>
-                                </div>
-                                <canvas id="${chartId}Chart" height="100"></canvas>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }
+                </div>
+            `;
         }
     });
 
@@ -794,31 +799,22 @@ function atualizarGraficos(dadosGrupo) {
             }
         }
 
-        // 3. Obrigações (dividido) - MOSTRAR R$ NA LEGENDA
-        if (dadosGrupo['Obrigacoes']) {
-            const obrigacoesSemTotal = dadosGrupo['Obrigacoes'].filter(item =>
-                !item.descricao.toUpperCase().includes('TOTAL')
-            );
+        // 3. Criar gráficos dos subgrupos NA MESMA ORDEM
+        // Ordem: GastosAdm → GastosOperacionais → Gastos Operacionais Veículos → MateriaPrima → Obrigacoes → Pessoal → Dividas → Investimentos
+        const ordemSubgrupos = [
+            'GastosAdm',
+            'GastosOperacionais',
+            'Gastos Operacionais Veículos',
+            'MateriaPrima',
+            'Materia Prima',
+            'Obrigacoes',
+            'Pessoal',
+            'Dividas',
+            'Investimentos'
+        ];
 
-            if (obrigacoesSemTotal.length > 0) {
-                const primeiros3 = obrigacoesSemTotal.slice(0, 3);
-                const resto = obrigacoesSemTotal.slice(3);
-
-                if (primeiros3.length > 0) {
-                    // Criar versão customizada que mostra R$ na legenda
-                    criarGraficoPizzaComValorLegenda('obrigacoesPizzaChart', primeiros3);
-                }
-                if (resto.length > 0) {
-                    criarGraficoBarrasSimples('obrigacoesBarChart', resto);
-                }
-            }
-        }
-
-        // 4. Outros subgrupos
-        Object.keys(dadosGrupo).forEach(subgrupo => {
-            const subgruposJaExibidos = ['Receita', 'Controle', 'Obrigacoes'];
-
-            if (subgruposJaExibidos.includes(subgrupo) || subgruposIgnorar.includes(subgrupo)) {
+        ordemSubgrupos.forEach(subgrupo => {
+            if (!dadosGrupo[subgrupo] || dadosGrupo[subgrupo].length === 0) {
                 return;
             }
 
@@ -826,53 +822,55 @@ function atualizarGraficos(dadosGrupo) {
                 !item.descricao.toUpperCase().includes('TOTAL')
             );
 
-            if (itensSemTotal.length > 0) {
-                const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+            if (itensSemTotal.length === 0) return;
 
-                // Criar GRÁFICO DE BARRAS EMPILHADAS para Investimentos e Dívidas
-                if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
-                    criarGraficoBarrasEmpilhadas(chartId + 'Chart', itensSemTotal);
+            const chartId = subgrupo.replace(/ /g, '').replace(/ç/g, 'c').replace(/ã/g, 'a');
+
+            // OBRIGAÇÕES - 2 gráficos (pizza + barras)
+            if (subgrupo === 'Obrigacoes') {
+                const primeiros3 = itensSemTotal.slice(0, 3);
+                const resto = itensSemTotal.slice(3);
+
+                if (primeiros3.length > 0) {
+                    criarGraficoPizzaComValorLegenda('obrigacoesPizzaChart', primeiros3);
                 }
-                // Gastos ADM - HORIZONTAL invertido
-                else if (subgrupo === 'Gastos ADM' || subgrupo === 'GastosAdm') {
-                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
-                    if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false, true); // horizontal=true, mostrarPercHover=false, reverseAxis=true
-                    } else {
-                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
-                    }
+                if (resto.length > 0) {
+                    criarGraficoBarrasSimples('obrigacoesBarChart', resto);
                 }
-                // Matéria Prima - HORIZONTAL invertido
-                else if (subgrupo === 'Materia Prima' || subgrupo === 'MateriaPrima') {
-                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
-                    if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false, true); // horizontal=true, mostrarPercHover=false, reverseAxis=true
-                    } else {
-                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
-                    }
-                }
-                // Gastos Operacionais (normal, sem Veículos) - apenas valor R$
-                else if (subgrupo === 'GastosOperacionais') {
+            }
+            // PESSOAL - Pizza com valor na legenda
+            else if (subgrupo === 'Pessoal') {
+                criarGraficoPizzaComValorLegenda(chartId + 'Chart', itensSemTotal);
+            }
+            // INVESTIMENTOS e DÍVIDAS - Barras empilhadas (parcela + juros)
+            else if (subgrupo === 'Investimentos' || subgrupo === 'Dividas') {
+                criarGraficoBarrasEmpilhadas(chartId + 'Chart', itensSemTotal);
+            }
+            // GASTOS ADM - Horizontal invertido
+            else if (subgrupo === 'GastosAdm') {
+                const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
+                if (temPercentual) {
+                    criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false, true);
+                } else {
                     criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                 }
-                // Gastos Operacionais Veículos - gráfico especial com custo_km e custo_mensal
-                else if (subgrupo === 'Gastos Operacionais Veículos') {
-                    criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
+            }
+            // MATÉRIA PRIMA - Horizontal invertido
+            else if (subgrupo === 'Materia Prima' || subgrupo === 'MateriaPrima') {
+                const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
+                if (temPercentual) {
+                    criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal, true, false, true);
+                } else {
+                    criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
                 }
-                // Pessoal (Pizza) - valor R$ na legenda
-                else if (subgrupo === 'Pessoal') {
-                    criarGraficoPizzaComValorLegenda(chartId + 'Chart', itensSemTotal);
-                }
-                // Outros subgrupos
-                else {
-                    const temPercentual = itensSemTotal.some(item => item.percentual && item.percentual !== 0);
-
-                    if (temPercentual) {
-                        criarGraficoBarrasDuplas(chartId + 'Chart', itensSemTotal);
-                    } else {
-                        criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
-                    }
-                }
+            }
+            // GASTOS OPERACIONAIS (normal) - Barras simples
+            else if (subgrupo === 'GastosOperacionais') {
+                criarGraficoBarrasSimples(chartId + 'Chart', itensSemTotal);
+            }
+            // GASTOS OPERACIONAIS VEÍCULOS - Gráfico especial (custo_km + custo_mensal)
+            else if (subgrupo === 'Gastos Operacionais Veículos') {
+                criarGraficoGastosOperacionais(chartId + 'Chart', itensSemTotal);
             }
         });
     }, 100);
