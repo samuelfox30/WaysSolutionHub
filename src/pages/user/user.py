@@ -123,6 +123,124 @@ def user_dashboard():
         return redirect(url_for('index.login'))
 
 
+@user_bp.route('/user/relatorio-pdf/<int:empresa_id>/<int:ano>/<grupo_viabilidade>')
+def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
+    """Gera PDF do relatório de viabilidade (rota para usuários)"""
+    if 'user_email' not in session or session.get('user_role') != 'user':
+        flash("Acesso negado. Faça login como usuário.", "danger")
+        return redirect(url_for('index.login'))
+
+    # Verificar se usuário tem acesso a esta empresa
+    empresa_id_session = session.get('empresa_id')
+    if empresa_id != empresa_id_session:
+        flash("Acesso negado a esta empresa.", "danger")
+        return redirect(url_for('user.user_dashboard'))
+
+    try:
+        from models.company_manager import CompanyManager
+        from controllers.relatorio.calculadora_viabilidade import calcular_indicadores_viabilidade
+        from weasyprint import HTML
+        from jinja2 import Template
+        import io
+
+        # Buscar empresa
+        company_manager = CompanyManager()
+        empresa = company_manager.buscar_empresa_por_id(empresa_id)
+
+        if not empresa:
+            flash("Empresa não encontrada.", "danger")
+            company_manager.close()
+            return redirect(url_for('user.user_dashboard'))
+
+        # Buscar template do relatório
+        template_data = company_manager.buscar_template_relatorio(empresa_id, ano)
+
+        if not template_data:
+            flash(f"Template de relatório não encontrado para o ano {ano}.", "warning")
+            company_manager.close()
+            return redirect(url_for('user.user_dashboard'))
+
+        # Buscar dados da empresa
+        dados_empresa = company_manager.buscar_dados_empresa(empresa_id, ano)
+        company_manager.close()
+
+        if not dados_empresa:
+            flash(f"Dados não encontrados para o ano {ano}.", "danger")
+            return redirect(url_for('user.user_dashboard'))
+
+        # Calcular indicadores
+        indicadores = calcular_indicadores_viabilidade(dados_empresa)
+
+        # Adicionar informações da empresa e ano aos indicadores
+        indicadores['empresa_nome'] = empresa['nome']
+        indicadores['ano'] = ano
+        indicadores['grupo_viabilidade'] = grupo_viabilidade
+
+        # Substituir variáveis no template usando Jinja2
+        template_texto = template_data['template']
+        template = Template(template_texto)
+        conteudo_html = template.render(**indicadores)
+
+        # Adicionar CSS para formatação do PDF
+        css_style = """
+        <style>
+            @page { size: A4; margin: 2cm; }
+            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; }
+            h1 { color: #2c3e50; font-size: 18pt; margin-top: 1em; }
+            h2 { color: #34495e; font-size: 14pt; margin-top: 1em; }
+            table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 2em; }
+            .section { margin: 1.5em 0; }
+        </style>
+        """
+
+        html_completo = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            {css_style}
+        </head>
+        <body>
+            <div class="header">
+                <h1>RELATÓRIO DE VIABILIDADE FINANCEIRA</h1>
+                <p><strong>{empresa['nome']}</strong> - Ano: {ano}</p>
+                <p>Cenário: {grupo_viabilidade}</p>
+            </div>
+            <div class="content">
+                {conteudo_html}
+            </div>
+        </body>
+        </html>
+        """
+
+        # Converter quebras de linha para <br> tags
+        html_completo = html_completo.replace('\n', '<br>\n')
+
+        # Gerar PDF
+        pdf_file = io.BytesIO()
+        HTML(string=html_completo).write_pdf(pdf_file)
+        pdf_file.seek(0)
+
+        # Retornar PDF como download
+        from flask import send_file
+        return send_file(
+            pdf_file,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'Relatorio_Viabilidade_{empresa["nome"]}_{ano}_{grupo_viabilidade}.pdf'
+        )
+
+    except Exception as e:
+        print(f"[ERRO] Erro ao gerar PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f"Erro ao gerar PDF: {str(e)}", "danger")
+        return redirect(url_for('user.user_dashboard'))
+
+
 @user_bp.route('/user/dados')
 def visualizar_dados():
     """Página de visualização detalhada dos dados anuais da empresa selecionada"""
