@@ -195,7 +195,17 @@ def process_uploaded_file(file):
 
     for dic in lista_cenarios:
         print("\n============================")
-        print(f"CENÁRIO: {list(dic.values())[0][0]['cenario'] if list(dic.values())[0] else 'SEM NOME'}")
+        # Tentar pegar o nome do cenário de forma segura
+        nome_cenario = 'SEM NOME'
+        try:
+            for itens in dic.values():
+                if itens and len(itens) > 0:
+                    nome_cenario = itens[0].get('cenario', 'SEM NOME')
+                    break
+        except:
+            pass
+        print(f"CENÁRIO: {nome_cenario}")
+
         for sub, itens in dic.items():
             print(f"\n--- {sub} ---")
             for i in itens:
