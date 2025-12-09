@@ -806,47 +806,17 @@ def upload_dados():
         from controllers.data_processing.file_processing import process_uploaded_file
         from models.company_manager import CompanyManager
 
-        print(f"\n[DEBUG UPLOAD] Iniciando processamento do arquivo...")
-
-        # Processar arquivo
-        resultado = process_uploaded_file(arquivo)
-
-        print(f"[DEBUG UPLOAD] Tipo do resultado: {type(resultado)}")
-        print(f"[DEBUG UPLOAD] Resultado: {resultado}")
-
-        if isinstance(resultado, tuple):
-            print(f"[DEBUG UPLOAD] É tupla com {len(resultado)} elementos")
-
-            if len(resultado) == 3:
-                lista_cenarios, dados_especiais, template_relatorio = resultado
-            elif len(resultado) == 2:
-                lista_cenarios, dados_especiais = resultado
-                template_relatorio = None
-            else:
-                raise Exception(f"Resultado retornou {len(resultado)} elementos, esperado 2 ou 3")
-        else:
-            raise Exception(f"process_uploaded_file retornou {type(resultado)} ao invés de tupla")
-
-        print(f"[DEBUG UPLOAD] lista_cenarios: {type(lista_cenarios)}, tamanho: {len(lista_cenarios) if isinstance(lista_cenarios, list) else 'N/A'}")
-        print(f"[DEBUG UPLOAD] dados_especiais: {type(dados_especiais)}, tamanho: {len(dados_especiais) if isinstance(dados_especiais, dict) else 'N/A'}")
-        print(f"[DEBUG UPLOAD] template_relatorio: {type(template_relatorio)}, existe: {template_relatorio is not None}")
+        dados = process_uploaded_file(arquivo)
+        d1 = dados[0]
+        d2 = dados[1]
 
         company_manager = CompanyManager()
-        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), lista_cenarios, dados_especiais)
-
-        # Salvar template do relatório se existir
-        if template_relatorio:
-            company_manager.salvar_template_relatorio(int(empresa_id), int(ano), template_relatorio)
-            print(f"[DEBUG] Template de relatório salvo para empresa_id={empresa_id}, ano={ano}")
-
+        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
         company_manager.close()
 
         flash(f"Dados da empresa para o ano {ano} foram salvos com sucesso.", "success")
     except Exception as e:
-        import traceback
-        print(f"\n[ERRO UPLOAD] Erro ao processar arquivo: {e}")
-        print(f"[ERRO UPLOAD] Traceback completo:")
-        traceback.print_exc()
+        print(f"Erro ao processar arquivo: {e}")
         flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))

@@ -195,17 +195,7 @@ def process_uploaded_file(file):
 
     for dic in lista_cenarios:
         print("\n============================")
-        # Tentar pegar o nome do cenário de forma segura
-        nome_cenario = 'SEM NOME'
-        try:
-            for itens in dic.values():
-                if itens and len(itens) > 0:
-                    nome_cenario = itens[0].get('cenario', 'SEM NOME')
-                    break
-        except:
-            pass
-        print(f"CENÁRIO: {nome_cenario}")
-
+        print(f"CENÁRIO: {list(dic.values())[0][0]['cenario'] if list(dic.values())[0] else 'SEM NOME'}")
         for sub, itens in dic.items():
             print(f"\n--- {sub} ---")
             for i in itens:
@@ -218,38 +208,4 @@ def process_uploaded_file(file):
         for i in itens:
             print(i)
 
-    # ============================
-    # LER ABA "RELATÓRIO" (TEMPLATE)
-    # ============================
-    template_relatorio = None
-    try:
-        if "Relatório" in wb.sheetnames or "Relatorio" in wb.sheetnames:
-            # Tenta com acento primeiro, depois sem
-            nome_aba = "Relatório" if "Relatório" in wb.sheetnames else "Relatorio"
-            ws_relatorio = wb[nome_aba]
-
-            # Ler o conteúdo da célula A1 (onde está o template)
-            template_relatorio = ws_relatorio["A1"].value
-
-            if template_relatorio:
-                print("\n============================")
-                print("TEMPLATE DE RELATÓRIO ENCONTRADO!")
-                print(f"Tamanho: {len(template_relatorio)} caracteres")
-                print(f"Primeiros 100 caracteres: {template_relatorio[:100]}...")
-            else:
-                print("\n[AVISO] Aba 'Relatório' existe mas célula A1 está vazia")
-        else:
-            print("\n[INFO] Aba 'Relatório' não encontrada no arquivo")
-    except Exception as e:
-        print(f"\n[ERRO] Erro ao ler aba 'Relatório': {e}")
-        template_relatorio = None
-
-    print(f"\n[DEBUG FILE_PROCESSING] Retornando:")
-    print(f"  - lista_cenarios: {type(lista_cenarios)}, len={len(lista_cenarios)}")
-    print(f"  - dados_especiais: {type(dados_especiais)}, len={len(dados_especiais)}")
-    print(f"  - template_relatorio: {type(template_relatorio)}, é None? {template_relatorio is None}")
-
-    resultado = (lista_cenarios, dados_especiais, template_relatorio)
-    print(f"[DEBUG FILE_PROCESSING] Tupla final tem {len(resultado)} elementos")
-
-    return resultado
+    return lista_cenarios, dados_especiais
