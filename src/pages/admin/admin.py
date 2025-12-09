@@ -350,7 +350,7 @@ def api_dados_bpo_tabela(empresa_id):
         while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
             dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
             if dados:
-                dados_json = json.loads(dados['dados_json'])
+                dados_json = dados['dados']  # Já vem parseado
                 meses_dados.append({
                     'mes': mes_atual,
                     'ano': ano_atual,
