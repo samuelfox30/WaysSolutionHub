@@ -243,9 +243,21 @@ def api_dados_bpo_tabela(empresa_id):
                 if cenario in totais and isinstance(totais[cenario], dict):
                     # Mesclar todos os meses deste cenário
                     for mes_key, mes_value in totais[cenario].items():
+                        # Normalizar chave: converter formato antigo '1' para novo '2025_1'
+                        # Se mes_key é apenas número (formato antigo), converter
+                        if mes_key.isdigit():
+                            # Formato antigo: apenas número do mês
+                            mes_num = int(mes_key)
+                            # Pegar o ano dos metadados do mes_value ou usar ano atual
+                            ano_mes = mes_value.get('ano', ano)
+                            chave_normalizada = f"{ano_mes}_{mes_num}"
+                        else:
+                            # Formato novo: já está como 'ano_mes'
+                            chave_normalizada = mes_key
+
                         # Adicionar apenas se ainda não tiver (evitar duplicação)
-                        if mes_key not in totais_calculados[cenario]:
-                            totais_calculados[cenario][mes_key] = mes_value
+                        if chave_normalizada not in totais_calculados[cenario]:
+                            totais_calculados[cenario][chave_normalizada] = mes_value
 
         return jsonify({
             'itens': itens_lista,
