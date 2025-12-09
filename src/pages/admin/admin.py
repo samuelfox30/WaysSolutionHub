@@ -330,7 +330,7 @@ def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
 
     try:
         from models.company_manager import CompanyManager
-        from weasyprint import HTML
+        from xhtml2pdf import pisa
         import io
 
         # Buscar empresa
@@ -393,9 +393,17 @@ def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
         </html>
         """
 
-        # Gerar PDF
+        # Gerar PDF usando xhtml2pdf (funciona melhor no Windows)
         pdf_file = io.BytesIO()
-        HTML(string=html_completo).write_pdf(pdf_file)
+        pisa_status = pisa.CreatePDF(
+            html_completo.encode('utf-8'),
+            dest=pdf_file,
+            encoding='utf-8'
+        )
+
+        if pisa_status.err:
+            raise Exception(f"Erro ao gerar PDF: {pisa_status.err}")
+
         pdf_file.seek(0)
 
         # Retornar PDF como download
