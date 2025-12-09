@@ -66,6 +66,114 @@ def converter_porcentagem(valor):
         return None
 
 
+def extrair_meses_do_cabecalho(sheet):
+    """
+    Lê a linha 1 (cabeçalho) e extrai informações sobre os meses e colunas de totais.
+
+    Formato esperado do cabeçalho:
+    - Coluna A: Nome/Descrição
+    - Colunas B+: "Mês Ano\nOrçado", "Mês Ano\nRealizado", etc (4 colunas por mês)
+    - Últimas colunas: Contém a palavra "total" (ex: "Orçado total")
+
+    Returns:
+        dict: {
+            'meses': [
+                {'mes_nome': 'Janeiro', 'mes_numero': 1, 'ano': 2025, 'col_inicio': 2},
+                ...
+            ],
+            'col_inicio_totais': 14,
+            'num_meses': 3
+        }
+    """
+    meses_info = []
+    col_inicio_totais = None
+
+    # Mapear nomes de meses para números
+    meses_map = {
+        'JANEIRO': 1, 'FEVEREIRO': 2, 'MARÇO': 3, 'MARCO': 3, 'ABRIL': 4,
+        'MAIO': 5, 'JUNHO': 6, 'JULHO': 7, 'AGOSTO': 8,
+        'SETEMBRO': 9, 'OUTUBRO': 10, 'NOVEMBRO': 11, 'DEZEMBRO': 12
+    }
+
+    total_colunas = sheet.max_column
+    col_atual = 2  # Começa na coluna B (2)
+
+    print("\n" + "-"*100)
+    print("📋 LENDO CABEÇALHO DA PLANILHA (Linha 1)")
+    print("-"*100)
+
+    while col_atual <= total_colunas:
+        cell_value = sheet.cell(row=1, column=col_atual).value
+
+        if cell_value is None or str(cell_value).strip() == '':
+            col_atual += 1
+            continue
+
+        cell_text = str(cell_value).strip().upper()
+
+        # Verificar se é coluna de total (contém "TOTAL")
+        if 'TOTAL' in cell_text:
+            col_inicio_totais = col_atual
+            print(f"\n✅ Coluna de TOTAIS identificada na coluna {col_atual}: '{cell_value}'")
+            break
+
+        # Verificar se é coluna de mês (contém "ORÇADO" ou "ORCADO")
+        if 'ORÇADO' in cell_text or 'ORCADO' in cell_text:
+            # Extrair mês e ano do texto
+            # Formato: "JANEIRO 2025\nORÇADO" ou "JANEIRO 2025 ORÇADO"
+            linhas = cell_text.split('\n')
+            primeira_linha = linhas[0].strip()
+
+            # Tentar extrair mês e ano
+            partes = primeira_linha.split()
+            mes_nome = None
+            ano = None
+
+            for i, parte in enumerate(partes):
+                # Procurar mês
+                if parte in meses_map and mes_nome is None:
+                    mes_nome = parte
+                # Procurar ano (número de 4 dígitos)
+                elif parte.isdigit() and len(parte) == 4 and ano is None:
+                    ano = int(parte)
+
+            if mes_nome and ano:
+                mes_numero = meses_map[mes_nome]
+                mes_info = {
+                    'mes_nome': mes_nome.capitalize(),
+                    'mes_numero': mes_numero,
+                    'ano': ano,
+                    'col_inicio': col_atual
+                }
+                meses_info.append(mes_info)
+
+                print(f"✅ Mês identificado: {mes_nome.capitalize()} {ano} (coluna {col_atual})")
+
+                # Pular as próximas 3 colunas deste mês (Realizado, % Atingido, Diferença)
+                col_atual += 4
+            else:
+                print(f"⚠️  Não foi possível extrair mês/ano de: '{cell_value}'")
+                col_atual += 1
+        else:
+            col_atual += 1
+
+    # Se não encontrou col_inicio_totais, assume últimas 3 colunas
+    if col_inicio_totais is None:
+        col_inicio_totais = total_colunas - 2
+        print(f"\n⚠️  Coluna de totais não identificada, assumindo coluna {col_inicio_totais}")
+
+    print(f"\n📊 Resumo:")
+    print(f"   • Total de meses identificados: {len(meses_info)}")
+    print(f"   • Coluna de início dos totais: {col_inicio_totais}")
+    print("-"*100 + "\n")
+
+    return {
+        'meses': meses_info,
+        'col_inicio_totais': col_inicio_totais,
+        'num_meses': len(meses_info)
+    }
+
+
 def formatar_numero(valor):
     """Formata um número para exibição legível (ou 'N/A' se None)"""
     if valor is None:
@@ -80,20 +188,20 @@ def formatar_numero(valor):
         return str(valor)
 
 
-def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha):
+def processar_item_hierarquico(col_a, row_values, meses_info, col_inicio_totais, linha):
     """
-    Processa um item hierárquico com a NOVA estrutura
+    Processa um item hierárquico com a NOVA estrutura (meses dinâmicos)
 
-    Estrutura FIXA:
+    Estrutura DINÂMICA:
     - Coluna 0 (A): Nome/Código
-    - Colunas 1+ (B+): Meses (4 colunas cada: Orçado, Realizado, % Atingido, Diferença)
+    - Colunas B+: Meses (4 colunas cada: Orçado, Realizado, % Atingido, Diferença)
     - Últimas 3 colunas: Totais (Orçado Total, Realizado Total, Pendente Total)
 
     Args:
         col_a: Valor da coluna A (código e nome)
         row_values: Lista com todos os valores da linha
-        num_meses: Número de meses
-        meses_nomes: Lista com nomes dos meses
+        meses_info: Lista com informações dos meses extraídos do cabeçalho
+        col_inicio_totais: Coluna onde começam os totais
         linha: Número da linha atual
 
     Returns:
@@ -102,12 +210,11 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     # Extrair código e nome
     codigo, nome, nivel = extrair_codigo_e_nome(col_a)
 
-    # Processar dados mensais (começando no índice 1 = coluna B)
+    # Processar dados mensais usando as colunas identificadas no cabeçalho
     dados_meses = []
-    col_inicio_mes = 1  # Coluna B
 
-    for i in range(num_meses):
-        idx_base = col_inicio_mes + (i * 4)
+    for mes_info in meses_info:
+        col_inicio = mes_info['col_inicio'] - 1  # Converter para índice (col 2 = índice 1)
 
         # Cada mês tem 4 colunas fixas:
         # 0: Valor Orçado
@@ -115,14 +222,15 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
         # 2: % Atingido (já vem como número, ex: 86.06 para 86,06%)
         # 3: Valor Diferença
 
-        valor_orcado = converter_valor(row_values[idx_base]) if idx_base < len(row_values) else None
-        valor_realizado = converter_valor(row_values[idx_base + 1]) if idx_base + 1 < len(row_values) else None
-        perc_atingido = converter_valor(row_values[idx_base + 2]) if idx_base + 2 < len(row_values) else None  # SEM multiplicar por 100!
-        valor_diferenca = converter_valor(row_values[idx_base + 3]) if idx_base + 3 < len(row_values) else None
+        valor_orcado = converter_valor(row_values[col_inicio]) if col_inicio < len(row_values) else None
+        valor_realizado = converter_valor(row_values[col_inicio + 1]) if col_inicio + 1 < len(row_values) else None
+        perc_atingido = converter_valor(row_values[col_inicio + 2]) if col_inicio + 2 < len(row_values) else None
+        valor_diferenca = converter_valor(row_values[col_inicio + 3]) if col_inicio + 3 < len(row_values) else None
 
         mes_data = {
-            'mes_numero': i + 1,
-            'mes_nome': meses_nomes[i] if i < len(meses_nomes) else f'Mês {i+1}',
+            'mes_numero': mes_info['mes_numero'],
+            'mes_nome': mes_info['mes_nome'],
+            'ano': mes_info['ano'],
             'valor_orcado': valor_orcado,
             'valor_realizado': valor_realizado,
             'perc_atingido': perc_atingido,
@@ -130,8 +238,8 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
         }
         dados_meses.append(mes_data)
 
-    # Processar resultados totais (últimas 3 colunas)
-    idx_resultados_inicio = col_inicio_mes + (num_meses * 4)
+    # Processar resultados totais (coluna identificada no cabeçalho)
+    idx_resultados_inicio = col_inicio_totais - 1  # Converter para índice
 
     valor_orcado_total = converter_valor(row_values[idx_resultados_inicio]) if idx_resultados_inicio < len(row_values) else None
     valor_realizado_total = converter_valor(row_values[idx_resultados_inicio + 1]) if idx_resultados_inicio + 1 < len(row_values) else None
@@ -153,7 +261,7 @@ def processar_item_hierarquico(col_a, row_values, num_meses, meses_nomes, linha)
     }
 
 
-def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
+def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
     """
     Calcula os totais do 1º cenário: RESULTADO POR FLUXO DE CAIXA
 
@@ -165,7 +273,7 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
 
     Args:
         itens_hierarquicos: Lista de itens processados
-        num_meses: Número de meses
+        meses_info: Lista com informações dos meses extraídos do cabeçalho
 
     Returns:
         dict: Totais calculados por mês
@@ -173,7 +281,7 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
 
     # Estrutura de retorno
     totais = {
-        'fluxo_caixa': {},  # Será preenchido por mês
+        'fluxo_caixa': {},  # Será preenchido por mês (chave: 'ano_mes')
         'real': {},         # Para depois (vazio por enquanto)
         'real_mp': {}       # Para depois (vazio por enquanto)
     }
@@ -204,14 +312,18 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         print(f"   Item DESPESA: {'Encontrado' if item_despesa else 'NÃO ENCONTRADO'}")
         return totais
 
-    # Calcular para cada mês
-    for mes_num in range(1, num_meses + 1):
+    # Calcular para cada mês encontrado na planilha
+    for mes_info in meses_info:
+        mes_numero = mes_info['mes_numero']
+        ano = mes_info['ano']
+        chave_mes = f"{ano}_{mes_numero}"  # Ex: "2025_3" para Março 2025
+
         # Encontrar dados deste mês
-        dados_mes_receita = next((m for m in item_receita['dados_mensais'] if m['mes_numero'] == mes_num), None)
-        dados_mes_despesa = next((m for m in item_despesa['dados_mensais'] if m['mes_numero'] == mes_num), None)
+        dados_mes_receita = next((m for m in item_receita['dados_mensais'] if m['mes_numero'] == mes_numero and m['ano'] == ano), None)
+        dados_mes_despesa = next((m for m in item_despesa['dados_mensais'] if m['mes_numero'] == mes_numero and m['ano'] == ano), None)
 
         if not dados_mes_receita or not dados_mes_despesa:
-            print(f"⚠️  Mês {mes_num}: Dados não encontrados")
+            print(f"⚠️  {mes_info['mes_nome']} {ano}: Dados não encontrados")
             continue
 
         # ====================================================================
@@ -257,8 +369,11 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         diferenca_despesa = orcamento_despesa - realizado_despesa  # INVERTIDO
         diferenca_geral = diferenca_receita + diferenca_despesa
 
-        # Salvar totais deste mês
-        totais['fluxo_caixa'][mes_num] = {
+        # Salvar totais deste mês usando chave ano_mes
+        totais['fluxo_caixa'][chave_mes] = {
+            'mes_numero': mes_numero,
+            'ano': ano,
+            'mes_nome': mes_info['mes_nome'],
             'orcamento': {
                 'receita': orcamento_receita,
                 'despesa': orcamento_despesa,
@@ -282,8 +397,8 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         }
 
         # Log apenas do primeiro mês para não poluir
-        if mes_num == 1:
-            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo:")
+        if len(totais['fluxo_caixa']) == 1:
+            print(f"\n📅 {mes_info['mes_nome']} {ano} - Exemplo de cálculo:")
             print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita)} | Despesa: R$ {formatar_numero(orcamento_despesa)} | Geral: R$ {formatar_numero(orcamento_geral)}")
             print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita)} | Despesa: R$ {formatar_numero(realizado_despesa)} | Geral: R$ {formatar_numero(realizado_geral)}")
             print(f"   % ATINGIDO → Receita: {perc_receita:.2f}% | Despesa: {perc_despesa:.2f}% | Geral: {perc_geral:.2f}%")
@@ -334,12 +449,16 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         return total
 
     # Calcular para cada mês
-    for mes_num in range(1, num_meses + 1):
+    for mes_info in meses_info:
+        mes_numero = mes_info['mes_numero']
+        ano = mes_info['ano']
+        chave_mes = f"{ano}_{mes_numero}"
+
         # Pegar dados do Fluxo de Caixa deste mês
-        dados_fc = totais['fluxo_caixa'].get(mes_num)
+        dados_fc = totais['fluxo_caixa'].get(chave_mes)
 
         if not dados_fc:
-            print(f"⚠️  Mês {mes_num}: Dados do Fluxo de Caixa não encontrados")
+            print(f"⚠️  {mes_info['mes_nome']} {ano}: Dados do Fluxo de Caixa não encontrados")
             continue
 
         # ====================================================================
@@ -349,8 +468,8 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         orcamento_despesa_fc = dados_fc['orcamento']['despesa']
 
         # Subtrair os itens específicos
-        subtracao_receita_orcado = calcular_total_subtracao(itens_subtrair_receita, mes_num, 'valor_orcado')
-        subtracao_despesa_orcado = calcular_total_subtracao(itens_subtrair_despesa, mes_num, 'valor_orcado')
+        subtracao_receita_orcado = calcular_total_subtracao(itens_subtrair_receita, mes_numero, 'valor_orcado')
+        subtracao_despesa_orcado = calcular_total_subtracao(itens_subtrair_despesa, mes_numero, 'valor_orcado')
 
         orcamento_receita_real = orcamento_receita_fc - subtracao_receita_orcado
         orcamento_despesa_real = orcamento_despesa_fc - subtracao_despesa_orcado
@@ -363,8 +482,8 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         realizado_despesa_fc = dados_fc['realizado']['despesa']
 
         # Subtrair os itens específicos
-        subtracao_receita_realizado = calcular_total_subtracao(itens_subtrair_receita, mes_num, 'valor_realizado')
-        subtracao_despesa_realizado = calcular_total_subtracao(itens_subtrair_despesa, mes_num, 'valor_realizado')
+        subtracao_receita_realizado = calcular_total_subtracao(itens_subtrair_receita, mes_numero, 'valor_realizado')
+        subtracao_despesa_realizado = calcular_total_subtracao(itens_subtrair_despesa, mes_numero, 'valor_realizado')
 
         realizado_receita_real = realizado_receita_fc - subtracao_receita_realizado
         realizado_despesa_real = realizado_despesa_fc - subtracao_despesa_realizado
@@ -399,8 +518,11 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         diferenca_despesa_real = orcamento_despesa_real - realizado_despesa_real  # INVERTIDO
         diferenca_geral_real = diferenca_receita_real + diferenca_despesa_real
 
-        # Salvar totais deste mês
-        totais['real'][mes_num] = {
+        # Salvar totais deste mês usando chave ano_mes
+        totais['real'][chave_mes] = {
+            'mes_numero': mes_numero,
+            'ano': ano,
+            'mes_nome': mes_info['mes_nome'],
             'orcamento': {
                 'receita': orcamento_receita_real,
                 'despesa': orcamento_despesa_real,
@@ -424,8 +546,8 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         }
 
         # Log apenas do primeiro mês
-        if mes_num == 1:
-            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo (Resultado Real):")
+        if len(totais['real']) == 1:
+            print(f"\n📅 {mes_info['mes_nome']} {ano} - Exemplo de cálculo (Resultado Real):")
             print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita_real)} | Despesa: R$ {formatar_numero(orcamento_despesa_real)} | Geral: R$ {formatar_numero(orcamento_geral_real)}")
             print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita_real)} | Despesa: R$ {formatar_numero(realizado_despesa_real)} | Geral: R$ {formatar_numero(realizado_geral_real)}")
             print(f"   % ATINGIDO → Receita: {perc_receita_real:.2f}% | Despesa: {perc_despesa_real:.2f}% | Geral: {perc_geral_real:.2f}%")
@@ -444,12 +566,16 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
     item_custo_mp_nome = 'CUSTO MATERIA PRIMA'
 
     # Calcular para cada mês
-    for mes_num in range(1, num_meses + 1):
+    for mes_info in meses_info:
+        mes_numero = mes_info['mes_numero']
+        ano = mes_info['ano']
+        chave_mes = f"{ano}_{mes_numero}"
+
         # Pegar dados do cenário "Real" deste mês
-        dados_real = totais['real'].get(mes_num)
+        dados_real = totais['real'].get(chave_mes)
 
         if not dados_real:
-            print(f"⚠️  Mês {mes_num}: Dados do Resultado Real não encontrados")
+            print(f"⚠️  {mes_info['mes_nome']} {ano}: Dados do Resultado Real não encontrados")
             continue
 
         # ====================================================================
@@ -473,7 +599,7 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
 
         if dados_custo_mp:
             for mes_data in dados_custo_mp:
-                if mes_data['mes_numero'] == mes_num:
+                if mes_data['mes_numero'] == mes_numero and mes_data['ano'] == ano:
                     custo_mp_orcado = mes_data.get('valor_orcado', 0) or 0
                     custo_mp_realizado = mes_data.get('valor_realizado', 0) or 0
                     break
@@ -521,8 +647,11 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         diferenca_despesa_mp = orcamento_despesa_mp - realizado_despesa_mp  # INVERTIDO
         diferenca_geral_mp = diferenca_receita_mp + diferenca_despesa_mp
 
-        # Salvar totais deste mês
-        totais['real_mp'][mes_num] = {
+        # Salvar totais deste mês usando chave ano_mes
+        totais['real_mp'][chave_mes] = {
+            'mes_numero': mes_numero,
+            'ano': ano,
+            'mes_nome': mes_info['mes_nome'],
             'orcamento': {
                 'receita': orcamento_receita_mp,
                 'despesa': orcamento_despesa_mp,
@@ -546,8 +675,8 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses):
         }
 
         # Log apenas do primeiro mês
-        if mes_num == 1:
-            print(f"\n📅 Mês {mes_num} - Exemplo de cálculo (Resultado Real + Custo MP):")
+        if len(totais['real_mp']) == 1:
+            print(f"\n📅 {mes_info['mes_nome']} {ano} - Exemplo de cálculo (Resultado Real + Custo MP):")
             print(f"   CUSTO MP   → Orçado: R$ {formatar_numero(custo_mp_orcado)} | Realizado: R$ {formatar_numero(custo_mp_realizado)}")
             print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita_mp)} | Despesa: R$ {formatar_numero(orcamento_despesa_mp)} | Geral: R$ {formatar_numero(orcamento_geral_mp)}")
             print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita_mp)} | Despesa: R$ {formatar_numero(realizado_despesa_mp)} | Geral: R$ {formatar_numero(realizado_geral_mp)}")
@@ -606,24 +735,15 @@ def process_bpo_file(file):
         total_colunas = sheet.max_column
         print(f"📊 Total de colunas na planilha: {total_colunas}")
 
-        # Estrutura FIXA:
-        # Coluna A (0): Nome/Código
-        # Colunas B+ (1+): Meses (4 colunas cada) + 3 colunas de totais
-
-        colunas_depois_nome = total_colunas - 1  # Tira coluna A
-        colunas_totais = 3
-        colunas_meses = colunas_depois_nome - colunas_totais
-        num_meses = colunas_meses // 4
+        # Ler o cabeçalho para extrair informações dos meses dinamicamente
+        info_cabecalho = extrair_meses_do_cabecalho(sheet)
+        meses_info = info_cabecalho['meses']
+        col_inicio_totais = info_cabecalho['col_inicio_totais']
+        num_meses = info_cabecalho['num_meses']
 
         print(f"📅 Número de meses detectados: {num_meses}")
-        print(f"📋 Colunas de meses: {colunas_meses} ({num_meses} meses × 4 colunas)")
-        print(f"📈 Colunas de totais: {colunas_totais}")
-
-        # Nomes dos meses
-        meses_nomes = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                       'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
-
-        print(f"🗓️  Meses processados: {', '.join(meses_nomes[:num_meses])}")
+        meses_str = ', '.join([f"{m['mes_nome']} {m['ano']}" for m in meses_info])
+        print(f"🗓️  Meses identificados: {meses_str}")
 
         # Processar itens hierárquicos (LINHA 2 em diante)
         itens_hierarquicos = []
@@ -650,8 +770,8 @@ def process_bpo_file(file):
                 item = processar_item_hierarquico(
                     col_a,
                     row_values,
-                    num_meses,
-                    meses_nomes,
+                    meses_info,
+                    col_inicio_totais,
                     linha_atual
                 )
                 itens_hierarquicos.append(item)
@@ -672,7 +792,7 @@ def process_bpo_file(file):
         print("🧮 CALCULANDO TOTAIS - RESULTADO POR FLUXO DE CAIXA")
         print("-"*100)
 
-        totais_calculados = calcular_totais_fluxo_caixa(itens_hierarquicos, num_meses)
+        totais_calculados = calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info)
 
         # Montar estrutura final
         dados_processados = {
@@ -681,7 +801,7 @@ def process_bpo_file(file):
             'metadados': {
                 'total_colunas': total_colunas,
                 'num_meses': num_meses,
-                'meses': meses_nomes[:num_meses],
+                'meses_info': meses_info,
                 'total_itens': len(itens_hierarquicos)
             }
         }
@@ -691,7 +811,7 @@ def process_bpo_file(file):
         print("="*100)
         print(f"📊 Resumo:")
         print(f"   • Itens processados: {len(itens_hierarquicos)}")
-        print(f"   • Meses: {num_meses} ({', '.join(meses_nomes[:num_meses])})")
+        print(f"   • Meses: {num_meses} ({meses_str})")
         print(f"   • Total de colunas: {total_colunas}")
         print("="*100 + "\n")
 
