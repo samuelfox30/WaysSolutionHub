@@ -39,6 +39,7 @@ class DatabaseConnection:
             self.create_user_empresa_table_if_not_exists()
             self.create_empresa_tables_if_not_exists()
             self.create_bpo_tables_if_not_exists()
+            self.create_relatorio_template_table_if_not_exists()
             self.insert_default_grupos_subgrupos()
 
         except mysql.connector.Error as err:
@@ -264,6 +265,34 @@ class DatabaseConnection:
             print("Tabela 'TbBpoDados' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
             print(f"Erro ao criar tabelas BPO: {err}")
+
+    def create_relatorio_template_table_if_not_exists(self):
+        """Cria tabela para armazenar templates de relatórios de viabilidade"""
+        try:
+            relatorio_template_schema = (
+                "CREATE TABLE IF NOT EXISTS TbRelatorioTemplate ("
+                "  id INT AUTO_INCREMENT PRIMARY KEY,"
+                "  empresa_id INT NOT NULL,"
+                "  ano INT NOT NULL,"
+                "  template_texto TEXT NOT NULL,"
+                "  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,"
+                "  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                "  FOREIGN KEY (empresa_id) REFERENCES empresas(id) ON DELETE CASCADE,"
+                "  UNIQUE KEY unique_empresa_ano (empresa_id, ano)"
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci"
+            )
+            self.cursor.execute(relatorio_template_schema)
+
+            # Criar índice para melhorar performance de busca
+            index_schema = (
+                "CREATE INDEX IF NOT EXISTS idx_empresa_ano ON TbRelatorioTemplate(empresa_id, ano)"
+            )
+            self.cursor.execute(index_schema)
+
+            self.connection.commit()
+            print("Tabela 'TbRelatorioTemplate' verificada/criada com sucesso.")
+        except mysql.connector.Error as err:
+            print(f"Erro ao criar tabela de relatórios: {err}")
 
     def insert_default_grupos_subgrupos(self):
         try:
