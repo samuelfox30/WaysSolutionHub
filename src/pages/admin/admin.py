@@ -430,14 +430,15 @@ def api_dados_bpo_tabela(empresa_id):
             # Extrair totais calculados
             totais = dados.get('totais_calculados', {})
 
+            # Os totais_calculados vêm com TODOS os meses do Excel
+            # Então apenas precisamos mesclar os dados de cada cenário
             for cenario in ['fluxo_caixa', 'real', 'real_mp']:
-                if cenario in totais:
-                    cenario_data = totais[cenario]
-                    # Os totais podem estar com chave mes_numero ou ano_mes
-                    if mes in cenario_data:
-                        totais_calculados[cenario][chave_mes] = cenario_data[mes]
-                    elif chave_mes in cenario_data:
-                        totais_calculados[cenario][chave_mes] = cenario_data[chave_mes]
+                if cenario in totais and isinstance(totais[cenario], dict):
+                    # Mesclar todos os meses deste cenário
+                    for mes_key, mes_value in totais[cenario].items():
+                        # Adicionar apenas se ainda não tiver (evitar duplicação)
+                        if mes_key not in totais_calculados[cenario]:
+                            totais_calculados[cenario][mes_key] = mes_value
 
         return jsonify({
             'itens': itens_lista,
