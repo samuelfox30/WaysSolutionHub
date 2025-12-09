@@ -72,72 +72,128 @@
 
         body {
             background-color: #f8f9fa;
+            overflow-x: hidden;
+        }
+
+        .logo-section {
+            background: linear-gradient(135deg, var(--bs-orange) 0%, var(--bs-orange-light) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+        }
+
+        .logo-container {
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-container img {
+            width: 100%;
+            height: auto;
+            max-width: 400px;
+            filter: drop-shadow(0 10px 30px rgba(0, 0, 0, 0.2));
+        }
+
+        .form-section {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .logo-section {
+                min-height: 300px;
+            }
+
+            .form-section {
+                padding: 2rem 1rem;
+            }
+
+            .logo-container img {
+                max-width: 250px;
+            }
         }
     </style>
 </head>
-<body class="d-flex align-items-center justify-content-center min-vh-100">
+<body>
+    <div class="container-fluid min-vh-100">
+        <div class="row min-vh-100 g-0">
+            <!-- Lado esquerdo - Logo -->
+            <div class="col-lg-5 col-md-6 logo-section">
+                <div class="logo-container">
+                    <img src="{{ url_for('static', filename='imgs/logo-pagina-login.svg') }}" alt="Ways Solution Hub Logo" class="img-fluid">
+                </div>
+            </div>
 
-    <div class="card login-card p-5">
-        <div class="text-center mb-4">
-            <i class="bi bi-key-fill text-orange display-4 mb-2"></i>
-            <h1 class="h3 fw-bold login-title">Bem-vindo(a) de Volta!</h1>
-            <p class="text-muted">Faça login na sua conta.</p>
+            <!-- Lado direito - Formulário -->
+            <div class="col-lg-7 col-md-6 form-section">
+                <div class="card login-card p-5">
+                    <div class="text-center mb-4">
+                        <i class="bi bi-key-fill text-orange display-4 mb-2"></i>
+                        <h1 class="h3 fw-bold login-title">Bem-vindo(a) de Volta!</h1>
+                        <p class="text-muted">Faça login na sua conta.</p>
+                    </div>
+
+                    <form action="/login" method="post">
+
+                        <div class="mb-4">
+                            <label class="form-label d-block text-muted">Tipo de Usuário:</label>
+                            <div class="d-flex justify-content-around">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" id="admin" name="user_type" value="admin" required>
+                                    <label class="form-check-label" for="admin">
+                                        <i class="bi bi-person-gear me-1 text-orange"></i> Admin
+                                    </label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" id="user" name="user_type" value="user" required>
+                                    <label class="form-check-label" for="user">
+                                        <i class="bi bi-person me-1 text-orange"></i> Usuário
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label text-muted">E-mail</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-envelope-fill text-orange"></i></span>
+                                <input type="email" class="form-control" id="email" name="email" placeholder="seu-email@exemplo.com" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="password" class="form-label text-muted">Senha</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-lock-fill text-orange"></i></span>
+                                <input type="password" class="form-control" id="password" name="password" placeholder="********" required>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-orange btn-lg">Entrar</button>
+                        </div>
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            <div class="alert-container mt-3">
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ category }} alerta-{{ category }}" role="alert">
+                                <i class="bi bi-exclamation-circle me-2"></i> {{ message }}
+                                </div>
+                            {% endfor %}
+                            </div>
+                        {% endif %}
+                        {% endwith %}
+                    </form>
+                </div>
+            </div>
         </div>
-        
-        <form action="/login" method="post">
-            
-            <div class="mb-4">
-                <label class="form-label d-block text-muted">Tipo de Usuário:</label>
-                <div class="d-flex justify-content-around">
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" id="admin" name="user_type" value="admin" required>
-                        <label class="form-check-label" for="admin">
-                            <i class="bi bi-person-gear me-1 text-orange"></i> Admin
-                        </label>
-                    </div>
-                    <div class="form-check form-check-inline">
-                        <input class="form-check-input" type="radio" id="user" name="user_type" value="user" required>
-                        <label class="form-check-label" for="user">
-                            <i class="bi bi-person me-1 text-orange"></i> Usuário
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mb-3">
-                <label for="email" class="form-label text-muted">E-mail</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-envelope-fill text-orange"></i></span>
-                    <input type="email" class="form-control" id="email" name="email" placeholder="seu-email@exemplo.com" required>
-                </div>
-            </div>
-            
-            <div class="mb-4">
-                <label for="password" class="form-label text-muted">Senha</label>
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-lock-fill text-orange"></i></span>
-                    <input type="password" class="form-control" id="password" name="password" placeholder="********" required>
-                </div>
-            </div>
-            
-            <div class="d-grid gap-2">
-                <button type="submit" class="btn btn-orange btn-lg">Entrar</button>
-            </div>
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <div class="alert-container mt-3">
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ category }} alerta-{{ category }}" role="alert">
-                    <i class="bi bi-exclamation-circle me-2"></i> {{ message }}
-                    </div>
-                {% endfor %}
-                </div>
-            {% endif %}
-            {% endwith %}
-        </form>
     </div>
-
-    
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
 </body>
