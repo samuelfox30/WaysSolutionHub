@@ -950,8 +950,8 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, numMeses) {
         // Média Realizada: (realizado / orçado) * 100
         const percReal = orcado !== 0 ? (realizado / orcado * 100).toFixed(2) : '0.00';
 
-        // Média Diferença: ((realizado - orçado) / orçado) * 100
-        const percDif = orcado !== 0 ? ((realizado - orcado) / orcado * 100).toFixed(2) : '0.00';
+        // Média Diferença: ((orçado - realizado) / orçado) * 100
+        const percDif = orcado !== 0 ? ((orcado - realizado) / orcado * 100).toFixed(2) : '0.00';
 
         htmlTabela += `
             <tr>
