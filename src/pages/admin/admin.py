@@ -667,13 +667,11 @@ def upload_dados():
         from controllers.data_processing.file_processing import process_uploaded_file
         from models.company_manager import CompanyManager
 
-        dados = process_uploaded_file(arquivo)
-        d1 = dados[0]
-        d2 = dados[1]
-        template_relatorio = dados[2] if len(dados) > 2 else None
+        # Desempacotar os 3 valores retornados
+        lista_cenarios, dados_especiais, template_relatorio = process_uploaded_file(arquivo)
 
         company_manager = CompanyManager()
-        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
+        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), lista_cenarios, dados_especiais)
 
         # Salvar template do relatório se existir
         if template_relatorio:
