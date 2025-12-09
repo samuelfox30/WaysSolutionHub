@@ -536,6 +536,13 @@ function renderizarTabela(data) {
 function renderizarCenarios(data) {
     const { totais_calculados, meses } = data;
 
+    console.log('🔍 DEBUG renderizarCenarios:');
+    console.log('   totais_calculados:', totais_calculados);
+    console.log('   meses:', meses);
+    console.log('   fluxo_caixa keys:', Object.keys(totais_calculados.fluxo_caixa || {}));
+    console.log('   real keys:', Object.keys(totais_calculados.real || {}));
+    console.log('   real_mp keys:', Object.keys(totais_calculados.real_mp || {}));
+
     // Cabeçalho dos cenários (colunas para cada mês)
     let headerCols = '';
     meses.forEach(mes => {
@@ -554,6 +561,10 @@ function renderizarCenarios(data) {
 
 function renderizarCenario(tipo, bodyId, totais_calculados, meses) {
     const cenario = totais_calculados[tipo] || {};
+
+    console.log(`🔍 DEBUG renderizarCenario(${tipo}):`)
+    console.log('   cenario:', cenario);
+    console.log('   cenario keys:', Object.keys(cenario));
 
     const categorias = ['Receita', 'Despesa', 'Geral'];
     const campos = ['orcamento', 'realizado', 'perc_atingido', 'diferenca'];
@@ -574,9 +585,17 @@ function renderizarCenario(tipo, bodyId, totais_calculados, meses) {
             const catKey = cat.toLowerCase();
             bodyHTML += `<tr><td>${cat}</td>`;
 
-            meses.forEach(mes => {
+            meses.forEach((mes, idx) => {
                 const chave = `${mes.ano}_${mes.mes_numero}`;
                 const dados = cenario[chave];
+
+                // Log só do primeiro mês de cada campo para não poluir
+                if (idx === 0 && cat === 'Receita') {
+                    console.log(`      Primeiro mês (${mes.mes_nome}): chave=${chave}, dados=`, dados);
+                    if (dados) {
+                        console.log(`        dados[${campo}]:`, dados[campo]);
+                    }
+                }
 
                 if (dados && dados[campo] && dados[campo][catKey] !== undefined) {
                     const valor = dados[campo][catKey];
