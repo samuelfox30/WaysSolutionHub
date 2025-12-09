@@ -123,6 +123,250 @@ def user_dashboard():
         return redirect(url_for('index.login'))
 
 
+@user_bp.route('/user/api/dados-bpo-tabela/<int:empresa_id>')
+def api_dados_bpo_tabela(empresa_id):
+    """
+    API para retornar dados BPO em formato tabular (tipo planilha)
+    Filtra por período e retorna itens hierárquicos com dados mensais
+    """
+    if 'user_email' not in session or session.get('user_role') != 'user':
+        return jsonify({'error': 'Não autorizado'}), 403
+
+    # Verificar se usuário tem acesso a esta empresa
+    empresa_id_session = session.get('empresa_id')
+    if empresa_id != empresa_id_session:
+        return jsonify({'error': 'Acesso negado a esta empresa'}), 403
+
+    try:
+        from models.company_manager import CompanyManager
+        import json
+
+        # Pegar parâmetros do filtro
+        mes_inicio = int(request.args.get('mes_inicio', 1))
+        ano_inicio = int(request.args.get('ano_inicio', 2025))
+        mes_fim = int(request.args.get('mes_fim', 12))
+        ano_fim = int(request.args.get('ano_fim', 2025))
+
+        company_manager = CompanyManager()
+
+        # Buscar todos os meses do período
+        meses_dados = []
+        ano_atual = ano_inicio
+        mes_atual = mes_inicio
+
+        while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
+            dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
+            if dados:
+                dados_json = json.loads(dados['dados_json'])
+                meses_dados.append({
+                    'mes': mes_atual,
+                    'ano': ano_atual,
+                    'dados': dados_json
+                })
+
+            # Avançar para próximo mês
+            mes_atual += 1
+            if mes_atual > 12:
+                mes_atual = 1
+                ano_atual += 1
+
+        company_manager.close()
+
+        if not meses_dados:
+            return jsonify({'error': 'Nenhum dado encontrado para o período'}), 404
+
+        # Consolidar itens hierárquicos de todos os meses
+        itens_consolidados = {}
+        meses_info = []
+
+        for mes_data in meses_dados:
+            mes = mes_data['mes']
+            ano = mes_data['ano']
+            dados = mes_data['dados']
+
+            # Adicionar info do mês
+            meses_nomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+            meses_info.append({
+                'mes_numero': mes,
+                'mes_nome': meses_nomes[mes],
+                'ano': ano
+            })
+
+            # Processar cada item hierárquico
+            for item in dados.get('itens_hierarquicos', []):
+                codigo = item['codigo']
+
+                if codigo not in itens_consolidados:
+                    itens_consolidados[codigo] = {
+                        'codigo': codigo,
+                        'nome': item['nome'],
+                        'nivel_hierarquia': item['nivel_hierarquia'],
+                        'dados_mensais': {}
+                    }
+
+                # Adicionar dados deste mês
+                if item.get('dados_mensais') and len(item['dados_mensais']) > 0:
+                    dados_mes = item['dados_mensais'][0]  # Pega primeiro mês (deveria ser único)
+                    chave_mes = f"{ano}_{mes}"
+                    itens_consolidados[codigo]['dados_mensais'][chave_mes] = {
+                        'mes_numero': mes,
+                        'ano': ano,
+                        'valor_orcado': dados_mes.get('valor_orcado'),
+                        'valor_realizado': dados_mes.get('valor_realizado'),
+                        'perc_atingido': dados_mes.get('perc_atingido'),
+                        'valor_diferenca': dados_mes.get('valor_diferenca')
+                    }
+
+        # Converter para lista ordenada por código
+        itens_lista = sorted(itens_consolidados.values(), key=lambda x: x['codigo'])
+
+        # Buscar totais calculados para o período (se existirem)
+        totais_calculados = {
+            'fluxo_caixa': {},
+            'real': {},
+            'real_mp': {}
+        }
+
+        for mes_data in meses_dados:
+            mes = mes_data['mes']
+            ano = mes_data['ano']
+            dados = mes_data['dados']
+            chave_mes = f"{ano}_{mes}"
+
+            # Extrair totais calculados
+            totais = dados.get('totais_calculados', {})
+
+            for cenario in ['fluxo_caixa', 'real', 'real_mp']:
+                if cenario in totais:
+                    cenario_data = totais[cenario]
+                    # Os totais podem estar com chave mes_numero ou ano_mes
+                    if mes in cenario_data:
+                        totais_calculados[cenario][chave_mes] = cenario_data[mes]
+                    elif chave_mes in cenario_data:
+                        totais_calculados[cenario][chave_mes] = cenario_data[chave_mes]
+
+        return jsonify({
+            'itens': itens_lista,
+            'meses': meses_info,
+            'totais_calculados': totais_calculados
+        })
+
+    except Exception as e:
+        print(f"Erro na API dados-bpo-tabela: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@user_bp.route('/user/relatorio-pdf/<int:empresa_id>/<int:ano>/<grupo_viabilidade>')
+def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
+    """Gera PDF do relatório de viabilidade (rota para usuários)"""
+    if 'user_email' not in session or session.get('user_role') != 'user':
+        flash("Acesso negado. Faça login como usuário.", "danger")
+        return redirect(url_for('index.login'))
+
+    # Verificar se usuário tem acesso a esta empresa
+    empresa_id_session = session.get('empresa_id')
+    if empresa_id != empresa_id_session:
+        flash("Acesso negado a esta empresa.", "danger")
+        return redirect(url_for('user.user_dashboard'))
+
+    try:
+        from models.company_manager import CompanyManager
+        from xhtml2pdf import pisa
+        import io
+
+        # Buscar empresa
+        company_manager = CompanyManager()
+        empresa = company_manager.buscar_empresa_por_id(empresa_id)
+
+        if not empresa:
+            flash("Empresa não encontrada.", "danger")
+            company_manager.close()
+            return redirect(url_for('user.user_dashboard'))
+
+        # Buscar template do relatório
+        template_data = company_manager.buscar_template_relatorio(empresa_id, ano)
+        company_manager.close()
+
+        if not template_data:
+            flash(f"Template de relatório não encontrado para o ano {ano}.", "warning")
+            return redirect(url_for('user.user_dashboard'))
+
+        # Pegar o texto do template (já vem pronto com os valores)
+        conteudo_texto = template_data['template']
+
+        # Adicionar CSS para formatação do PDF
+        css_style = """
+        <style>
+            @page { size: A4; margin: 2cm; }
+            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #333; }
+            h1 { color: #2c3e50; font-size: 18pt; margin-top: 1em; }
+            h2 { color: #34495e; font-size: 14pt; margin-top: 1em; }
+            h3 { color: #34495e; font-size: 12pt; margin-top: 0.8em; }
+            table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+            th { background-color: #f2f2f2; font-weight: bold; }
+            .header { text-align: center; margin-bottom: 2em; border-bottom: 2px solid #2c3e50; padding-bottom: 1em; }
+            .section { margin: 1.5em 0; }
+            p { margin: 0.5em 0; }
+        </style>
+        """
+
+        # Converter quebras de linha do texto em tags HTML <br>
+        conteudo_html = conteudo_texto.replace('\n', '<br>\n')
+
+        html_completo = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            {css_style}
+        </head>
+        <body>
+            <div class="header">
+                <h1>RELATÓRIO DE VIABILIDADE FINANCEIRA</h1>
+                <p><strong>{empresa['nome']}</strong> - Ano: {ano}</p>
+                <p>Cenário: {grupo_viabilidade}</p>
+            </div>
+            <div class="content">
+                {conteudo_html}
+            </div>
+        </body>
+        </html>
+        """
+
+        # Gerar PDF usando xhtml2pdf (funciona melhor no Windows)
+        pdf_file = io.BytesIO()
+        pisa_status = pisa.CreatePDF(
+            html_completo.encode('utf-8'),
+            dest=pdf_file,
+            encoding='utf-8'
+        )
+
+        if pisa_status.err:
+            raise Exception(f"Erro ao gerar PDF: {pisa_status.err}")
+
+        pdf_file.seek(0)
+
+        # Retornar PDF como download
+        from flask import send_file
+        return send_file(
+            pdf_file,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'Relatorio_Viabilidade_{empresa["nome"]}_{ano}_{grupo_viabilidade}.pdf'
+        )
+
+    except Exception as e:
+        print(f"[ERRO] Erro ao gerar PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        flash(f"Erro ao gerar PDF: {str(e)}", "danger")
+        return redirect(url_for('user.user_dashboard'))
+
+
 @user_bp.route('/user/dados')
 def visualizar_dados():
     """Página de visualização detalhada dos dados anuais da empresa selecionada"""
