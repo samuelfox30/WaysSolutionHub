@@ -234,4 +234,12 @@ def process_uploaded_file(file):
         print(f"\n[ERRO] Erro ao ler aba 'Relatório': {e}")
         template_relatorio = None
 
-    return lista_cenarios, dados_especiais, template_relatorio
+    print(f"\n[DEBUG FILE_PROCESSING] Retornando:")
+    print(f"  - lista_cenarios: {type(lista_cenarios)}, len={len(lista_cenarios)}")
+    print(f"  - dados_especiais: {type(dados_especiais)}, len={len(dados_especiais)}")
+    print(f"  - template_relatorio: {type(template_relatorio)}, é None? {template_relatorio is None}")
+
+    resultado = (lista_cenarios, dados_especiais, template_relatorio)
+    print(f"[DEBUG FILE_PROCESSING] Tupla final tem {len(resultado)} elementos")
+
+    return resultado
