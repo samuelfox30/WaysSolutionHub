@@ -2,19 +2,19 @@ import mysql.connector
 from mysql.connector import errorcode
 
 # Credenciais do banco de dados centralizadas
-DB_CONFIG = {
-    'host': "localhost",
-    'user': "root",
-    'password': "root",
-    'database': "WaysDb"
-}
-
 # DB_CONFIG = {
-#     'host': "mysql.wayssolution.kinghost.net",
-#     'user': "wayssolution",
-#     'password': "DS6tgb8yaHB67",
-#     'database': "wayssolution"
+#     'host': "localhost",
+#     'user': "root",
+#     'password': "root",
+#     'database': "WaysDb"
 # }
+
+DB_CONFIG = {
+    'host': "mysql.wayssolution.kinghost.net",
+    'user': "wayssolution",
+    'password': "DS6tgb8yaHB67",
+    'database': "wayssolution"
+}
 
 class DatabaseConnection:
     def __init__(self):
