@@ -729,27 +729,30 @@ def upload_dados_bpo():
         return redirect(url_for('index.login'))
 
     empresa_id = request.form.get('empresa_id')
-    ano = request.form.get('ano')
     arquivo = request.files.get('arquivo')
 
     # Validação básica
-    if not empresa_id or not ano or not arquivo:
-        flash("Empresa, ano e arquivo são obrigatórios para upload de BPO.", "danger")
+    if not empresa_id or not arquivo:
+        flash("Empresa e arquivo são obrigatórios para upload de BPO.", "danger")
         return redirect(url_for('admin.gerenciar_empresas'))
 
     try:
         from controllers.data_processing.bpo_file_processing import process_bpo_file
         from models.company_manager import CompanyManager
 
-        # Processar arquivo Excel (detecta meses automaticamente)
+        # Processar arquivo Excel (detecta meses e anos automaticamente do cabeçalho)
         dados_bpo = process_bpo_file(arquivo)
-        num_meses = dados_bpo['metadados']['num_meses']
+        meses_info = dados_bpo['metadados']['meses_info']
         meses_processados = []
 
         company_manager = CompanyManager()
 
-        # Salvar cada mês separadamente
-        for mes_num in range(1, num_meses + 1):
+        # Salvar cada mês separadamente (agora com mes_numero e ano do cabeçalho)
+        for mes_info in meses_info:
+            mes_numero = mes_info['mes_numero']
+            ano = mes_info['ano']
+            chave_mes = f"{ano}_{mes_numero}"  # Ex: "2025_3" para Março 2025
+
             # Filtrar totais_calculados deste mês
             totais_mes = {}
             totais_calculados = dados_bpo.get('totais_calculados', {})
@@ -757,9 +760,9 @@ def upload_dados_bpo():
             for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
                 if cenario_key in totais_calculados:
                     cenario_data = totais_calculados[cenario_key]
-                    # Pegar apenas dados do mês atual (mes_num é a chave)
-                    if mes_num in cenario_data:
-                        totais_mes[cenario_key] = {mes_num: cenario_data[mes_num]}
+                    # Pegar apenas dados deste mês usando chave ano_mes
+                    if chave_mes in cenario_data:
+                        totais_mes[cenario_key] = {mes_numero: cenario_data[chave_mes]}
                     else:
                         totais_mes[cenario_key] = {}
                 else:
@@ -776,7 +779,8 @@ def upload_dados_bpo():
             for item in dados_bpo['itens_hierarquicos']:
                 item_mes = item.copy()
                 item_mes['dados_mensais'] = [
-                    m for m in item['dados_mensais'] if m['mes_numero'] == mes_num
+                    m for m in item['dados_mensais']
+                    if m['mes_numero'] == mes_numero and m['ano'] == ano
                 ]
                 dados_mes['itens_hierarquicos'].append(item_mes)
 
@@ -784,20 +788,18 @@ def upload_dados_bpo():
             if dados_mes['itens_hierarquicos']:
                 sucesso = company_manager.salvar_dados_bpo_empresa(
                     empresa_id=int(empresa_id),
-                    ano=int(ano),
-                    mes=mes_num,
+                    ano=ano,
+                    mes=mes_numero,
                     dados_processados=dados_mes
                 )
                 if sucesso:
-                    meses_processados.append(mes_num)
+                    meses_processados.append(f"{mes_info['mes_nome']} {ano}")
 
         company_manager.close()
 
         if meses_processados:
-            meses_nomes = {1:'Jan', 2:'Fev', 3:'Mar', 4:'Abr', 5:'Mai', 6:'Jun',
-                          7:'Jul', 8:'Ago', 9:'Set', 10:'Out', 11:'Nov', 12:'Dez'}
-            meses_str = ', '.join([meses_nomes[m] for m in meses_processados])
-            flash(f"Dados BPO salvos para {len(meses_processados)} meses ({meses_str}/{ano})!", "success")
+            meses_str = ', '.join(meses_processados)
+            flash(f"Dados BPO salvos com sucesso! Meses processados: {meses_str}", "success")
         else:
             flash("Nenhum dado BPO foi encontrado na planilha.", "warning")
 
