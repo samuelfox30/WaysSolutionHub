@@ -588,62 +588,6 @@ class CompanyManager(DatabaseConnection):
             self.connection.rollback()
             return False
 
-    # ====================================================================
-    # FUNÇÕES RELATÓRIO DE VIABILIDADE
-    # ====================================================================
-
-    def salvar_template_relatorio(self, empresa_id, ano, template_texto):
-        """Salva template do relatório de viabilidade para empresa/ano específico"""
-        try:
-            # Verificar se empresa existe
-            self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
-            if not self.cursor.fetchone():
-                raise Exception(f"Empresa ID {empresa_id} não encontrada")
-
-            # Deletar template antigo do mesmo período
-            self.cursor.execute(
-                "DELETE FROM TbRelatorioTemplate WHERE empresa_id = %s AND ano = %s",
-                (empresa_id, ano)
-            )
-
-            # Inserir novo template
-            sql = """
-                INSERT INTO TbRelatorioTemplate (empresa_id, ano, template_texto)
-                VALUES (%s, %s, %s)
-            """
-            self.cursor.execute(sql, (empresa_id, ano, template_texto))
-            self.connection.commit()
-
-            print(f"[DEBUG] Template de relatório salvo: empresa_id={empresa_id}, ano={ano}")
-            return True
-
-        except Exception as err:
-            print(f"[ERRO] Erro ao salvar template de relatório: {err}")
-            self.connection.rollback()
-            return False
-
-    def buscar_template_relatorio(self, empresa_id, ano):
-        """Busca template do relatório de viabilidade de empresa/ano específico"""
-        try:
-            sql = """
-                SELECT template_texto, created_at
-                FROM TbRelatorioTemplate
-                WHERE empresa_id = %s AND ano = %s
-            """
-            self.cursor.execute(sql, (empresa_id, ano))
-            row = self.cursor.fetchone()
-
-            if row:
-                return {
-                    'template': row[0],
-                    'data_upload': row[1]
-                }
-            return None
-
-        except Exception as err:
-            print(f"[ERRO] Erro ao buscar template de relatório: {err}")
-            return None
-
     def close(self):
         """Fecha a conexão com o banco de dados."""
         self.close_connection()

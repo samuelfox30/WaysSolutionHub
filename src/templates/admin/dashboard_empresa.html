@@ -351,14 +351,6 @@
             </div>
         </button>
     </div>
-
-    <!-- Botão de Download do Relatório PDF -->
-    <div id="download-relatorio-container" class="text-center mt-4" style="display: none;">
-        <button id="btn-download-relatorio" class="btn btn-lg" style="background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; font-weight: 600; padding: 0.875rem 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3); border: none; transition: all 0.3s ease;">
-            <i class="bi bi-file-earmark-pdf-fill me-2"></i>
-            Baixar Relatório PDF
-        </button>
-    </div>
 </div>
 
 <!-- Cards de Métricas (5 cards) -->
@@ -419,23 +411,6 @@ async function selecionarGrupoViabilidade(grupo, buttonElement) {
         btn.classList.remove('active');
     });
     buttonElement.classList.add('active');
-
-    // Mostrar botão de download do relatório PDF
-    const downloadContainer = document.getElementById('download-relatorio-container');
-    downloadContainer.style.display = 'block';
-
-    // Configurar link do botão de download
-    const btnDownload = document.getElementById('btn-download-relatorio');
-    const empresaId = {{ empresa_id }};
-    {% if is_user_view %}
-    const pdfUrl = `/user/relatorio-pdf/${empresaId}/${anoSelecionado}/${encodeURIComponent(grupo)}`;
-    {% else %}
-    const pdfUrl = `/admin/relatorio-pdf/${empresaId}/${anoSelecionado}/${encodeURIComponent(grupo)}`;
-    {% endif %}
-
-    btnDownload.onclick = function() {
-        window.open(pdfUrl, '_blank');
-    };
 
     // Carregar dados
     await carregarDadosGrupo();

@@ -321,108 +321,6 @@ def dashboard_empresa(empresa_id):
     )
 
 
-@admin_bp.route('/admin/relatorio-pdf/<int:empresa_id>/<int:ano>/<grupo_viabilidade>')
-def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
-    """Gera PDF do relatório de viabilidade"""
-    if not ('user_email' in session and session.get('user_role') == 'admin'):
-        flash("Acesso negado. Você precisa ser um administrador.", "danger")
-        return redirect(url_for('index.login'))
-
-    try:
-        from models.company_manager import CompanyManager
-        from xhtml2pdf import pisa
-        import io
-
-        # Buscar empresa
-        company_manager = CompanyManager()
-        empresa = company_manager.buscar_empresa_por_id(empresa_id)
-
-        if not empresa:
-            flash("Empresa não encontrada.", "danger")
-            company_manager.close()
-            return redirect(url_for('admin.dashboard_empresa', empresa_id=empresa_id))
-
-        # Buscar template do relatório
-        template_data = company_manager.buscar_template_relatorio(empresa_id, ano)
-        company_manager.close()
-
-        if not template_data:
-            flash(f"Template de relatório não encontrado para o ano {ano}. Por favor, faça o upload de um arquivo Excel com a aba 'Relatório'.", "warning")
-            return redirect(url_for('admin.dashboard_empresa', empresa_id=empresa_id))
-
-        # Pegar o texto do template (já vem pronto com os valores)
-        conteudo_texto = template_data['template']
-
-        # Adicionar CSS para formatação do PDF
-        css_style = """
-        <style>
-            @page { size: A4; margin: 2cm; }
-            body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.6; color: #333; }
-            h1 { color: #2c3e50; font-size: 18pt; margin-top: 1em; }
-            h2 { color: #34495e; font-size: 14pt; margin-top: 1em; }
-            h3 { color: #34495e; font-size: 12pt; margin-top: 0.8em; }
-            table { width: 100%; border-collapse: collapse; margin: 1em 0; }
-            th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #f2f2f2; font-weight: bold; }
-            .header { text-align: center; margin-bottom: 2em; border-bottom: 2px solid #2c3e50; padding-bottom: 1em; }
-            .section { margin: 1.5em 0; }
-            p { margin: 0.5em 0; }
-        </style>
-        """
-
-        # Converter quebras de linha do texto em tags HTML <br>
-        conteudo_html = conteudo_texto.replace('\n', '<br>\n')
-
-        html_completo = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            {css_style}
-        </head>
-        <body>
-            <div class="header">
-                <h1>RELATÓRIO DE VIABILIDADE FINANCEIRA</h1>
-                <p><strong>{empresa['nome']}</strong> - Ano: {ano}</p>
-                <p>Cenário: {grupo_viabilidade}</p>
-            </div>
-            <div class="content">
-                {conteudo_html}
-            </div>
-        </body>
-        </html>
-        """
-
-        # Gerar PDF usando xhtml2pdf (funciona melhor no Windows)
-        pdf_file = io.BytesIO()
-        pisa_status = pisa.CreatePDF(
-            html_completo.encode('utf-8'),
-            dest=pdf_file,
-            encoding='utf-8'
-        )
-
-        if pisa_status.err:
-            raise Exception(f"Erro ao gerar PDF: {pisa_status.err}")
-
-        pdf_file.seek(0)
-
-        # Retornar PDF como download
-        from flask import send_file
-        return send_file(
-            pdf_file,
-            mimetype='application/pdf',
-            as_attachment=True,
-            download_name=f'Relatorio_Viabilidade_{empresa["nome"]}_{ano}_{grupo_viabilidade}.pdf'
-        )
-
-    except Exception as e:
-        print(f"[ERRO] Erro ao gerar PDF: {e}")
-        import traceback
-        traceback.print_exc()
-        flash(f"Erro ao gerar PDF: {str(e)}", "danger")
-        return redirect(url_for('admin.dashboard_empresa', empresa_id=empresa_id))
-
-
 @admin_bp.route('/admin/api/dados-empresa/<int:empresa_id>/<int:ano>')
 def api_dados_empresa(empresa_id, ano):
     """API para retornar dados de uma empresa (acesso admin)"""
@@ -675,47 +573,17 @@ def upload_dados():
         from controllers.data_processing.file_processing import process_uploaded_file
         from models.company_manager import CompanyManager
 
-        print(f"\n[DEBUG UPLOAD] Iniciando processamento do arquivo...")
-
-        # Processar arquivo
-        resultado = process_uploaded_file(arquivo)
-
-        print(f"[DEBUG UPLOAD] Tipo do resultado: {type(resultado)}")
-        print(f"[DEBUG UPLOAD] Resultado: {resultado}")
-
-        if isinstance(resultado, tuple):
-            print(f"[DEBUG UPLOAD] É tupla com {len(resultado)} elementos")
-
-            if len(resultado) == 3:
-                lista_cenarios, dados_especiais, template_relatorio = resultado
-            elif len(resultado) == 2:
-                lista_cenarios, dados_especiais = resultado
-                template_relatorio = None
-            else:
-                raise Exception(f"Resultado retornou {len(resultado)} elementos, esperado 2 ou 3")
-        else:
-            raise Exception(f"process_uploaded_file retornou {type(resultado)} ao invés de tupla")
-
-        print(f"[DEBUG UPLOAD] lista_cenarios: {type(lista_cenarios)}, tamanho: {len(lista_cenarios) if isinstance(lista_cenarios, list) else 'N/A'}")
-        print(f"[DEBUG UPLOAD] dados_especiais: {type(dados_especiais)}, tamanho: {len(dados_especiais) if isinstance(dados_especiais, dict) else 'N/A'}")
-        print(f"[DEBUG UPLOAD] template_relatorio: {type(template_relatorio)}, existe: {template_relatorio is not None}")
+        dados = process_uploaded_file(arquivo)
+        d1 = dados[0]
+        d2 = dados[1]
 
         company_manager = CompanyManager()
-        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), lista_cenarios, dados_especiais)
-
-        # Salvar template do relatório se existir
-        if template_relatorio:
-            company_manager.salvar_template_relatorio(int(empresa_id), int(ano), template_relatorio)
-            print(f"[DEBUG] Template de relatório salvo para empresa_id={empresa_id}, ano={ano}")
-
+        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
         company_manager.close()
 
         flash(f"Dados da empresa para o ano {ano} foram salvos com sucesso.", "success")
     except Exception as e:
-        import traceback
-        print(f"\n[ERRO UPLOAD] Erro ao processar arquivo: {e}")
-        print(f"[ERRO UPLOAD] Traceback completo:")
-        traceback.print_exc()
+        print(f"Erro ao processar arquivo: {e}")
         flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
