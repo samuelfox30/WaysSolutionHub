@@ -759,7 +759,7 @@ def api_dados_bpo_user(empresa_id):
         for codigo in categorias_despesa:
             cat = categorias_despesa[codigo]
             cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
-            cat['diferenca'] = cat['realizado'] - cat['orcado']
+            cat['diferenca'] = cat['orcado'] - cat['realizado']
 
     except Exception:
         categorias_despesa = {}
@@ -806,7 +806,7 @@ def api_dados_bpo_user(empresa_id):
         for codigo in categorias_receita:
             cat = categorias_receita[codigo]
             cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
-            cat['diferenca'] = cat['realizado'] - cat['orcado']
+            cat['diferenca'] = cat['orcado'] - cat['realizado']
 
     except Exception:
         categorias_receita = {}
