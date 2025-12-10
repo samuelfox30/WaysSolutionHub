@@ -495,13 +495,33 @@ async function carregarDados() {
 function renderizarTabela(data) {
     const { itens, meses } = data;
 
+    // Encontrar o item RECEITA e mapear valores orçados por mês
+    const receitaPorMes = {};
+    const itemReceita = itens.find(item =>
+        item.codigo === "1" ||
+        item.nome.toUpperCase().includes("RECEITA") && item.codigo.startsWith("1")
+    );
+
+    if (itemReceita) {
+        meses.forEach(mes => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = itemReceita.dados_mensais[chave];
+            if (dados && dados.valor_orcado) {
+                receitaPorMes[chave] = dados.valor_orcado;
+            }
+        });
+    }
+
+    console.log('📊 Item RECEITA encontrado:', itemReceita);
+    console.log('💰 Receita por mês:', receitaPorMes);
+
     // Gerar cabeçalho
     let headerHTML = '<tr><th>Descrição</th>';
 
-    // Colunas dos meses (4 colunas por mês)
+    // Colunas dos meses (5 colunas por mês agora)
     meses.forEach(mes => {
         headerHTML += `
-            <th colspan="4" style="border-bottom: 3px solid white;">${mes.mes_nome} ${mes.ano}</th>
+            <th colspan="5" style="border-bottom: 3px solid white;">${mes.mes_nome} ${mes.ano}</th>
         `;
     });
 
@@ -514,6 +534,7 @@ function renderizarTabela(data) {
     meses.forEach(() => {
         headerHTML += `
             <th>Orçado</th>
+            <th>% Orçado</th>
             <th>Realizado</th>
             <th>% Atingido</th>
             <th>Diferença</th>
@@ -559,14 +580,22 @@ function renderizarTabela(data) {
                 totalOrcado += orcado;
                 totalRealizado += realizado;
 
+                // Calcular % Orçado (percentual sobre a RECEITA do mês)
+                const receitaMes = receitaPorMes[chave] || 0;
+                let percOrcado = 0;
+                if (receitaMes > 0) {
+                    percOrcado = (orcado / receitaMes) * 100;
+                }
+
                 bodyHTML += `
                     <td>${formatMoney(orcado)}</td>
+                    <td style="color: #6b7280; font-weight: 500;">${formatPercent(percOrcado)}</td>
                     <td>${formatMoney(realizado)}</td>
                     <td>${formatPercentCondicional(perc)}</td>
                     <td>${formatMoneyCondicional(dif)}</td>
                 `;
             } else {
-                bodyHTML += `<td>-</td><td>-</td><td>-</td><td>-</td>`;
+                bodyHTML += `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
             }
         });
 
