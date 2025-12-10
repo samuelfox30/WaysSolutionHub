@@ -325,9 +325,9 @@
             <div class="table-responsive">
                 <table class="table cenario-table">
                     <thead>
-                        <tr>
+                        <tr id="fc-header-row">
                             <th>Categoria</th>
-                            <th id="fc-header"></th>
+                            <!-- Colunas dos meses serão adicionadas dinamicamente -->
                         </tr>
                     </thead>
                     <tbody id="fc-body">
@@ -343,9 +343,9 @@
             <div class="table-responsive">
                 <table class="table cenario-table">
                     <thead>
-                        <tr>
+                        <tr id="real-header-row">
                             <th>Categoria</th>
-                            <th id="real-header"></th>
+                            <!-- Colunas dos meses serão adicionadas dinamicamente -->
                         </tr>
                     </thead>
                     <tbody id="real-body">
@@ -361,9 +361,9 @@
             <div class="table-responsive">
                 <table class="table cenario-table">
                     <thead>
-                        <tr>
+                        <tr id="realmp-header-row">
                             <th>Categoria</th>
-                            <th id="realmp-header"></th>
+                            <!-- Colunas dos meses serão adicionadas dinamicamente -->
                         </tr>
                     </thead>
                     <tbody id="realmp-body">
@@ -549,9 +549,15 @@ function renderizarCenarios(data) {
         headerCols += `<th>${mes.mes_nome} ${mes.ano}</th>`;
     });
 
-    document.getElementById('fc-header').innerHTML = headerCols;
-    document.getElementById('real-header').innerHTML = headerCols;
-    document.getElementById('realmp-header').innerHTML = headerCols;
+    // Adicionar colunas de meses ao cabeçalho (após a coluna "Categoria")
+    const fcHeaderRow = document.getElementById('fc-header-row');
+    const realHeaderRow = document.getElementById('real-header-row');
+    const realmpHeaderRow = document.getElementById('realmp-header-row');
+
+    // Limpar colunas antigas (mantém apenas primeira coluna "Categoria")
+    fcHeaderRow.innerHTML = '<th>Categoria</th>' + headerCols;
+    realHeaderRow.innerHTML = '<th>Categoria</th>' + headerCols;
+    realmpHeaderRow.innerHTML = '<th>Categoria</th>' + headerCols;
 
     // Renderizar cada cenário
     renderizarCenario('fluxo_caixa', 'fc-body', totais_calculados, meses);
