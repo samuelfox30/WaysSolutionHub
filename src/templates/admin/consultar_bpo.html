@@ -7,12 +7,12 @@
 
 <style>
     .filter-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
         color: white;
         border-radius: 15px;
         padding: 25px;
         margin-bottom: 25px;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 10px 30px rgba(255, 107, 53, 0.3);
     }
 
     .filter-card h5 {
@@ -23,7 +23,7 @@
 
     .filter-card .form-label {
         font-weight: 600;
-        color: rgba(255, 255, 255, 0.9);
+        color: rgba(255, 255, 255, 0.95);
         margin-bottom: 8px;
         font-size: 0.9rem;
     }
@@ -38,19 +38,20 @@
     }
 
     .btn-consultar {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
         border: none;
         color: white;
         padding: 12px 40px;
         font-weight: 700;
         border-radius: 10px;
-        box-shadow: 0 5px 15px rgba(245, 87, 108, 0.4);
+        box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
         transition: all 0.3s ease;
     }
 
     .btn-consultar:hover {
         transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(245, 87, 108, 0.6);
+        box-shadow: 0 8px 20px rgba(255, 107, 53, 0.6);
+        background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
     }
 
     /* Tabela tipo Excel */
@@ -79,7 +80,7 @@
     .excel-table thead th {
         position: sticky;
         top: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
         color: white;
         font-weight: 700;
         text-align: center;
@@ -105,7 +106,8 @@
     }
 
     .excel-table tbody tr:hover {
-        background-color: #f8f9ff;
+        background-color: #fff4e6;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
     }
 
     .excel-table tbody td {
@@ -131,7 +133,7 @@
     }
 
     .excel-table tbody tr:hover td:first-child {
-        background-color: #f8f9ff;
+        background-color: #fff4e6;
     }
 
     /* Indentação de hierarquia */
@@ -143,16 +145,32 @@
 
     /* Colunas de totais */
     .col-total {
-        background-color: #fff8e1;
+        background-color: #fff4e6;
         font-weight: 700;
-        border-left: 3px solid #ffd54f !important;
+        border-left: 3px solid #ff8c42 !important;
+    }
+
+    /* Valores condicionais */
+    .valor-positivo {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .valor-negativo {
+        color: #ef4444;
+        font-weight: 600;
+    }
+
+    .valor-neutro {
+        color: #6b7280;
+        font-weight: 500;
     }
 
     /* Tabelas de cenários */
     .cenarios-section {
         margin-top: 40px;
         padding: 30px;
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: linear-gradient(135deg, #fef3e7 0%, #ffe5cc 100%);
         border-radius: 15px;
     }
 
@@ -161,13 +179,14 @@
         border-radius: 12px;
         padding: 20px;
         margin-bottom: 25px;
-        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 5px 15px rgba(255, 107, 53, 0.1);
+        border: 1px solid rgba(255, 140, 66, 0.2);
     }
 
     .cenario-card h6 {
         font-weight: 700;
         margin-bottom: 15px;
-        color: #667eea;
+        color: #ff6b35;
         font-size: 1.1rem;
     }
 
@@ -177,7 +196,7 @@
     }
 
     .cenario-table thead th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
         color: white;
         font-weight: 600;
         padding: 12px;
@@ -193,6 +212,7 @@
     .cenario-table tbody td:first-child {
         text-align: left;
         font-weight: 600;
+        color: #ff6b35;
     }
 
     /* Loading spinner */
@@ -200,7 +220,7 @@
         text-align: center;
         padding: 50px;
         font-size: 1.2rem;
-        color: #667eea;
+        color: #ff6b35;
     }
 
     .spinner-border {
@@ -315,13 +335,13 @@
 
     <!-- CENÁRIOS -->
     <div id="cenarios-section" class="cenarios-section" style="display: none;">
-        <h4 class="text-center mb-4" style="font-weight: 700; color: #667eea;">
-            <i class="bi bi-calculator me-2"></i>Totais Calculados por Cenário
+        <h4 class="text-center mb-4" style="font-weight: 700; color: #ff6b35;">
+            <i class="bi bi-calculator-fill me-2"></i>Totais Calculados por Cenário
         </h4>
 
         <!-- Fluxo de Caixa -->
         <div class="cenario-card">
-            <h6><i class="bi bi-1-circle-fill me-2"></i>Resultado por Fluxo de Caixa</h6>
+            <h6><i class="bi bi-cash-stack me-2"></i>Resultado por Fluxo de Caixa</h6>
             <div class="table-responsive">
                 <table class="table cenario-table">
                     <thead>
@@ -339,7 +359,7 @@
 
         <!-- Resultado Real -->
         <div class="cenario-card">
-            <h6><i class="bi bi-2-circle-fill me-2"></i>Resultado Real</h6>
+            <h6><i class="bi bi-graph-up-arrow me-2"></i>Resultado Real</h6>
             <div class="table-responsive">
                 <table class="table cenario-table">
                     <thead>
@@ -357,7 +377,7 @@
 
         <!-- Resultado Real + MP -->
         <div class="cenario-card">
-            <h6><i class="bi bi-3-circle-fill me-2"></i>Resultado Real + Custo Matéria Prima</h6>
+            <h6><i class="bi bi-pie-chart-fill me-2"></i>Resultado Real + Custo Matéria Prima</h6>
             <div class="table-responsive">
                 <table class="table cenario-table">
                     <thead>
@@ -385,9 +405,40 @@ function formatMoney(value) {
     }).format(value);
 }
 
+function formatMoneyCondicional(value) {
+    if (value === null || value === undefined) return '<span class="valor-neutro">-</span>';
+
+    const formatted = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+
+    if (value > 0) {
+        return `<span class="valor-positivo"><i class="bi bi-arrow-up-circle-fill me-1"></i>${formatted}</span>`;
+    } else if (value < 0) {
+        return `<span class="valor-negativo"><i class="bi bi-arrow-down-circle-fill me-1"></i>${formatted}</span>`;
+    } else {
+        return `<span class="valor-neutro">${formatted}</span>`;
+    }
+}
+
 function formatPercent(value) {
     if (value === null || value === undefined) return '-';
     return value.toFixed(2) + '%';
+}
+
+function formatPercentCondicional(value) {
+    if (value === null || value === undefined) return '<span class="valor-neutro">-</span>';
+
+    const formatted = value.toFixed(2) + '%';
+
+    if (value >= 100) {
+        return `<span class="valor-positivo"><i class="bi bi-check-circle-fill me-1"></i>${formatted}</span>`;
+    } else if (value >= 80) {
+        return `<span style="color: #f59e0b; font-weight: 600;"><i class="bi bi-exclamation-circle-fill me-1"></i>${formatted}</span>`;
+    } else {
+        return `<span class="valor-negativo"><i class="bi bi-x-circle-fill me-1"></i>${formatted}</span>`;
+    }
 }
 
 async function carregarDados() {
@@ -511,8 +562,8 @@ function renderizarTabela(data) {
                 bodyHTML += `
                     <td>${formatMoney(orcado)}</td>
                     <td>${formatMoney(realizado)}</td>
-                    <td>${formatPercent(perc)}</td>
-                    <td>${formatMoney(dif)}</td>
+                    <td>${formatPercentCondicional(perc)}</td>
+                    <td>${formatMoneyCondicional(dif)}</td>
                 `;
             } else {
                 bodyHTML += `<td>-</td><td>-</td><td>-</td><td>-</td>`;
@@ -524,7 +575,7 @@ function renderizarTabela(data) {
         bodyHTML += `
             <td class="col-total">${formatMoney(totalOrcado)}</td>
             <td class="col-total">${formatMoney(totalRealizado)}</td>
-            <td class="col-total">${formatMoney(totalDif)}</td>
+            <td class="col-total">${formatMoneyCondicional(totalDif)}</td>
         `;
 
         bodyHTML += `</tr>`;
@@ -606,12 +657,14 @@ function renderizarCenario(tipo, bodyId, totais_calculados, meses) {
                 if (dados && dados[campo] && dados[campo][catKey] !== undefined) {
                     const valor = dados[campo][catKey];
                     if (campo === 'perc_atingido') {
-                        bodyHTML += `<td>${formatPercent(valor)}</td>`;
+                        bodyHTML += `<td>${formatPercentCondicional(valor)}</td>`;
+                    } else if (campo === 'diferenca') {
+                        bodyHTML += `<td>${formatMoneyCondicional(valor)}</td>`;
                     } else {
                         bodyHTML += `<td>${formatMoney(valor)}</td>`;
                     }
                 } else {
-                    bodyHTML += `<td>-</td>`;
+                    bodyHTML += `<td><span class="valor-neutro">-</span></td>`;
                 }
             });
 
