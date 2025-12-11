@@ -344,11 +344,8 @@
             <h6><i class="bi bi-cash-stack me-2"></i>Resultado por Fluxo de Caixa</h6>
             <div class="table-responsive">
                 <table class="table cenario-table">
-                    <thead>
-                        <tr id="fc-header-row">
-                            <th>Categoria</th>
-                            <!-- Colunas dos meses serão adicionadas dinamicamente -->
-                        </tr>
+                    <thead id="fc-header-row">
+                        <!-- Cabeçalho será preenchido dinamicamente -->
                     </thead>
                     <tbody id="fc-body">
                         <!-- Será preenchido dinamicamente -->
@@ -362,11 +359,8 @@
             <h6><i class="bi bi-graph-up-arrow me-2"></i>Resultado Real</h6>
             <div class="table-responsive">
                 <table class="table cenario-table">
-                    <thead>
-                        <tr id="real-header-row">
-                            <th>Categoria</th>
-                            <!-- Colunas dos meses serão adicionadas dinamicamente -->
-                        </tr>
+                    <thead id="real-header-row">
+                        <!-- Cabeçalho será preenchido dinamicamente -->
                     </thead>
                     <tbody id="real-body">
                         <!-- Será preenchido dinamicamente -->
@@ -380,11 +374,8 @@
             <h6><i class="bi bi-pie-chart-fill me-2"></i>Resultado Real + Custo Matéria Prima</h6>
             <div class="table-responsive">
                 <table class="table cenario-table">
-                    <thead>
-                        <tr id="realmp-header-row">
-                            <th>Categoria</th>
-                            <!-- Colunas dos meses serão adicionadas dinamicamente -->
-                        </tr>
+                    <thead id="realmp-header-row">
+                        <!-- Cabeçalho será preenchido dinamicamente -->
                     </thead>
                     <tbody id="realmp-body">
                         <!-- Será preenchido dinamicamente -->
@@ -639,82 +630,83 @@ function renderizarCenarios(data) {
     console.log('   real keys:', Object.keys(totais_calculados.real || {}));
     console.log('   real_mp keys:', Object.keys(totais_calculados.real_mp || {}));
 
-    // Cabeçalho dos cenários (colunas para cada mês)
-    let headerCols = '';
-    meses.forEach(mes => {
-        headerCols += `<th>${mes.mes_nome} ${mes.ano}</th>`;
-    });
-
-    // Adicionar colunas de meses ao cabeçalho (após a coluna "Categoria")
-    const fcHeaderRow = document.getElementById('fc-header-row');
-    const realHeaderRow = document.getElementById('real-header-row');
-    const realmpHeaderRow = document.getElementById('realmp-header-row');
-
-    // Limpar colunas antigas (mantém apenas primeira coluna "Categoria")
-    fcHeaderRow.innerHTML = '<th>Categoria</th>' + headerCols;
-    realHeaderRow.innerHTML = '<th>Categoria</th>' + headerCols;
-    realmpHeaderRow.innerHTML = '<th>Categoria</th>' + headerCols;
-
-    // Renderizar cada cenário
-    renderizarCenario('fluxo_caixa', 'fc-body', totais_calculados, meses);
-    renderizarCenario('real', 'real-body', totais_calculados, meses);
-    renderizarCenario('real_mp', 'realmp-body', totais_calculados, meses);
+    // Renderizar cada cenário com cabeçalho próprio
+    renderizarCenario('fluxo_caixa', 'fc-header-row', 'fc-body', totais_calculados, meses);
+    renderizarCenario('real', 'real-header-row', 'real-body', totais_calculados, meses);
+    renderizarCenario('real_mp', 'realmp-header-row', 'realmp-body', totais_calculados, meses);
 }
 
-function renderizarCenario(tipo, bodyId, totais_calculados, meses) {
+function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
     const cenario = totais_calculados[tipo] || {};
 
     console.log(`🔍 DEBUG renderizarCenario(${tipo}):`)
     console.log('   cenario:', cenario);
     console.log('   cenario keys:', Object.keys(cenario));
 
-    const categorias = ['Receita', 'Despesa', 'Geral'];
-    const campos = ['orcamento', 'realizado', 'perc_atingido', 'diferenca'];
-    const labels = {
-        'orcamento': 'Orçamento',
-        'realizado': 'Realizado',
-        'perc_atingido': '% Atingido',
-        'diferenca': 'Diferença'
-    };
+    // Criar cabeçalho com 2 linhas
+    const headerElement = document.getElementById(headerId);
 
+    // Primeira linha: Categoria + nome dos meses (4 colunas por mês)
+    let headerHTML = '<tr><th rowspan="2">Categoria</th>';
+    meses.forEach(mes => {
+        headerHTML += `<th colspan="4" style="border-bottom: 2px solid white;">${mes.mes_nome} ${mes.ano}</th>`;
+    });
+    headerHTML += '</tr>';
+
+    // Segunda linha: subcolunas (Orçamento, Realizado, %, Diferença) repetidas para cada mês
+    headerHTML += '<tr>';
+    meses.forEach(() => {
+        headerHTML += `
+            <th>Orçamento</th>
+            <th>Realizado</th>
+            <th>% Atingido</th>
+            <th>Diferença</th>
+        `;
+    });
+    headerHTML += '</tr>';
+
+    headerElement.innerHTML = headerHTML;
+
+    // Criar corpo com 3 linhas (Receita, Despesa, Geral)
+    const categorias = ['Receita', 'Despesa', 'Geral'];
     let bodyHTML = '';
 
-    campos.forEach(campo => {
-        // Linha de título
-        bodyHTML += `<tr style="background: #f8f9fa;"><td colspan="${meses.length + 1}"><strong>${labels[campo]}</strong></td></tr>`;
+    categorias.forEach(cat => {
+        const catKey = cat.toLowerCase();
+        bodyHTML += `<tr><td style="font-weight: 600; color: #ff6b35;">${cat}</td>`;
 
-        categorias.forEach(cat => {
-            const catKey = cat.toLowerCase();
-            bodyHTML += `<tr><td>${cat}</td>`;
+        meses.forEach((mes, idx) => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = cenario[chave];
 
-            meses.forEach((mes, idx) => {
-                const chave = `${mes.ano}_${mes.mes_numero}`;
-                const dados = cenario[chave];
+            // Log só do primeiro mês da categoria Receita
+            if (idx === 0 && cat === 'Receita') {
+                console.log(`      Primeiro mês (${mes.mes_nome}): chave=${chave}, dados=`, dados);
+            }
 
-                // Log só do primeiro mês de cada campo para não poluir
-                if (idx === 0 && cat === 'Receita') {
-                    console.log(`      Primeiro mês (${mes.mes_nome}): chave=${chave}, dados=`, dados);
-                    if (dados) {
-                        console.log(`        dados[${campo}]:`, dados[campo]);
-                    }
-                }
+            if (dados) {
+                const orcamento = dados.orcamento && dados.orcamento[catKey] !== undefined ? dados.orcamento[catKey] : null;
+                const realizado = dados.realizado && dados.realizado[catKey] !== undefined ? dados.realizado[catKey] : null;
+                const percAtingido = dados.perc_atingido && dados.perc_atingido[catKey] !== undefined ? dados.perc_atingido[catKey] : null;
+                const diferenca = dados.diferenca && dados.diferenca[catKey] !== undefined ? dados.diferenca[catKey] : null;
 
-                if (dados && dados[campo] && dados[campo][catKey] !== undefined) {
-                    const valor = dados[campo][catKey];
-                    if (campo === 'perc_atingido') {
-                        bodyHTML += `<td>${formatPercentCondicional(valor)}</td>`;
-                    } else if (campo === 'diferenca') {
-                        bodyHTML += `<td>${formatMoneyCondicional(valor)}</td>`;
-                    } else {
-                        bodyHTML += `<td>${formatMoney(valor)}</td>`;
-                    }
-                } else {
-                    bodyHTML += `<td><span class="valor-neutro">-</span></td>`;
-                }
-            });
-
-            bodyHTML += `</tr>`;
+                bodyHTML += `
+                    <td>${orcamento !== null ? formatMoney(orcamento) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${realizado !== null ? formatMoney(realizado) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${percAtingido !== null ? formatPercentCondicional(percAtingido) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${diferenca !== null ? formatMoneyCondicional(diferenca) : '<span class="valor-neutro">-</span>'}</td>
+                `;
+            } else {
+                bodyHTML += `
+                    <td><span class="valor-neutro">-</span></td>
+                    <td><span class="valor-neutro">-</span></td>
+                    <td><span class="valor-neutro">-</span></td>
+                    <td><span class="valor-neutro">-</span></td>
+                `;
+            }
         });
+
+        bodyHTML += `</tr>`;
     });
 
     document.getElementById(bodyId).innerHTML = bodyHTML;
