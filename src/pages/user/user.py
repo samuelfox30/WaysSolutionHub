@@ -697,6 +697,7 @@ def visualizar_bpo():
             'user/dashboard_bpo.html',
             user=user_data,
             empresa=empresa,
+            empresa_nome=empresa_nome,
             empresa_id=empresa_id,
             is_user_view=True  # Flag para o template saber que é visualização de usuário
         )
