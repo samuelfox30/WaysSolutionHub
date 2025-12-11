@@ -681,14 +681,15 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
     // Criar cabeçalho com 2 linhas
     const headerElement = document.getElementById(headerId);
 
-    // Primeira linha: Categoria + nome dos meses (4 colunas por mês)
+    // Primeira linha: Categoria + nome dos meses (4 colunas por mês) + TOTAL (7 colunas)
     let headerHTML = '<tr><th rowspan="2">Categoria</th>';
     meses.forEach(mes => {
         headerHTML += `<th colspan="4" style="border-bottom: 2px solid white;">${mes.mes_nome} ${mes.ano}</th>`;
     });
+    headerHTML += `<th colspan="7" style="border-bottom: 2px solid white; background: #ffd54f; color: #333; border-left: 3px solid #333;">TOTAL</th>`;
     headerHTML += '</tr>';
 
-    // Segunda linha: subcolunas (Orçamento, Realizado, %, Diferença) repetidas para cada mês
+    // Segunda linha: subcolunas (Orçamento, Realizado, %, Diferença) repetidas para cada mês + 7 colunas de totais
     headerHTML += '<tr>';
     meses.forEach(() => {
         headerHTML += `
@@ -698,6 +699,16 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
             <th>Diferença</th>
         `;
     });
+    // Colunas de TOTAL
+    headerHTML += `
+        <th style="background: #ffd54f; color: #333;">Total Orçado</th>
+        <th style="background: #ffd54f; color: #333;">Total Realizado</th>
+        <th style="background: #ffd54f; color: #333;">Diferença</th>
+        <th style="background: #ffd54f; color: #333;">Realizado Média</th>
+        <th style="background: #ffd54f; color: #333;">% Realizado Média</th>
+        <th style="background: #ffd54f; color: #333;">Média Diferença</th>
+        <th style="background: #ffd54f; color: #333;">% Média Diferença</th>
+    `;
     headerHTML += '</tr>';
 
     headerElement.innerHTML = headerHTML;
@@ -705,10 +716,16 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
     // Criar corpo com 3 linhas (Receita, Despesa, Geral)
     const categorias = ['Receita', 'Despesa', 'Geral'];
     let bodyHTML = '';
+    const numMeses = meses.length;
 
     categorias.forEach(cat => {
         const catKey = cat.toLowerCase();
         bodyHTML += `<tr><td style="font-weight: 600; color: #ff6b35;">${cat}</td>`;
+
+        // Variáveis para calcular totais
+        let totalOrcamento = 0;
+        let totalRealizado = 0;
+        let totalDiferenca = 0;
 
         meses.forEach((mes, idx) => {
             const chave = `${mes.ano}_${mes.mes_numero}`;
@@ -725,6 +742,11 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
                 const percAtingido = dados.perc_atingido && dados.perc_atingido[catKey] !== undefined ? dados.perc_atingido[catKey] : null;
                 const diferenca = dados.diferenca && dados.diferenca[catKey] !== undefined ? dados.diferenca[catKey] : null;
 
+                // Acumular totais
+                if (orcamento !== null) totalOrcamento += orcamento;
+                if (realizado !== null) totalRealizado += realizado;
+                if (diferenca !== null) totalDiferenca += diferenca;
+
                 bodyHTML += `
                     <td>${orcamento !== null ? formatMoney(orcamento) : '<span class="valor-neutro">-</span>'}</td>
                     <td>${realizado !== null ? formatMoney(realizado) : '<span class="valor-neutro">-</span>'}</td>
@@ -740,6 +762,34 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
                 `;
             }
         });
+
+        // Calcular as 7 colunas de totais
+        const realizadoMedia = numMeses > 0 ? totalRealizado / numMeses : 0;
+        const mediaOrcado = numMeses > 0 ? totalOrcamento / numMeses : 0;
+
+        // Para % Realizado Média, preciso da receita como base
+        // Se for a categoria Receita, usa ela mesma; caso contrário busca do total da receita
+        let percRealizadoMedia = 0;
+        if (cat === 'Receita' && realizadoMedia > 0) {
+            percRealizadoMedia = 100; // Receita é 100% de si mesma
+        }
+
+        // Média Diferença (já está calculada pela soma das diferenças / num meses)
+        const mediaDiferenca = numMeses > 0 ? totalDiferenca / numMeses : 0;
+
+        // % Média Diferença
+        const percMediaDif = mediaOrcado > 0 ? (mediaDiferenca / mediaOrcado) * 100 : 0;
+
+        // Renderizar colunas de totais
+        bodyHTML += `
+            <td style="background: #fff9e6;">${formatMoney(totalOrcamento)}</td>
+            <td style="background: #fff9e6;">${formatMoney(totalRealizado)}</td>
+            <td style="background: #fff9e6;">${formatMoneyCondicional(totalDiferenca)}</td>
+            <td style="background: #fff9e6;">${formatMoney(realizadoMedia)}</td>
+            <td style="background: #fff9e6; color: #6b7280; font-weight: 500;">${cat === 'Receita' ? formatPercent(100) : '<span class="valor-neutro">-</span>'}</td>
+            <td style="background: #fff9e6;">${formatMoneyCondicional(mediaDiferenca)}</td>
+            <td style="background: #fff9e6;">${formatPercentCondicional(percMediaDif)}</td>
+        `;
 
         bodyHTML += `</tr>`;
     });
