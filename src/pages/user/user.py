@@ -109,9 +109,9 @@ def user_dashboard():
         anos_disponiveis = company_manager.get_anos_com_dados(empresa_id)
         company_manager.close()
 
-        # Renderizar o mesmo template do admin para garantir consistência
+        # Renderizar dashboard de viabilidade do usuário
         return render_template(
-            'admin/dashboard_empresa.html',
+            'user/dashboard_empresa.html',
             user=user_data,
             empresa_nome=empresa_nome,
             empresa_id=empresa_id,
@@ -692,9 +692,9 @@ def visualizar_bpo():
         # Criar objeto empresa compatível com o template do admin
         empresa = {'nome': empresa_nome}
 
-        # Renderizar o mesmo template do admin para garantir consistência
+        # Renderizar dashboard BPO do usuário
         return render_template(
-            'admin/dashboard_bpo.html',
+            'user/dashboard_bpo.html',
             user=user_data,
             empresa=empresa,
             empresa_id=empresa_id,
