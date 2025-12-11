@@ -133,13 +133,19 @@
 <body>
     <!-- Sidebar -->
     <div class="sidebar p-3">
-        <a href="{{ url_for('user.user_dashboard') }}" class="d-flex flex-column align-items-center mb-3 text-decoration-none border-bottom pb-3">
+        <a href="{{ url_for('user.user_dashboard') if empresa_nome else '#' }}" class="d-flex flex-column align-items-center mb-3 text-decoration-none border-bottom pb-3">
             <img src="{{ url_for('static', filename='imgs/logo-ways-ofc.png') }}" alt="Ways Logo" class="mb-2" style="max-width: 180px; height: auto;">
+            {% if empresa_nome %}
             <span class="fs-5 fw-bold text-dark">{{ empresa_nome }}</span>
             <small class="text-muted"><i class="bi bi-briefcase me-1"></i>Empresa Atual</small>
+            {% else %}
+            <span class="fs-5 fw-bold text-dark">Selecione uma Empresa</span>
+            <small class="text-muted"><i class="bi bi-building me-1"></i>Usuário Comum</small>
+            {% endif %}
         </a>
 
         <ul class="nav nav-pills flex-column mt-3">
+            {% if empresa_nome %}
             <!-- NAVEGAÇÃO -->
             <li class="mb-2">
                 <small class="text-muted text-uppercase fw-bold px-3">Visualizar</small>
@@ -172,6 +178,7 @@
                     <span>Consultar BPO (Tabela)</span>
                 </a>
             </li>
+            {% endif %}
 
             <!-- EMPRESA -->
             <li class="mb-2 mt-3">
@@ -213,9 +220,11 @@
                     <p class="text-muted mb-0">{% block header_subtitle %}Visão geral do sistema{% endblock %}</p>
                 </div>
                 <div class="d-flex align-items-center gap-2">
+                    {% if empresa_nome %}
                     <span class="badge bg-orange text-white px-3 py-2">
                         <i class="bi bi-building me-1"></i> {{ empresa_nome }}
                     </span>
+                    {% endif %}
                     <span class="text-muted small">
                         <i class="bi bi-person-circle me-1"></i> {{ user.nome }}
                     </span>
