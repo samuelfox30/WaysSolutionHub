@@ -495,8 +495,9 @@ async function carregarDados() {
 function renderizarTabela(data) {
     const { itens, meses } = data;
 
-    // Encontrar o item RECEITA e mapear valores orçados por mês
+    // Encontrar o item RECEITA e mapear valores orçados e realizados por mês
     const receitaPorMes = {};
+    const receitaRealizadaPorMes = {};
     const itemReceita = itens.find(item =>
         item.codigo === "1" ||
         item.nome.toUpperCase().includes("RECEITA") && item.codigo.startsWith("1")
@@ -506,22 +507,28 @@ function renderizarTabela(data) {
         meses.forEach(mes => {
             const chave = `${mes.ano}_${mes.mes_numero}`;
             const dados = itemReceita.dados_mensais[chave];
-            if (dados && dados.valor_orcado) {
-                receitaPorMes[chave] = dados.valor_orcado;
+            if (dados) {
+                if (dados.valor_orcado) {
+                    receitaPorMes[chave] = dados.valor_orcado;
+                }
+                if (dados.valor_realizado) {
+                    receitaRealizadaPorMes[chave] = dados.valor_realizado;
+                }
             }
         });
     }
 
     console.log('📊 Item RECEITA encontrado:', itemReceita);
-    console.log('💰 Receita por mês:', receitaPorMes);
+    console.log('💰 Receita Orçada por mês:', receitaPorMes);
+    console.log('💵 Receita Realizada por mês:', receitaRealizadaPorMes);
 
     // Gerar cabeçalho
     let headerHTML = '<tr><th>Descrição</th>';
 
-    // Colunas dos meses (5 colunas por mês agora)
+    // Colunas dos meses (6 colunas por mês agora)
     meses.forEach(mes => {
         headerHTML += `
-            <th colspan="5" style="border-bottom: 3px solid white;">${mes.mes_nome} ${mes.ano}</th>
+            <th colspan="6" style="border-bottom: 3px solid white;">${mes.mes_nome} ${mes.ano}</th>
         `;
     });
 
@@ -536,6 +543,7 @@ function renderizarTabela(data) {
             <th>Orçado</th>
             <th>% Orçado</th>
             <th>Realizado</th>
+            <th>% Realizado</th>
             <th>% Atingido</th>
             <th>Diferença</th>
         `;
@@ -580,22 +588,30 @@ function renderizarTabela(data) {
                 totalOrcado += orcado;
                 totalRealizado += realizado;
 
-                // Calcular % Orçado (percentual sobre a RECEITA do mês)
+                // Calcular % Orçado (percentual sobre a RECEITA orçada do mês)
                 const receitaMes = receitaPorMes[chave] || 0;
                 let percOrcado = 0;
                 if (receitaMes > 0) {
                     percOrcado = (orcado / receitaMes) * 100;
                 }
 
+                // Calcular % Realizado (percentual sobre a RECEITA realizada do mês)
+                const receitaRealizadaMes = receitaRealizadaPorMes[chave] || 0;
+                let percRealizado = 0;
+                if (receitaRealizadaMes > 0) {
+                    percRealizado = (realizado / receitaRealizadaMes) * 100;
+                }
+
                 bodyHTML += `
                     <td>${formatMoney(orcado)}</td>
                     <td style="color: #6b7280; font-weight: 500;">${formatPercent(percOrcado)}</td>
                     <td>${formatMoney(realizado)}</td>
+                    <td style="color: #6b7280; font-weight: 500;">${formatPercent(percRealizado)}</td>
                     <td>${formatPercentCondicional(perc)}</td>
                     <td>${formatMoneyCondicional(dif)}</td>
                 `;
             } else {
-                bodyHTML += `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
+                bodyHTML += `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
             }
         });
 
