@@ -1,434 +1,698 @@
 {% extends "user/base.html" %}
 
-{% block header_title %}Consultar Dados BPO{% endblock %}
-{% block header_subtitle %}Visualize dados mensais detalhados em formato de tabela{% endblock %}
+{% block header_title %}Consultar Dados BPO - Tabela Completa{% endblock %}
+{% block header_subtitle %}Visualize os dados mensais de BPO em formato de planilha{% endblock %}
 
 {% block content %}
 
-<!-- Banner Empresa Selecionada -->
-<div class="alert alert-info mb-4" style="background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%); border-left: 4px solid #ff9900; border-radius: 8px;">
-    <div class="d-flex justify-content-between align-items-center">
-        <div>
-            <h5 class="mb-1" style="color: #92400e;">
-                <i class="bi bi-building-fill me-2"></i>
-                Consultando BPO de: <strong>{{ empresa_nome }}</strong>
-            </h5>
-            <p class="mb-0 small" style="color: #92400e;">
-                Selecione o período abaixo para visualizar os dados detalhados em tabela.
-            </p>
-        </div>
-        <a href="{{ url_for('user.trocar_empresa') }}" class="btn btn-sm btn-outline-warning">
-            <i class="bi bi-arrow-left-right me-1"></i> Trocar Empresa
-        </a>
-    </div>
-</div>
-
 <style>
-    :root {
-        --orange-primary: #ff9900;
-        --orange-light: #ffb347;
-        --orange-dark: #cc7a00;
-        --success-color: #28a745;
-    }
-
-    .btn-primary {
-        background-color: var(--orange-primary) !important;
-        border-color: var(--orange-dark) !important;
-    }
-
-    .btn-primary:hover {
-        background-color: var(--orange-dark) !important;
-    }
-
     .filter-card {
-        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-        border: 1px solid #e9ecef;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-    }
-
-    .result-card {
-        background: white;
-        border: 1px solid #e9ecef;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.07);
-        margin-top: 2rem;
-    }
-
-    .result-header {
-        background: linear-gradient(135deg, var(--success-color) 0%, #20c997 100%);
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
         color: white;
-        padding: 1.25rem 1.5rem;
-        border-radius: 12px 12px 0 0;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 25px;
+        box-shadow: 0 10px 30px rgba(255, 107, 53, 0.3);
+    }
+
+    .filter-card h5 {
+        font-weight: 700;
+        margin-bottom: 20px;
+        font-size: 1.3rem;
+    }
+
+    .filter-card .form-label {
         font-weight: 600;
+        color: rgba(255, 255, 255, 0.95);
+        margin-bottom: 8px;
+        font-size: 0.9rem;
     }
 
-    .info-badge {
-        background-color: #17a2b8;
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
+    .filter-card .form-select,
+    .filter-card .form-control {
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 8px;
+        padding: 10px 15px;
         font-weight: 500;
     }
 
-    .empty-state {
-        text-align: center;
-        padding: 4rem 2rem;
-        color: #6c757d;
-    }
-
-    .empty-state i {
-        font-size: 4rem;
-        color: #dee2e6;
-        margin-bottom: 1rem;
-    }
-
-    .month-badge {
-        background-color: var(--orange-primary);
+    .btn-consultar {
+        background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+        border: none;
         color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
+        padding: 12px 40px;
+        font-weight: 700;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(255, 107, 53, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .btn-consultar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(255, 107, 53, 0.6);
+        background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+    }
+
+    /* Tabela tipo Excel */
+    .table-container {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+    }
+
+    .table-scroll {
+        overflow-x: auto;
+        overflow-y: auto;
+        max-height: 70vh;
+    }
+
+    .excel-table {
+        width: auto;
+        min-width: 100%;
+        margin: 0;
+        border-collapse: separate;
+        border-spacing: 0;
+        font-size: 0.85rem;
+    }
+
+    .excel-table thead th {
+        position: sticky;
+        top: 0;
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+        color: white;
+        font-weight: 700;
+        text-align: center;
+        padding: 15px 12px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        white-space: nowrap;
+        z-index: 10;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .excel-table thead th:first-child {
+        position: sticky;
+        left: 0;
+        z-index: 11;
+        min-width: 300px;
+        text-align: left;
+    }
+
+    .excel-table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .excel-table tbody tr:hover {
+        background-color: #fff4e6;
+        box-shadow: 0 2px 8px rgba(255, 107, 53, 0.1);
+    }
+
+    .excel-table tbody td {
+        padding: 12px;
+        border: 1px solid #e9ecef;
+        white-space: nowrap;
+        text-align: right;
+        font-weight: 500;
+    }
+
+    .excel-table tbody td:first-child {
+        position: sticky;
+        left: 0;
+        background: white;
         font-weight: 600;
-        font-size: 0.95rem;
+        text-align: left;
+        z-index: 9;
+        border-right: 2px solid #dee2e6;
+        white-space: normal;
+        word-wrap: break-word;
+        min-width: 300px;
+        max-width: 300px;
+    }
+
+    .excel-table tbody tr:hover td:first-child {
+        background-color: #fff4e6;
+    }
+
+    /* Indentação de hierarquia */
+    .nivel-1 { padding-left: 10px !important; font-weight: 700; }
+    .nivel-2 { padding-left: 30px !important; font-weight: 600; }
+    .nivel-3 { padding-left: 50px !important; }
+    .nivel-4 { padding-left: 70px !important; }
+    .nivel-5 { padding-left: 90px !important; }
+
+    /* Colunas de totais */
+    .col-total {
+        background-color: #fff4e6;
+        font-weight: 700;
+        border-left: 3px solid #ff8c42 !important;
+    }
+
+    /* Valores condicionais */
+    .valor-positivo {
+        color: #10b981;
+        font-weight: 600;
+    }
+
+    .valor-negativo {
+        color: #ef4444;
+        font-weight: 600;
+    }
+
+    .valor-neutro {
+        color: #6b7280;
+        font-weight: 500;
+    }
+
+    /* Tabelas de cenários */
+    .cenarios-section {
+        margin-top: 40px;
+        padding: 30px;
+        background: linear-gradient(135deg, #fef3e7 0%, #ffe5cc 100%);
+        border-radius: 15px;
+    }
+
+    .cenario-card {
+        background: white;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 25px;
+        box-shadow: 0 5px 15px rgba(255, 107, 53, 0.1);
+        border: 1px solid rgba(255, 140, 66, 0.2);
+    }
+
+    .cenario-card h6 {
+        font-weight: 700;
+        margin-bottom: 15px;
+        color: #ff6b35;
+        font-size: 1.1rem;
+    }
+
+    .cenario-table {
+        width: 100%;
+        font-size: 0.9rem;
+    }
+
+    .cenario-table thead th {
+        background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+        color: white;
+        font-weight: 600;
+        padding: 12px;
+        text-align: center;
+    }
+
+    .cenario-table tbody td {
+        padding: 10px 12px;
+        text-align: right;
+        font-weight: 500;
+    }
+
+    .cenario-table tbody td:first-child {
+        text-align: left;
+        font-weight: 600;
+        color: #ff6b35;
+    }
+
+    /* Loading spinner */
+    .loading {
+        text-align: center;
+        padding: 50px;
+        font-size: 1.2rem;
+        color: #ff6b35;
+    }
+
+    .spinner-border {
+        width: 3rem;
+        height: 3rem;
+        border-width: 0.3rem;
     }
 </style>
 
 <div class="container-fluid px-4">
 
     <!-- CARD DE FILTROS -->
-    <div class="filter-card p-4 mb-4">
-        <h5 class="fw-semibold mb-3">
-            <i class="bi bi-funnel-fill text-orange me-2"></i>
-            Selecionar Período
-        </h5>
+    <div class="filter-card">
+        <h5><i class="bi bi-funnel-fill me-2"></i>Filtro de Período - {{ empresa_nome }}</h5>
 
-        <form method="POST" action="{{ url_for('user.consultar_dados_bpo') }}">
-            <div class="row g-3">
-                <!-- Selecionar Ano -->
-                <div class="col-md-6">
-                    <label for="ano" class="form-label fw-semibold">
-                        <i class="bi bi-calendar4 me-1"></i>Ano *
-                    </label>
-                    <input type="number" class="form-control" id="ano" name="ano"
-                           min="2000" max="2100" value="{{ ano_selecionado or 2025 }}" required>
-                </div>
+        <!-- Campo hidden com empresa_id -->
+        <input type="hidden" id="empresa_id" value="{{ empresa_id }}">
 
-                <!-- Selecionar Mês -->
-                <div class="col-md-6">
-                    <label for="mes" class="form-label fw-semibold">
-                        <i class="bi bi-calendar3 me-1"></i>Mês *
-                    </label>
-                    <select class="form-select" id="mes" name="mes" required>
-                        <option value="">Selecione...</option>
-                        <option value="1" {% if mes_selecionado == 1 %}selected{% endif %}>Janeiro</option>
-                        <option value="2" {% if mes_selecionado == 2 %}selected{% endif %}>Fevereiro</option>
-                        <option value="3" {% if mes_selecionado == 3 %}selected{% endif %}>Março</option>
-                        <option value="4" {% if mes_selecionado == 4 %}selected{% endif %}>Abril</option>
-                        <option value="5" {% if mes_selecionado == 5 %}selected{% endif %}>Maio</option>
-                        <option value="6" {% if mes_selecionado == 6 %}selected{% endif %}>Junho</option>
-                        <option value="7" {% if mes_selecionado == 7 %}selected{% endif %}>Julho</option>
-                        <option value="8" {% if mes_selecionado == 8 %}selected{% endif %}>Agosto</option>
-                        <option value="9" {% if mes_selecionado == 9 %}selected{% endif %}>Setembro</option>
-                        <option value="10" {% if mes_selecionado == 10 %}selected{% endif %}>Outubro</option>
-                        <option value="11" {% if mes_selecionado == 11 %}selected{% endif %}>Novembro</option>
-                        <option value="12" {% if mes_selecionado == 12 %}selected{% endif %}>Dezembro</option>
-                    </select>
-                </div>
+        <div class="row g-3">
+            <!-- Mês Início -->
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar-check me-1"></i>Mês Início</label>
+                <select class="form-select" id="mes_inicio">
+                    <option value="1" selected>Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12">Dezembro</option>
+                </select>
             </div>
 
-            <div class="mt-4">
-                <button type="submit" class="btn btn-primary btn-lg">
+            <!-- Ano Início -->
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar4 me-1"></i>Ano Início</label>
+                <input type="number" class="form-control" id="ano_inicio" min="2000" max="2100" value="2025">
+            </div>
+
+            <!-- Mês Fim -->
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar-x me-1"></i>Mês Fim</label>
+                <select class="form-select" id="mes_fim">
+                    <option value="1">Janeiro</option>
+                    <option value="2">Fevereiro</option>
+                    <option value="3">Março</option>
+                    <option value="4">Abril</option>
+                    <option value="5">Maio</option>
+                    <option value="6">Junho</option>
+                    <option value="7">Julho</option>
+                    <option value="8">Agosto</option>
+                    <option value="9">Setembro</option>
+                    <option value="10">Outubro</option>
+                    <option value="11">Novembro</option>
+                    <option value="12" selected>Dezembro</option>
+                </select>
+            </div>
+
+            <!-- Ano Fim -->
+            <div class="col-md-3">
+                <label class="form-label"><i class="bi bi-calendar4 me-1"></i>Ano Fim</label>
+                <input type="number" class="form-control" id="ano_fim" min="2000" max="2100" value="2025">
+            </div>
+
+            <!-- Botão Consultar -->
+            <div class="col-md-12">
+                <button class="btn btn-consultar w-100" onclick="carregarDados()">
                     <i class="bi bi-search me-2"></i>Consultar Dados BPO
                 </button>
             </div>
-        </form>
+        </div>
     </div>
 
-    <!-- RESULTADOS -->
-    {% if data_results %}
-    <div class="result-card">
-        <div class="result-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <i class="bi bi-file-earmark-text-fill me-2"></i>
-                    Dados BPO - Mês {{ mes_selecionado }}/{{ ano_selecionado }}
-                </div>
-                <div>
-                    <small>Upload: {{ data_results.data_upload.strftime('%d/%m/%Y %H:%M') }}</small>
-                </div>
+    <!-- LOADING -->
+    <div id="loading" class="loading" style="display: none;">
+        <div class="spinner-border text-primary" role="status"></div>
+        <p class="mt-3">Carregando dados...</p>
+    </div>
+
+    <!-- TABELA PRINCIPAL -->
+    <div id="table-container" class="table-container" style="display: none;">
+        <div class="table-scroll">
+            <table class="excel-table" id="excel-table">
+                <thead id="table-header">
+                    <!-- Cabeçalho será gerado dinamicamente -->
+                </thead>
+                <tbody id="table-body">
+                    <!-- Corpo será gerado dinamicamente -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- CENÁRIOS -->
+    <div id="cenarios-section" class="cenarios-section" style="display: none;">
+        <h4 class="text-center mb-4" style="font-weight: 700; color: #ff6b35;">
+            <i class="bi bi-calculator-fill me-2"></i>Totais Calculados por Cenário
+        </h4>
+
+        <!-- Fluxo de Caixa -->
+        <div class="cenario-card">
+            <h6><i class="bi bi-cash-stack me-2"></i>Resultado por Fluxo de Caixa</h6>
+            <div class="table-responsive">
+                <table class="table cenario-table">
+                    <thead id="fc-header-row">
+                        <!-- Cabeçalho será preenchido dinamicamente -->
+                    </thead>
+                    <tbody id="fc-body">
+                        <!-- Será preenchido dinamicamente -->
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <div class="p-4">
+        <!-- Resultado Real -->
+        <div class="cenario-card">
+            <h6><i class="bi bi-graph-up-arrow me-2"></i>Resultado Real</h6>
             <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead class="table-light">
-                        <tr>
-                            <th>Código</th>
-                            <th>Nome</th>
-                            <th class="text-end">Valor Orçado</th>
-                            <th class="text-end">Valor Realizado</th>
-                            <th class="text-end">% Atingido</th>
-                            <th class="text-end">Valor Diferença</th>
-                        </tr>
+                <table class="table cenario-table">
+                    <thead id="real-header-row">
+                        <!-- Cabeçalho será preenchido dinamicamente -->
                     </thead>
-                    <tbody>
-                        {% for item in data_results.dados.itens_hierarquicos %}
-                        <tr>
-                            <td><code>{{ item.codigo }}</code></td>
-                            <td style="padding-left: {{ item.nivel_hierarquia * 20 }}px;">{{ item.nome }}</td>
-                            {% if item.dados_mensais %}
-                            <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_orcado or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_realizado or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(item.dados_mensais[0].perc_atingido or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(item.dados_mensais[0].valor_diferenca or 0) }}</td>
-                            {% else %}
-                            <td class="text-end">-</td>
-                            <td class="text-end">-</td>
-                            <td class="text-end">-</td>
-                            <td class="text-end">-</td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
+                    <tbody id="real-body">
+                        <!-- Será preenchido dinamicamente -->
                     </tbody>
                 </table>
             </div>
-
-            <!-- TABELA DE CENÁRIOS (RESULTADO POR FLUXO DE CAIXA, RESULTADO REAL, etc) -->
-            {% if data_results.dados.resultados_fluxo and data_results.dados.resultados_fluxo.secoes %}
-            <h6 class="mt-5 mb-3 fw-semibold">Cenários de Totais</h6>
-            <div class="table-responsive">
-                <table class="table table-bordered table-hover">
-                    <thead class="table-success">
-                        <tr>
-                            <th>Cenário / Item</th>
-                            <th class="text-end">Orçado</th>
-                            <th class="text-end">Realizado</th>
-                            <th class="text-end">% Atingido</th>
-                            <th class="text-end">Diferença</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in data_results.dados.resultados_fluxo.secoes %}
-                            {% if item.tipo == 'titulo' %}
-                                <tr class="table-warning">
-                                    <td colspan="5" class="fw-bold">{{ item.texto }}</td>
-                                </tr>
-                            {% else %}
-                                {% if item.dados_mensais %}
-                                    {% set dados_mes = item.dados_mensais[0] %}
-                                    <tr>
-                                        <td class="ps-4">{{ item.nome }}</td>
-                                        <td class="text-end">R$ {{ "{:,.2f}".format(dados_mes.perc_realizado or 0) }}</td>
-                                        <td class="text-end">R$ {{ "{:,.2f}".format(dados_mes.valor_realizado or 0) }}</td>
-                                        <td class="text-end">{{ "%.2f"|format(dados_mes.perc_atingido or 0) }}%</td>
-                                        <td class="text-end">R$ {{ "{:,.2f}".format(dados_mes.valor_diferenca or 0) }}</td>
-                                    </tr>
-                                {% endif %}
-                            {% endif %}
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-
-            <!-- TABELA DE TOTAIS CONSOLIDADOS -->
-            <h6 class="mt-4 mb-3 fw-semibold">Totais Consolidados</h6>
-            <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead class="table-dark">
-                        <tr>
-                            <th>Código</th>
-                            <th>Nome</th>
-                            <th class="text-end">Valor Orçado Total</th>
-                            <th class="text-end">Valor Realizado Total</th>
-                            <th class="text-end">Valor Pendente Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for item in data_results.dados.itens_hierarquicos %}
-                        {% set totais = item.resultados_totais %}
-                        <tr>
-                            <td><code>{{ item.codigo }}</code></td>
-                            <td style="padding-left: {{ item.nivel_hierarquia * 20 }}px;">{{ item.nome }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.valor_orcado_total or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.valor_realizado_total or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(totais.valor_pendente_total or 0) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- TABELA DE TOTAIS CALCULADOS - RESULTADO POR FLUXO DE CAIXA -->
-            {% if data_results.dados.totais_calculados and data_results.dados.totais_calculados.fluxo_caixa %}
-            {% set mes_num = mes_selecionado %}
-            {% if mes_num in data_results.dados.totais_calculados.fluxo_caixa %}
-            {% set fc = data_results.dados.totais_calculados.fluxo_caixa[mes_num] %}
-
-            <h6 class="mt-5 mb-3 fw-semibold text-primary">
-                <i class="bi bi-calculator me-2"></i>Resultado por Fluxo de Caixa
-            </h6>
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered">
-                    <thead class="table-primary">
-                        <tr>
-                            <th>Categoria</th>
-                            <th class="text-end">Orçamento</th>
-                            <th class="text-end">Realizado</th>
-                            <th class="text-end">% Atingido</th>
-                            <th class="text-end">Diferença</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Total Receita</strong></td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(fc.orcamento.receita or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(fc.realizado.receita or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(fc.perc_atingido.receita or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(fc.diferenca.receita or 0) }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Total Despesa</strong></td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(fc.orcamento.despesa or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(fc.realizado.despesa or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(fc.perc_atingido.despesa or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(fc.diferenca.despesa or 0) }}</td>
-                        </tr>
-                        <tr class="table-light">
-                            <td><strong>Total Geral</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(fc.orcamento.geral or 0) }}</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(fc.realizado.geral or 0) }}</strong></td>
-                            <td class="text-end"><strong>{{ "%.2f"|format(fc.perc_atingido.geral or 0) }}%</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(fc.diferenca.geral or 0) }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-            {% endif %}
-
-            <!-- TABELA DE TOTAIS CALCULADOS - RESULTADO REAL -->
-            {% if data_results.dados.totais_calculados and data_results.dados.totais_calculados.real %}
-            {% set mes_num = mes_selecionado %}
-            {% if mes_num in data_results.dados.totais_calculados.real %}
-            {% set real = data_results.dados.totais_calculados.real[mes_num] %}
-
-            <h6 class="mt-5 mb-3 fw-semibold text-success">
-                <i class="bi bi-calculator me-2"></i>Resultado Real
-            </h6>
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered">
-                    <thead class="table-success">
-                        <tr>
-                            <th>Categoria</th>
-                            <th class="text-end">Orçamento</th>
-                            <th class="text-end">Realizado</th>
-                            <th class="text-end">% Atingido</th>
-                            <th class="text-end">Diferença</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Total Receita</strong></td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real.orcamento.receita or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real.realizado.receita or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(real.perc_atingido.receita or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real.diferenca.receita or 0) }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Total Despesa</strong></td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real.orcamento.despesa or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real.realizado.despesa or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(real.perc_atingido.despesa or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real.diferenca.despesa or 0) }}</td>
-                        </tr>
-                        <tr class="table-light">
-                            <td><strong>Total Geral</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real.orcamento.geral or 0) }}</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real.realizado.geral or 0) }}</strong></td>
-                            <td class="text-end"><strong>{{ "%.2f"|format(real.perc_atingido.geral or 0) }}%</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real.diferenca.geral or 0) }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-            {% endif %}
-
-            <!-- TABELA DE TOTAIS CALCULADOS - RESULTADO REAL + MP -->
-            {% if data_results.dados.totais_calculados and data_results.dados.totais_calculados.real_mp %}
-            {% set mes_num = mes_selecionado %}
-            {% if mes_num in data_results.dados.totais_calculados.real_mp %}
-            {% set real_mp = data_results.dados.totais_calculados.real_mp[mes_num] %}
-
-            <h6 class="mt-5 mb-3 fw-semibold text-warning">
-                <i class="bi bi-calculator me-2"></i>Resultado Real + Custo MP
-            </h6>
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered">
-                    <thead class="table-warning">
-                        <tr>
-                            <th>Categoria</th>
-                            <th class="text-end">Orçamento</th>
-                            <th class="text-end">Realizado</th>
-                            <th class="text-end">% Atingido</th>
-                            <th class="text-end">Diferença</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Total Receita</strong></td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.orcamento.receita or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.realizado.receita or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(real_mp.perc_atingido.receita or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.diferenca.receita or 0) }}</td>
-                        </tr>
-                        <tr>
-                            <td><strong>Total Despesa</strong></td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.orcamento.despesa or 0) }}</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.realizado.despesa or 0) }}</td>
-                            <td class="text-end">{{ "%.2f"|format(real_mp.perc_atingido.despesa or 0) }}%</td>
-                            <td class="text-end">R$ {{ "{:,.2f}".format(real_mp.diferenca.despesa or 0) }}</td>
-                        </tr>
-                        <tr class="table-light">
-                            <td><strong>Total Geral</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real_mp.orcamento.geral or 0) }}</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real_mp.realizado.geral or 0) }}</strong></td>
-                            <td class="text-end"><strong>{{ "%.2f"|format(real_mp.perc_atingido.geral or 0) }}%</strong></td>
-                            <td class="text-end"><strong>R$ {{ "{:,.2f}".format(real_mp.diferenca.geral or 0) }}</strong></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-            {% endif %}
-            {% endif %}
-
         </div>
-    </div>
-    {% endif %}
 
-    <!-- EMPTY STATE (quando nenhuma consulta foi feita) -->
-    {% if not data_results %}
-    <div class="result-card">
-        <div class="empty-state">
-            <i class="bi bi-search"></i>
-            <h5 class="fw-semibold mt-3 mb-2">Nenhuma consulta realizada</h5>
-            <p class="text-muted">
-                Selecione ano e mês acima e clique em "Consultar Dados BPO"
-                para visualizar os dados financeiros mensais detalhados.
-            </p>
-            <div class="mt-4">
-                <div class="info-badge">
-                    <i class="bi bi-lightbulb me-2"></i>
-                    Os dados BPO são organizados mensalmente e exibem informações detalhadas de orçamento vs realizado
-                </div>
+        <!-- Resultado Real + MP -->
+        <div class="cenario-card">
+            <h6><i class="bi bi-pie-chart-fill me-2"></i>Resultado Real + Custo Matéria Prima</h6>
+            <div class="table-responsive">
+                <table class="table cenario-table">
+                    <thead id="realmp-header-row">
+                        <!-- Cabeçalho será preenchido dinamicamente -->
+                    </thead>
+                    <tbody id="realmp-body">
+                        <!-- Será preenchido dinamicamente -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
-    {% endif %}
 
 </div>
+
+<script>
+function formatMoney(value) {
+    if (value === null || value === undefined) return '-';
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+}
+
+function formatMoneyCondicional(value) {
+    if (value === null || value === undefined) return '<span class="valor-neutro">-</span>';
+
+    const formatted = new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(value);
+
+    if (value > 0) {
+        return `<span class="valor-positivo"><i class="bi bi-arrow-up-circle-fill me-1"></i>${formatted}</span>`;
+    } else if (value < 0) {
+        return `<span class="valor-negativo"><i class="bi bi-arrow-down-circle-fill me-1"></i>${formatted}</span>`;
+    } else {
+        return `<span class="valor-neutro">${formatted}</span>`;
+    }
+}
+
+function formatPercent(value) {
+    if (value === null || value === undefined) return '-';
+    return value.toFixed(2) + '%';
+}
+
+function formatPercentCondicional(value) {
+    if (value === null || value === undefined) return '<span class="valor-neutro">-</span>';
+
+    const formatted = value.toFixed(2) + '%';
+
+    if (value >= 100) {
+        return `<span class="valor-positivo"><i class="bi bi-check-circle-fill me-1"></i>${formatted}</span>`;
+    } else if (value >= 80) {
+        return `<span style="color: #f59e0b; font-weight: 600;"><i class="bi bi-exclamation-circle-fill me-1"></i>${formatted}</span>`;
+    } else {
+        return `<span class="valor-negativo"><i class="bi bi-x-circle-fill me-1"></i>${formatted}</span>`;
+    }
+}
+
+async function carregarDados() {
+    const empresaId = document.getElementById('empresa_id').value;
+    const mesInicio = document.getElementById('mes_inicio').value;
+    const anoInicio = document.getElementById('ano_inicio').value;
+    const mesFim = document.getElementById('mes_fim').value;
+    const anoFim = document.getElementById('ano_fim').value;
+
+    if (!empresaId) {
+        alert('Selecione uma empresa');
+        return;
+    }
+
+    // Mostrar loading
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('table-container').style.display = 'none';
+    document.getElementById('cenarios-section').style.display = 'none';
+
+    try {
+        const url = `/user/api/dados-bpo-tabela/${empresaId}?mes_inicio=${mesInicio}&ano_inicio=${anoInicio}&mes_fim=${mesFim}&ano_fim=${anoFim}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data.error) {
+            alert('Erro: ' + data.error);
+            document.getElementById('loading').style.display = 'none';
+            return;
+        }
+
+        // Renderizar tabela
+        renderizarTabela(data);
+
+        // Renderizar cenários
+        renderizarCenarios(data);
+
+        // Mostrar tabelas
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('table-container').style.display = 'block';
+        document.getElementById('cenarios-section').style.display = 'block';
+
+    } catch (error) {
+        console.error('Erro:', error);
+        alert('Erro ao carregar dados: ' + error.message);
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function renderizarTabela(data) {
+    const { itens, meses } = data;
+
+    // Encontrar o item RECEITA e mapear valores orçados e realizados por mês
+    const receitaPorMes = {};
+    const receitaRealizadaPorMes = {};
+    const itemReceita = itens.find(item =>
+        item.codigo === "1" ||
+        item.nome.toUpperCase().includes("RECEITA") && item.codigo.startsWith("1")
+    );
+
+    if (itemReceita) {
+        meses.forEach(mes => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = itemReceita.dados_mensais[chave];
+            if (dados) {
+                if (dados.valor_orcado) {
+                    receitaPorMes[chave] = dados.valor_orcado;
+                }
+                if (dados.valor_realizado) {
+                    receitaRealizadaPorMes[chave] = dados.valor_realizado;
+                }
+            }
+        });
+    }
+
+    console.log('📊 Item RECEITA encontrado:', itemReceita);
+    console.log('💰 Receita Orçada por mês:', receitaPorMes);
+    console.log('💵 Receita Realizada por mês:', receitaRealizadaPorMes);
+
+    // Gerar cabeçalho
+    let headerHTML = '<tr><th>Descrição</th>';
+
+    // Colunas dos meses (6 colunas por mês agora)
+    meses.forEach(mes => {
+        headerHTML += `
+            <th colspan="6" style="border-bottom: 3px solid white;">${mes.mes_nome} ${mes.ano}</th>
+        `;
+    });
+
+    // Colunas de totais
+    headerHTML += `<th colspan="3" style="background: #ffd54f; color: #333; border-left: 3px solid #333;">Totais do Período</th>`;
+    headerHTML += '</tr>';
+
+    // Segunda linha do cabeçalho com subcolunas
+    headerHTML += '<tr><th></th>';
+    meses.forEach(() => {
+        headerHTML += `
+            <th>Orçado</th>
+            <th>% Orçado</th>
+            <th>Realizado</th>
+            <th>% Realizado</th>
+            <th>% Atingido</th>
+            <th>Diferença</th>
+        `;
+    });
+    headerHTML += `
+        <th class="col-total">Total Orçado</th>
+        <th class="col-total">Total Realizado</th>
+        <th class="col-total">Diferença</th>
+    `;
+    headerHTML += '</tr>';
+
+    document.getElementById('table-header').innerHTML = headerHTML;
+
+    // Gerar corpo da tabela
+    let bodyHTML = '';
+
+    itens.forEach(item => {
+        bodyHTML += `<tr>`;
+
+        // Coluna de descrição com hierarquia
+        bodyHTML += `<td class="nivel-${item.nivel_hierarquia}">`;
+        if (item.codigo) {
+            bodyHTML += `<code>${item.codigo}</code> `;
+        }
+        bodyHTML += `${item.nome}</td>`;
+
+        // Calcular totais
+        let totalOrcado = 0;
+        let totalRealizado = 0;
+
+        // Dados mensais
+        meses.forEach(mes => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = item.dados_mensais[chave];
+
+            if (dados) {
+                const orcado = dados.valor_orcado || 0;
+                const realizado = dados.valor_realizado || 0;
+                const perc = dados.perc_atingido || 0;
+                const dif = dados.valor_diferenca || 0;
+
+                totalOrcado += orcado;
+                totalRealizado += realizado;
+
+                // Calcular % Orçado (percentual sobre a RECEITA orçada do mês)
+                const receitaMes = receitaPorMes[chave] || 0;
+                let percOrcado = 0;
+                if (receitaMes > 0) {
+                    percOrcado = (orcado / receitaMes) * 100;
+                }
+
+                // Calcular % Realizado (percentual sobre a RECEITA realizada do mês)
+                const receitaRealizadaMes = receitaRealizadaPorMes[chave] || 0;
+                let percRealizado = 0;
+                if (receitaRealizadaMes > 0) {
+                    percRealizado = (realizado / receitaRealizadaMes) * 100;
+                }
+
+                bodyHTML += `
+                    <td>${formatMoney(orcado)}</td>
+                    <td style="color: #6b7280; font-weight: 500;">${formatPercent(percOrcado)}</td>
+                    <td>${formatMoney(realizado)}</td>
+                    <td style="color: #6b7280; font-weight: 500;">${formatPercent(percRealizado)}</td>
+                    <td>${formatPercentCondicional(perc)}</td>
+                    <td>${formatMoneyCondicional(dif)}</td>
+                `;
+            } else {
+                bodyHTML += `<td>-</td><td>-</td><td>-</td><td>-</td><td>-</td><td>-</td>`;
+            }
+        });
+
+        // Totais
+        const totalDif = totalOrcado - totalRealizado;
+        bodyHTML += `
+            <td class="col-total">${formatMoney(totalOrcado)}</td>
+            <td class="col-total">${formatMoney(totalRealizado)}</td>
+            <td class="col-total">${formatMoneyCondicional(totalDif)}</td>
+        `;
+
+        bodyHTML += `</tr>`;
+    });
+
+    document.getElementById('table-body').innerHTML = bodyHTML;
+}
+
+function renderizarCenarios(data) {
+    const { totais_calculados, meses } = data;
+
+    console.log('🔍 DEBUG renderizarCenarios:');
+    console.log('   totais_calculados:', totais_calculados);
+    console.log('   meses:', meses);
+    console.log('   fluxo_caixa keys:', Object.keys(totais_calculados.fluxo_caixa || {}));
+    console.log('   real keys:', Object.keys(totais_calculados.real || {}));
+    console.log('   real_mp keys:', Object.keys(totais_calculados.real_mp || {}));
+
+    // Renderizar cada cenário com cabeçalho próprio
+    renderizarCenario('fluxo_caixa', 'fc-header-row', 'fc-body', totais_calculados, meses);
+    renderizarCenario('real', 'real-header-row', 'real-body', totais_calculados, meses);
+    renderizarCenario('real_mp', 'realmp-header-row', 'realmp-body', totais_calculados, meses);
+}
+
+function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
+    const cenario = totais_calculados[tipo] || {};
+
+    console.log(`🔍 DEBUG renderizarCenario(${tipo}):`)
+    console.log('   cenario:', cenario);
+    console.log('   cenario keys:', Object.keys(cenario));
+
+    // Criar cabeçalho com 2 linhas
+    const headerElement = document.getElementById(headerId);
+
+    // Primeira linha: Categoria + nome dos meses (4 colunas por mês)
+    let headerHTML = '<tr><th rowspan="2">Categoria</th>';
+    meses.forEach(mes => {
+        headerHTML += `<th colspan="4" style="border-bottom: 2px solid white;">${mes.mes_nome} ${mes.ano}</th>`;
+    });
+    headerHTML += '</tr>';
+
+    // Segunda linha: subcolunas (Orçamento, Realizado, %, Diferença) repetidas para cada mês
+    headerHTML += '<tr>';
+    meses.forEach(() => {
+        headerHTML += `
+            <th>Orçamento</th>
+            <th>Realizado</th>
+            <th>% Atingido</th>
+            <th>Diferença</th>
+        `;
+    });
+    headerHTML += '</tr>';
+
+    headerElement.innerHTML = headerHTML;
+
+    // Criar corpo com 3 linhas (Receita, Despesa, Geral)
+    const categorias = ['Receita', 'Despesa', 'Geral'];
+    let bodyHTML = '';
+
+    categorias.forEach(cat => {
+        const catKey = cat.toLowerCase();
+        bodyHTML += `<tr><td style="font-weight: 600; color: #ff6b35;">${cat}</td>`;
+
+        meses.forEach((mes, idx) => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = cenario[chave];
+
+            // Log só do primeiro mês da categoria Receita
+            if (idx === 0 && cat === 'Receita') {
+                console.log(`      Primeiro mês (${mes.mes_nome}): chave=${chave}, dados=`, dados);
+            }
+
+            if (dados) {
+                const orcamento = dados.orcamento && dados.orcamento[catKey] !== undefined ? dados.orcamento[catKey] : null;
+                const realizado = dados.realizado && dados.realizado[catKey] !== undefined ? dados.realizado[catKey] : null;
+                const percAtingido = dados.perc_atingido && dados.perc_atingido[catKey] !== undefined ? dados.perc_atingido[catKey] : null;
+                const diferenca = dados.diferenca && dados.diferenca[catKey] !== undefined ? dados.diferenca[catKey] : null;
+
+                bodyHTML += `
+                    <td>${orcamento !== null ? formatMoney(orcamento) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${realizado !== null ? formatMoney(realizado) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${percAtingido !== null ? formatPercentCondicional(percAtingido) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${diferenca !== null ? formatMoneyCondicional(diferenca) : '<span class="valor-neutro">-</span>'}</td>
+                `;
+            } else {
+                bodyHTML += `
+                    <td><span class="valor-neutro">-</span></td>
+                    <td><span class="valor-neutro">-</span></td>
+                    <td><span class="valor-neutro">-</span></td>
+                    <td><span class="valor-neutro">-</span></td>
+                `;
+            }
+        });
+
+        bodyHTML += `</tr>`;
+    });
+
+    document.getElementById(bodyId).innerHTML = bodyHTML;
+}
+</script>
 
 {% endblock %}
