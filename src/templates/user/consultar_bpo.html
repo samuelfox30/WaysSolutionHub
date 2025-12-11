@@ -505,8 +505,8 @@ function renderizarTabela(data) {
         `;
     });
 
-    // Colunas de totais
-    headerHTML += `<th colspan="3" style="background: #ffd54f; color: #333; border-left: 3px solid #333;">Totais do Período</th>`;
+    // Colunas de totais (7 colunas agora)
+    headerHTML += `<th colspan="7" style="background: #ffd54f; color: #333; border-left: 3px solid #333;">Totais do Período</th>`;
     headerHTML += '</tr>';
 
     // Segunda linha do cabeçalho com subcolunas
@@ -525,10 +525,31 @@ function renderizarTabela(data) {
         <th class="col-total">Total Orçado</th>
         <th class="col-total">Total Realizado</th>
         <th class="col-total">Diferença</th>
+        <th class="col-total">Realizado Média</th>
+        <th class="col-total">% Realizado Média</th>
+        <th class="col-total">Média Diferença</th>
+        <th class="col-total">% Média Diferença</th>
     `;
     headerHTML += '</tr>';
 
     document.getElementById('table-header').innerHTML = headerHTML;
+
+    // Calcular número de meses para as médias
+    const numMeses = meses.length;
+
+    // Calcular Total Realizado Média da RECEITA (item código "1")
+    let receitaRealizadoMedia = 0;
+    if (itemReceita) {
+        let totalReceitaRealizada = 0;
+        meses.forEach(mes => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = itemReceita.dados_mensais[chave];
+            if (dados && dados.valor_realizado) {
+                totalReceitaRealizada += dados.valor_realizado;
+            }
+        });
+        receitaRealizadoMedia = numMeses > 0 ? totalReceitaRealizada / numMeses : 0;
+    }
 
     // Gerar corpo da tabela
     let bodyHTML = '';
@@ -542,6 +563,9 @@ function renderizarTabela(data) {
             bodyHTML += `<code>${item.codigo}</code> `;
         }
         bodyHTML += `${item.nome}</td>`;
+
+        // Detectar se é DESPESA (a partir da linha "2 DESPESAS")
+        const isDespesa = item.codigo && item.codigo.startsWith('2');
 
         // Calcular totais
         let totalOrcado = 0;
@@ -589,11 +613,40 @@ function renderizarTabela(data) {
         });
 
         // Totais
-        const totalDif = totalOrcado - totalRealizado;
+        // Diferença Total: inverte cálculo para receitas vs despesas
+        const totalDif = isDespesa
+            ? totalOrcado - totalRealizado  // DESPESAS: Orçado - Realizado
+            : totalRealizado - totalOrcado;  // RECEITAS: Realizado - Orçado
+
+        // Realizado Média
+        const realizadoMedia = numMeses > 0 ? totalRealizado / numMeses : 0;
+
+        // % Realizado Média (percentual sobre RECEITA Realizado Média)
+        const percRealizadoMedia = receitaRealizadoMedia > 0
+            ? (realizadoMedia / receitaRealizadoMedia) * 100
+            : 0;
+
+        // Média Orçado (para cálculo da média diferença)
+        const mediaOrcado = numMeses > 0 ? totalOrcado / numMeses : 0;
+
+        // Média Diferença: inverte cálculo para receitas vs despesas
+        const mediaDif = isDespesa
+            ? mediaOrcado - realizadoMedia  // DESPESAS: Média Orçado - Realizado Média
+            : realizadoMedia - mediaOrcado;  // RECEITAS: Realizado Média - Média Orçado
+
+        // % Média Diferença (percentual sobre Média Orçado)
+        const percMediaDif = mediaOrcado > 0
+            ? (mediaDif / mediaOrcado) * 100
+            : 0;
+
         bodyHTML += `
             <td class="col-total">${formatMoney(totalOrcado)}</td>
             <td class="col-total">${formatMoney(totalRealizado)}</td>
             <td class="col-total">${formatMoneyCondicional(totalDif)}</td>
+            <td class="col-total">${formatMoney(realizadoMedia)}</td>
+            <td class="col-total" style="color: #6b7280; font-weight: 500;">${formatPercent(percRealizadoMedia)}</td>
+            <td class="col-total">${formatMoneyCondicional(mediaDif)}</td>
+            <td class="col-total">${formatPercentCondicional(percMediaDif)}</td>
         `;
 
         bodyHTML += `</tr>`;
