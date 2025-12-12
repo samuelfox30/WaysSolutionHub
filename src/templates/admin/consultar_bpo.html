@@ -540,13 +540,13 @@ function renderizarTabela(data) {
         `;
     });
     headerHTML += `
-        <th class="col-total">Total Orçado</th>
-        <th class="col-total">Total Realizado</th>
-        <th class="col-total">Diferença</th>
-        <th class="col-total">Realizado Média</th>
-        <th class="col-total">% Realizado Média</th>
-        <th class="col-total">Média Diferença</th>
-        <th class="col-total">% Média Diferença</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">Total Orçado</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">Total Realizado</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">Diferença</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">Realizado Média</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">% Realizado Média</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">Média Diferença</th>
+        <th class="col-total" style="background: #ffd54f; color: #333;">% Média Diferença</th>
     `;
     headerHTML += '</tr>';
 
@@ -736,15 +736,48 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
     let bodyHTML = '';
     const numMeses = meses.length;
 
+    // Primeiro calcular todos os totais para pegar o Realizado Média da Receita
+    const totaisPorCategoria = {};
+
     categorias.forEach(cat => {
         const catKey = cat.toLowerCase();
-        bodyHTML += `<tr><td style="font-weight: 600; color: #ff6b35;">${cat}</td>`;
-
-        // Variáveis para calcular totais
         let totalOrcamento = 0;
         let totalRealizado = 0;
         let totalDiferenca = 0;
 
+        meses.forEach(mes => {
+            const chave = `${mes.ano}_${mes.mes_numero}`;
+            const dados = cenario[chave];
+
+            if (dados) {
+                const orcamento = dados.orcamento && dados.orcamento[catKey] !== undefined ? dados.orcamento[catKey] : null;
+                const realizado = dados.realizado && dados.realizado[catKey] !== undefined ? dados.realizado[catKey] : null;
+                const diferenca = dados.diferenca && dados.diferenca[catKey] !== undefined ? dados.diferenca[catKey] : null;
+
+                if (orcamento !== null) totalOrcamento += orcamento;
+                if (realizado !== null) totalRealizado += realizado;
+                if (diferenca !== null) totalDiferenca += diferenca;
+            }
+        });
+
+        totaisPorCategoria[cat] = {
+            totalOrcamento,
+            totalRealizado,
+            totalDiferenca,
+            realizadoMedia: numMeses > 0 ? totalRealizado / numMeses : 0,
+            mediaOrcado: numMeses > 0 ? totalOrcamento / numMeses : 0
+        };
+    });
+
+    // Pegar o Realizado Média da Receita como base para os percentuais
+    const receitaRealizadoMedia = totaisPorCategoria['Receita'].realizadoMedia;
+
+    // Agora renderizar as linhas
+    categorias.forEach(cat => {
+        const catKey = cat.toLowerCase();
+        bodyHTML += `<tr><td style="font-weight: 600; color: #ff6b35;">${cat}</td>`;
+
+        // Renderizar colunas mensais
         meses.forEach((mes, idx) => {
             const chave = `${mes.ano}_${mes.mes_numero}`;
             const dados = cenario[chave];
@@ -759,11 +792,6 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
                 const realizado = dados.realizado && dados.realizado[catKey] !== undefined ? dados.realizado[catKey] : null;
                 const percAtingido = dados.perc_atingido && dados.perc_atingido[catKey] !== undefined ? dados.perc_atingido[catKey] : null;
                 const diferenca = dados.diferenca && dados.diferenca[catKey] !== undefined ? dados.diferenca[catKey] : null;
-
-                // Acumular totais
-                if (orcamento !== null) totalOrcamento += orcamento;
-                if (realizado !== null) totalRealizado += realizado;
-                if (diferenca !== null) totalDiferenca += diferenca;
 
                 bodyHTML += `
                     <td>${orcamento !== null ? formatMoney(orcamento) : '<span class="valor-neutro">-</span>'}</td>
@@ -781,18 +809,15 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
             }
         });
 
-        // Calcular as 7 colunas de totais
-        const realizadoMedia = numMeses > 0 ? totalRealizado / numMeses : 0;
-        const mediaOrcado = numMeses > 0 ? totalOrcamento / numMeses : 0;
+        // Pegar totais calculados anteriormente
+        const { totalOrcamento, totalRealizado, totalDiferenca, realizadoMedia, mediaOrcado } = totaisPorCategoria[cat];
 
-        // Para % Realizado Média, preciso da receita como base
-        // Se for a categoria Receita, usa ela mesma; caso contrário busca do total da receita
-        let percRealizadoMedia = 0;
-        if (cat === 'Receita' && realizadoMedia > 0) {
-            percRealizadoMedia = 100; // Receita é 100% de si mesma
-        }
+        // Calcular % Realizado Média em relação à Receita
+        const percRealizadoMedia = receitaRealizadoMedia > 0
+            ? (realizadoMedia / receitaRealizadoMedia) * 100
+            : 0;
 
-        // Média Diferença (já está calculada pela soma das diferenças / num meses)
+        // Média Diferença
         const mediaDiferenca = numMeses > 0 ? totalDiferenca / numMeses : 0;
 
         // % Média Diferença
@@ -804,7 +829,7 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
             <td style="background: #fff9e6;">${formatMoney(totalRealizado)}</td>
             <td style="background: #fff9e6;">${formatMoneyCondicional(totalDiferenca)}</td>
             <td style="background: #fff9e6;">${formatMoney(realizadoMedia)}</td>
-            <td style="background: #fff9e6; color: #6b7280; font-weight: 500;">${cat === 'Receita' ? formatPercent(100) : '<span class="valor-neutro">-</span>'}</td>
+            <td style="background: #fff9e6;">${formatPercentCondicional(percRealizadoMedia)}</td>
             <td style="background: #fff9e6;">${formatMoneyCondicional(mediaDiferenca)}</td>
             <td style="background: #fff9e6;">${formatPercentCondicional(percMediaDif)}</td>
         `;
