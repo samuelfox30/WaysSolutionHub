@@ -1,6 +1,11 @@
 from models.auth import DatabaseConnection
 import mysql.connector
 
+# Import do sistema de logging
+from utils.logger import get_logger
+
+logger = get_logger('database.user_manager')
+
 class UserManager:
     def __init__(self):
         self.db_connector = DatabaseConnection()
@@ -8,21 +13,30 @@ class UserManager:
         self.cursor = None
         if self.db_connection:
             self.cursor = self.db_connection.cursor(dictionary=True)
+            logger.debug("✅ UserManager inicializado com sucesso")
+        else:
+            logger.error("❌ UserManager: Falha ao obter conexão com banco de dados")
 
     def find_user_by_email(self, email):
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Conexão com o banco de dados não está ativa.")
+            logger.error(f"❌ Conexão com banco não está ativa ao buscar usuário: {email}")
             return None
-            
+
         try:
             query = "SELECT * FROM users WHERE email = %s"
+            logger.debug(f"🔍 Executando query: {query} | Param: {email}")
             self.cursor.execute(query, (email,))
             user = self.cursor.fetchone()
-            
+
+            if user:
+                logger.debug(f"✅ Usuário encontrado: {email}")
+            else:
+                logger.debug(f"⚠️ Usuário não encontrado: {email}")
+
             return user
-            
+
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar usuário: {err}")
+            logger.error(f"💥 Erro ao buscar usuário {email}: {err}", exc_info=True)
             return None
         finally:
             # Feche a conexão do cursor após a operação, mas não a conexão principal
