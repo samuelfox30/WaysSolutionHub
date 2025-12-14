@@ -313,10 +313,15 @@
     <!-- FILTROS -->
     <div class="card filter-card mb-4">
         <div class="card-body">
-            <h5>
-                <i class="bi bi-funnel"></i>
-                Filtros de Período
-            </h5>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0">
+                    <i class="bi bi-funnel"></i>
+                    Filtros de Período
+                </h5>
+                <button id="btn-exportar-pdf" class="btn btn-danger" onclick="exportarDashboardPDF()" style="display: none;">
+                    <i class="bi bi-file-pdf-fill me-2"></i>Baixar PDF
+                </button>
+            </div>
             <div class="row g-3">
                 <div class="col-md-3">
                     <label class="form-label">Tipo de DRE</label>
@@ -677,6 +682,8 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 let chartReceita, chartDespesa, chartGeral, chartPizzaDespesa, chartPizzaReceita;
 
@@ -798,11 +805,174 @@ function atualizarDados() {
 
             // Atualizar categorias de receita
             atualizarCategoriasReceita(data.categorias_receita, data.num_meses);
+
+            // Mostrar botão de exportar PDF após todos os gráficos estarem carregados
+            setTimeout(() => {
+                document.getElementById('btn-exportar-pdf').style.display = 'inline-block';
+            }, 200);
         })
         .catch(error => {
             console.error('Erro ao carregar dados:', error);
             alert('Erro ao carregar dados do dashboard. Verifique o console para mais detalhes.');
         });
+}
+
+async function exportarDashboardPDF() {
+    try {
+        console.log('📄 Iniciando exportação de PDF...');
+
+        // Esconder botão durante exportação
+        const btnExportar = document.getElementById('btn-exportar-pdf');
+        const textoOriginal = btnExportar.innerHTML;
+        btnExportar.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Gerando PDF...';
+        btnExportar.disabled = true;
+
+        // Importar jsPDF
+        const { jsPDF } = window.jspdf;
+
+        // Criar PDF em modo paisagem (landscape)
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        // Dimensões da página A4 landscape
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 15;
+
+        // Informações do cabeçalho
+        const empresaNome = '{{ empresa_nome }}';
+        const tipoDre = document.getElementById('tipo_dre').options[document.getElementById('tipo_dre').selectedIndex].text;
+        const mesInicio = document.getElementById('mes_inicio').value;
+        const anoInicio = document.getElementById('ano_inicio').value;
+        const mesFim = document.getElementById('mes_fim').value;
+        const anoFim = document.getElementById('ano_fim').value;
+        const periodo = `${mesInicio}/${anoInicio} até ${mesFim}/${anoFim}`;
+        const dataGeracao = new Date().toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // Obter todos os canvas de gráficos visíveis
+        const canvasElements = [
+            document.getElementById('chartReceita'),
+            document.getElementById('chartDespesa'),
+            document.getElementById('chartGeral'),
+            document.getElementById('chartPizzaDespesa'),
+            document.getElementById('chartPizzaReceita')
+        ].filter(canvas => canvas !== null);
+
+        console.log(`📊 Encontrados ${canvasElements.length} gráficos para exportar`);
+
+        if (canvasElements.length === 0) {
+            alert('Nenhum gráfico disponível para exportar.');
+            btnExportar.innerHTML = textoOriginal;
+            btnExportar.disabled = false;
+            return;
+        }
+
+        let isFirstPage = true;
+
+        // Processar cada canvas
+        for (let i = 0; i < canvasElements.length; i++) {
+            const canvas = canvasElements[i];
+
+            console.log(`📈 Processando gráfico ${i + 1}/${canvasElements.length}...`);
+
+            // Adicionar nova página se não for a primeira
+            if (!isFirstPage) {
+                pdf.addPage();
+            }
+            isFirstPage = false;
+
+            // === CABEÇALHO ===
+            // Logo (se existir)
+            const logoImg = document.querySelector('.navbar-brand img');
+            if (logoImg) {
+                try {
+                    const logoCanvas = await html2canvas(logoImg, {
+                        scale: 2,
+                        backgroundColor: null
+                    });
+                    const logoData = logoCanvas.toDataURL('image/png');
+                    pdf.addImage(logoData, 'PNG', margin, margin, 30, 10);
+                } catch (err) {
+                    console.warn('⚠️ Erro ao capturar logo:', err);
+                }
+            }
+
+            // Título do relatório
+            pdf.setFontSize(16);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Dashboard BPO', pageWidth / 2, margin + 5, { align: 'center' });
+
+            // Informações do filtro
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Empresa: ${empresaNome}`, margin + 35, margin + 3);
+            pdf.text(`Tipo DRE: ${tipoDre}`, margin + 35, margin + 7);
+            pdf.text(`Período: ${periodo}`, margin + 35, margin + 11);
+
+            // === GRÁFICO ===
+            try {
+                // Capturar o canvas do gráfico
+                const chartCanvas = await html2canvas(canvas, {
+                    scale: 2,
+                    backgroundColor: '#ffffff'
+                });
+
+                const chartData = chartCanvas.toDataURL('image/png');
+
+                // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
+                const chartHeight = pageHeight - margin * 3 - 20;
+                const chartWidth = pageWidth - margin * 2;
+                const chartY = margin + 20;
+
+                pdf.addImage(chartData, 'PNG', margin, chartY, chartWidth, chartHeight);
+
+                console.log(`✅ Gráfico ${i + 1} adicionado ao PDF`);
+            } catch (err) {
+                console.error(`❌ Erro ao capturar gráfico ${i + 1}:`, err);
+                pdf.setFontSize(12);
+                pdf.setTextColor(255, 0, 0);
+                pdf.text(`Erro ao carregar gráfico ${i + 1}`, pageWidth / 2, pageHeight / 2, { align: 'center' });
+                pdf.setTextColor(0, 0, 0);
+            }
+
+            // === RODAPÉ ===
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'italic');
+            pdf.setTextColor(128, 128, 128);
+            pdf.text(`Gerado em: ${dataGeracao}`, margin, pageHeight - 10);
+            pdf.text(`Página ${i + 1} de ${canvasElements.length}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
+            pdf.setTextColor(0, 0, 0);
+        }
+
+        // Salvar PDF
+        const nomeArquivo = `Dashboard_BPO_${empresaNome.replace(/[^a-zA-Z0-9]/g, '_')}_${mesInicio}-${anoInicio}_ate_${mesFim}-${anoFim}_${new Date().getTime()}.pdf`;
+        pdf.save(nomeArquivo);
+
+        console.log(`✅ PDF gerado com sucesso: ${nomeArquivo}`);
+
+        // Restaurar botão
+        btnExportar.innerHTML = textoOriginal;
+        btnExportar.disabled = false;
+
+    } catch (error) {
+        console.error('💥 ERRO ao gerar PDF:', error);
+        console.error('Stack trace:', error.stack);
+        alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+
+        // Restaurar botão
+        const btnExportar = document.getElementById('btn-exportar-pdf');
+        btnExportar.innerHTML = '<i class="bi bi-file-pdf-fill me-2"></i>Baixar PDF';
+        btnExportar.disabled = false;
+    }
 }
 
 function atualizarGraficos(labels, receitas, despesas, gerais) {
