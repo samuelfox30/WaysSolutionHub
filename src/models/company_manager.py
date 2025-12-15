@@ -1,5 +1,9 @@
 from models.auth import DatabaseConnection
 import mysql.connector
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('company_manager')
 
 class CompanyManager(DatabaseConnection):
 
@@ -31,7 +35,7 @@ class CompanyManager(DatabaseConnection):
                     f"DELETE FROM {tabela} WHERE empresa_id = %s AND ano = %s",
                     (empresa_id, ano_selecionado)
                 )
-            print(f"[DEBUG] Dados antigos removidos para empresa_id={empresa_id}, ano={ano_selecionado}")
+            logger.debug(f"Dados antigos removidos para empresa_id={empresa_id}, ano={ano_selecionado}")
 
             # ============================
             # 3. Mapeamento de nomes do Excel -> nomes no banco
@@ -179,10 +183,10 @@ class CompanyManager(DatabaseConnection):
             # 6. Commit final
             # ============================
             self.connection.commit()
-            print("Itens salvos com sucesso no banco de dados (dados antigos sobrescritos).")
+            logger.info("Itens salvos com sucesso no banco de dados (dados antigos sobrescritos).")
 
         except mysql.connector.Error as err:
-            print(f"Erro ao salvar itens: {err}")
+            logger.error(f"Erro ao salvar itens: {err}")
             self.connection.rollback()
 
 
@@ -274,7 +278,7 @@ class CompanyManager(DatabaseConnection):
             return resultado
 
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar dados: {err}")
+            logger.error(f"Erro ao buscar dados: {err}")
             return None
 
 
@@ -308,11 +312,11 @@ class CompanyManager(DatabaseConnection):
 
             # 4. Commit final
             self.connection.commit()
-            print(f"[DEBUG] Dados excluídos para empresa_id={empresa_id}, ano={ano_selecionado}")
+            logger.debug(f"Dados excluídos para empresa_id={empresa_id}, ano={ano_selecionado}")
             return True
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao excluir dados: {err}")
+            logger.error(f"Erro ao excluir dados: {err}")
             self.connection.rollback()
             return False
 
@@ -337,7 +341,7 @@ class CompanyManager(DatabaseConnection):
             return anos
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] get_anos_com_dados: {err}")
+            logger.error(f"get_anos_com_dados: {err}")
             return []
 
 
@@ -359,7 +363,7 @@ class CompanyManager(DatabaseConnection):
             return row[0] > 0 if row else False
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] verificar_dados_existentes: {err}")
+            logger.error(f"verificar_dados_existentes: {err}")
             return False
 
 
@@ -382,11 +386,11 @@ class CompanyManager(DatabaseConnection):
             self.connection.commit()
 
             empresa_id = self.cursor.lastrowid
-            print(f"[DEBUG] Empresa '{nome}' criada com sucesso. ID: {empresa_id}")
+            logger.debug(f"Empresa '{nome}' criada com sucesso. ID: {empresa_id}")
             return empresa_id
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao criar empresa: {err}")
+            logger.error(f"Erro ao criar empresa: {err}")
             self.connection.rollback()
             return None
 
@@ -413,7 +417,7 @@ class CompanyManager(DatabaseConnection):
             return None
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao buscar empresa: {err}")
+            logger.error(f"Erro ao buscar empresa: {err}")
             return None
 
     def buscar_empresa_por_cnpj(self, cnpj):
@@ -439,7 +443,7 @@ class CompanyManager(DatabaseConnection):
             return None
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao buscar empresa por CNPJ: {err}")
+            logger.error(f"Erro ao buscar empresa por CNPJ: {err}")
             return None
 
     def listar_todas_empresas(self):
@@ -467,7 +471,7 @@ class CompanyManager(DatabaseConnection):
             return empresas
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao listar empresas: {err}")
+            logger.error(f"Erro ao listar empresas: {err}")
             return []
 
     def atualizar_empresa(self, empresa_id, nome, cnpj, telefone, email, cep, complemento, seguimento, website=None):
@@ -483,11 +487,11 @@ class CompanyManager(DatabaseConnection):
             self.cursor.execute(sql, values)
             self.connection.commit()
 
-            print(f"[DEBUG] Empresa ID {empresa_id} atualizada com sucesso.")
+            logger.debug(f"Empresa ID {empresa_id} atualizada com sucesso.")
             return True
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao atualizar empresa: {err}")
+            logger.error(f"Erro ao atualizar empresa: {err}")
             self.connection.rollback()
             return False
 
@@ -501,11 +505,11 @@ class CompanyManager(DatabaseConnection):
             self.cursor.execute(sql, (empresa_id,))
             self.connection.commit()
 
-            print(f"[DEBUG] Empresa ID {empresa_id} deletada com sucesso.")
+            logger.debug(f"Empresa ID {empresa_id} deletada com sucesso.")
             return True
 
         except mysql.connector.Error as err:
-            print(f"[ERRO] Erro ao deletar empresa: {err}")
+            logger.error(f"Erro ao deletar empresa: {err}")
             self.connection.rollback()
             return False
 
@@ -540,11 +544,11 @@ class CompanyManager(DatabaseConnection):
             self.cursor.execute(sql, (empresa_id, ano, mes, dados_json))
             self.connection.commit()
 
-            print(f"[DEBUG] Dados BPO salvos: empresa_id={empresa_id}, ano={ano}, mes={mes}")
+            logger.debug(f"Dados BPO salvos: empresa_id={empresa_id}, ano={ano}, mes={mes}")
             return True
 
         except Exception as err:
-            print(f"[ERRO] Erro ao salvar dados BPO: {err}")
+            logger.error(f"Erro ao salvar dados BPO: {err}")
             self.connection.rollback()
             return False
 
@@ -570,7 +574,7 @@ class CompanyManager(DatabaseConnection):
             return None
 
         except Exception as err:
-            print(f"[ERRO] Erro ao buscar dados BPO: {err}")
+            logger.error(f"Erro ao buscar dados BPO: {err}")
             return None
 
     def excluir_dados_bpo_empresa(self, empresa_id, ano, mes):
@@ -580,11 +584,11 @@ class CompanyManager(DatabaseConnection):
             self.cursor.execute(sql, (empresa_id, ano, mes))
             self.connection.commit()
 
-            print(f"[DEBUG] Dados BPO excluídos: empresa_id={empresa_id}, ano={ano}, mes={mes}")
+            logger.debug(f"Dados BPO excluídos: empresa_id={empresa_id}, ano={ano}, mes={mes}")
             return True
 
         except Exception as err:
-            print(f"[ERRO] Erro ao excluir dados BPO: {err}")
+            logger.error(f"Erro ao excluir dados BPO: {err}")
             self.connection.rollback()
             return False
 

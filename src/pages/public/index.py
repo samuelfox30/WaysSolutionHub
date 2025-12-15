@@ -1,4 +1,8 @@
 from flask import Flask, Blueprint, render_template, url_for, redirect, request, session, flash
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('auth_public')
 
 app_index = Blueprint('index', __name__)
 
@@ -15,21 +19,21 @@ def login():
         user_type = request.form.get('user_type')
         email = request.form.get('email')
         senha = request.form.get('password')
-        print(user_type, email, senha)
+        logger.info(f"Tentativa de login - tipo: {user_type}, email: {email}")
 
         from controllers.auth.validation import validar_email, validar_senha, validar_tipo_usuario
         if not validar_email(email):
-            print("Email inválido")
+            logger.warning("Email inválido")
             flash('Email inválido', 'danger')
             return render_template('public/logar.html')
             
         if not validar_senha(senha):
-            print("Senha inválida")
+            logger.warning("Senha inválida")
             flash('Senha inválida', 'danger')
             return render_template('public/logar.html')
             
         if not validar_tipo_usuario(user_type):
-            print("Tipo de usuário inválido")
+            logger.warning("Tipo de usuário inválido")
             flash('Tipo de usuário inválido', 'danger')
             return render_template('public/logar.html')
 
@@ -54,13 +58,13 @@ def login():
                         user.close()
                         return redirect(url_for('user.selecionar_empresa'))
                 else:
-                    print("Tipo de usuário incorreto!")
+                    logger.warning("Tipo de usuário incorreto!")
                     flash('Tipo de usuário incorreto!', 'danger')
             else:
-                print("Senha Incorreta!")
+                logger.warning("Senha Incorreta!")
                 flash('Senha incorreta!', 'danger')
         else:
-            print("Usuário não encontrado!")
+            logger.warning("Usuário não encontrado!")
             flash('Usuário não encontrado!', 'danger')
         
         user.close()

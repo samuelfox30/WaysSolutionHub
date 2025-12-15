@@ -1,5 +1,9 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
 from datetime import datetime
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('user_pages')
 
 user_bp = Blueprint('user', __name__)
 
@@ -266,7 +270,7 @@ def api_dados_bpo_tabela(empresa_id):
         })
 
     except Exception as e:
-        print(f"Erro na API dados-bpo-tabela: {e}")
+        logger.error(f"Erro na API dados-bpo-tabela: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -373,7 +377,7 @@ def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
         )
 
     except Exception as e:
-        print(f"[ERRO] Erro ao gerar PDF: {e}")
+        logger.error(f"Erro ao gerar PDF: {e}")
         import traceback
         traceback.print_exc()
         flash(f"Erro ao gerar PDF: {str(e)}", "danger")

@@ -8,6 +8,7 @@ __pycache__/
 
 # Arquivos de log e bancos de dados
 *.log
+logs/
 db.sqlite3
 
 # Arquivos de configurações sensíveis

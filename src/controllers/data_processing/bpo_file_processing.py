@@ -12,6 +12,10 @@ Data: 2025-11-25 (Refatorado)
 
 import openpyxl
 from openpyxl import load_workbook
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('bpo_processing')
 
 
 # ============================================================================
@@ -98,9 +102,7 @@ def extrair_meses_do_cabecalho(sheet):
     total_colunas = sheet.max_column
     col_atual = 2  # Começa na coluna B (2)
 
-    print("\n" + "-"*100)
-    print("📋 LENDO CABEÇALHO DA PLANILHA (Linha 1)")
-    print("-"*100)
+    logger.debug("LENDO CABEÇALHO DA PLANILHA (Linha 1)")
 
     while col_atual <= total_colunas:
         cell_value = sheet.cell(row=1, column=col_atual).value
@@ -114,7 +116,7 @@ def extrair_meses_do_cabecalho(sheet):
         # Verificar se é coluna de total (contém "TOTAL")
         if 'TOTAL' in cell_text:
             col_inicio_totais = col_atual
-            print(f"\n✅ Coluna de TOTAIS identificada na coluna {col_atual}: '{cell_value}'")
+            logger.debug(f"Coluna de TOTAIS identificada na coluna {col_atual}: '{cell_value}'")
             break
 
         # Verificar se é coluna de mês (contém "ORÇADO" ou "ORCADO")
@@ -147,12 +149,12 @@ def extrair_meses_do_cabecalho(sheet):
                 }
                 meses_info.append(mes_info)
 
-                print(f"✅ Mês identificado: {mes_nome.capitalize()} {ano} (coluna {col_atual})")
+                logger.debug(f"Mês identificado: {mes_nome.capitalize()} {ano} (coluna {col_atual})")
 
                 # Pular as próximas 3 colunas deste mês (Realizado, % Atingido, Diferença)
                 col_atual += 4
             else:
-                print(f"⚠️  Não foi possível extrair mês/ano de: '{cell_value}'")
+                logger.warning(f"Não foi possível extrair mês/ano de: '{cell_value}'")
                 col_atual += 1
         else:
             col_atual += 1
@@ -160,12 +162,9 @@ def extrair_meses_do_cabecalho(sheet):
     # Se não encontrou col_inicio_totais, assume últimas 3 colunas
     if col_inicio_totais is None:
         col_inicio_totais = total_colunas - 2
-        print(f"\n⚠️  Coluna de totais não identificada, assumindo coluna {col_inicio_totais}")
+        logger.warning(f"Coluna de totais não identificada, assumindo coluna {col_inicio_totais}")
 
-    print(f"\n📊 Resumo:")
-    print(f"   • Total de meses identificados: {len(meses_info)}")
-    print(f"   • Coluna de início dos totais: {col_inicio_totais}")
-    print("-"*100 + "\n")
+    logger.debug(f"Resumo: {len(meses_info)} meses identificados, coluna de totais: {col_inicio_totais}")
 
     return {
         'meses': meses_info,
@@ -298,18 +297,18 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
         if codigo == "1" or ("RECEITA" in nome_upper and codigo.startswith("1")):
             if not item_receita:  # Pegar o primeiro
                 item_receita = item
-                print(f"✅ Item RECEITA encontrado: [{item['codigo']}] {item['nome']}")
+                logger.debug(f"Item RECEITA encontrado: [{item['codigo']}] {item['nome']}")
 
         # Procurar por "2 - DESPESAS" ou similar
         if codigo == "2" or ("DESPESA" in nome_upper and codigo.startswith("2")):
             if not item_despesa:  # Pegar o primeiro
                 item_despesa = item
-                print(f"✅ Item DESPESA encontrado: [{item['codigo']}] {item['nome']}")
+                logger.debug(f"Item DESPESA encontrado: [{item['codigo']}] {item['nome']}")
 
     if not item_receita or not item_despesa:
-        print("⚠️  ATENÇÃO: Não foi possível encontrar itens RECEITA e/ou DESPESAS!")
-        print(f"   Item RECEITA: {'Encontrado' if item_receita else 'NÃO ENCONTRADO'}")
-        print(f"   Item DESPESA: {'Encontrado' if item_despesa else 'NÃO ENCONTRADO'}")
+        logger.warning("ATENÇÃO: Não foi possível encontrar itens RECEITA e/ou DESPESAS!")
+        logger.warning(f"Item RECEITA: {'Encontrado' if item_receita else 'NÃO ENCONTRADO'}")
+        logger.warning(f"Item DESPESA: {'Encontrado' if item_despesa else 'NÃO ENCONTRADO'}")
         return totais
 
     # Calcular para cada mês encontrado na planilha
@@ -323,7 +322,7 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
         dados_mes_despesa = next((m for m in item_despesa['dados_mensais'] if m['mes_numero'] == mes_numero and m['ano'] == ano), None)
 
         if not dados_mes_receita or not dados_mes_despesa:
-            print(f"⚠️  {mes_info['mes_nome']} {ano}: Dados não encontrados")
+            logger.warning(f"{mes_info['mes_nome']} {ano}: Dados não encontrados")
             continue
 
         # ====================================================================
@@ -398,20 +397,15 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
 
         # Log apenas do primeiro mês para não poluir
         if len(totais['fluxo_caixa']) == 1:
-            print(f"\n📅 {mes_info['mes_nome']} {ano} - Exemplo de cálculo:")
-            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita)} | Despesa: R$ {formatar_numero(orcamento_despesa)} | Geral: R$ {formatar_numero(orcamento_geral)}")
-            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita)} | Despesa: R$ {formatar_numero(realizado_despesa)} | Geral: R$ {formatar_numero(realizado_geral)}")
-            print(f"   % ATINGIDO → Receita: {perc_receita:.2f}% | Despesa: {perc_despesa:.2f}% | Geral: {perc_geral:.2f}%")
-            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita)} | Despesa: R$ {formatar_numero(diferenca_despesa)} | Geral: R$ {formatar_numero(diferenca_geral)}")
+            logger.debug(f"{mes_info['mes_nome']} {ano} - Exemplo de cálculo do Fluxo de Caixa")
+            logger.debug(f"ORÇAMENTO → Receita: R$ {formatar_numero(orcamento_receita)} | Despesa: R$ {formatar_numero(orcamento_despesa)} | Geral: R$ {formatar_numero(orcamento_geral)}")
 
-    print(f"\n✅ Totais do Fluxo de Caixa calculados para {len(totais['fluxo_caixa'])} meses")
+    logger.debug(f"Totais do Fluxo de Caixa calculados para {len(totais['fluxo_caixa'])} meses")
 
     # ========================================================================
     # CALCULAR 2º CENÁRIO: RESULTADO REAL
     # ========================================================================
-    print("\n" + "-"*100)
-    print("🧮 CALCULANDO TOTAIS - RESULTADO REAL")
-    print("-"*100)
+    logger.debug("CALCULANDO TOTAIS - RESULTADO REAL")
 
     # Itens a subtrair da RECEITA para o Resultado Real
     itens_subtrair_receita = ['RECEITA EMPRESTIMO', 'OUTRAS RECEITAS']
@@ -458,7 +452,7 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
         dados_fc = totais['fluxo_caixa'].get(chave_mes)
 
         if not dados_fc:
-            print(f"⚠️  {mes_info['mes_nome']} {ano}: Dados do Fluxo de Caixa não encontrados")
+            logger.warning(f"{mes_info['mes_nome']} {ano}: Dados do Fluxo de Caixa não encontrados")
             continue
 
         # ====================================================================
@@ -547,20 +541,14 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
 
         # Log apenas do primeiro mês
         if len(totais['real']) == 1:
-            print(f"\n📅 {mes_info['mes_nome']} {ano} - Exemplo de cálculo (Resultado Real):")
-            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita_real)} | Despesa: R$ {formatar_numero(orcamento_despesa_real)} | Geral: R$ {formatar_numero(orcamento_geral_real)}")
-            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita_real)} | Despesa: R$ {formatar_numero(realizado_despesa_real)} | Geral: R$ {formatar_numero(realizado_geral_real)}")
-            print(f"   % ATINGIDO → Receita: {perc_receita_real:.2f}% | Despesa: {perc_despesa_real:.2f}% | Geral: {perc_geral_real:.2f}%")
-            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita_real)} | Despesa: R$ {formatar_numero(diferenca_despesa_real)} | Geral: R$ {formatar_numero(diferenca_geral_real)}")
+            logger.debug(f"{mes_info['mes_nome']} {ano} - Exemplo de cálculo (Resultado Real)")
 
-    print(f"\n✅ Totais do Resultado Real calculados para {len(totais['real'])} meses")
+    logger.debug(f"Totais do Resultado Real calculados para {len(totais['real'])} meses")
 
     # ========================================================================
     # CALCULAR 3º CENÁRIO: RESULTADO REAL + CUSTO MATÉRIA PRIMA
     # ========================================================================
-    print("\n" + "-"*100)
-    print("🧮 CALCULANDO TOTAIS - RESULTADO REAL + CUSTO MATÉRIA PRIMA")
-    print("-"*100)
+    logger.debug("CALCULANDO TOTAIS - RESULTADO REAL + CUSTO MATÉRIA PRIMA")
 
     # Item a buscar: CUSTO MATERIA PRIMA
     item_custo_mp_nome = 'CUSTO MATERIA PRIMA'
@@ -575,7 +563,7 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
         dados_real = totais['real'].get(chave_mes)
 
         if not dados_real:
-            print(f"⚠️  {mes_info['mes_nome']} {ano}: Dados do Resultado Real não encontrados")
+            logger.warning(f"{mes_info['mes_nome']} {ano}: Dados do Resultado Real não encontrados")
             continue
 
         # ====================================================================
@@ -676,14 +664,9 @@ def calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info):
 
         # Log apenas do primeiro mês
         if len(totais['real_mp']) == 1:
-            print(f"\n📅 {mes_info['mes_nome']} {ano} - Exemplo de cálculo (Resultado Real + Custo MP):")
-            print(f"   CUSTO MP   → Orçado: R$ {formatar_numero(custo_mp_orcado)} | Realizado: R$ {formatar_numero(custo_mp_realizado)}")
-            print(f"   ORÇAMENTO  → Receita: R$ {formatar_numero(orcamento_receita_mp)} | Despesa: R$ {formatar_numero(orcamento_despesa_mp)} | Geral: R$ {formatar_numero(orcamento_geral_mp)}")
-            print(f"   REALIZADO  → Receita: R$ {formatar_numero(realizado_receita_mp)} | Despesa: R$ {formatar_numero(realizado_despesa_mp)} | Geral: R$ {formatar_numero(realizado_geral_mp)}")
-            print(f"   % ATINGIDO → Receita: {perc_receita_mp:.2f}% | Despesa: {perc_despesa_mp:.2f}% | Geral: {perc_geral_mp:.2f}%")
-            print(f"   DIFERENÇA  → Receita: R$ {formatar_numero(diferenca_receita_mp)} | Despesa: R$ {formatar_numero(diferenca_despesa_mp)} | Geral: R$ {formatar_numero(diferenca_geral_mp)}")
+            logger.debug(f"{mes_info['mes_nome']} {ano} - Exemplo de cálculo (Resultado Real + Custo MP)")
 
-    print(f"\n✅ Totais do Resultado Real + Custo MP calculados para {len(totais['real_mp'])} meses")
+    logger.debug(f"Totais do Resultado Real + Custo MP calculados para {len(totais['real_mp'])} meses")
 
     return totais
 
@@ -716,9 +699,7 @@ def process_bpo_file(file):
     """
 
     try:
-        print("\n" + "="*100)
-        print("🔄 PROCESSANDO PLANILHA BPO (NOVA ESTRUTURA)")
-        print("="*100)
+        logger.info("PROCESSANDO PLANILHA BPO (NOVA ESTRUTURA)")
 
         # Carregar workbook (data_only=True para pegar valores calculados ao invés de fórmulas)
         wb = load_workbook(file, data_only=True)
@@ -729,11 +710,11 @@ def process_bpo_file(file):
             raise Exception(f"Sheet '{sheet_name}' não encontrada. Sheets disponíveis: {wb.sheetnames}")
 
         sheet = wb[sheet_name]
-        print(f"✅ Sheet '{sheet_name}' encontrada")
+        logger.debug(f"Sheet '{sheet_name}' encontrada")
 
         # Identificar estrutura da planilha
         total_colunas = sheet.max_column
-        print(f"📊 Total de colunas na planilha: {total_colunas}")
+        logger.debug(f"Total de colunas na planilha: {total_colunas}")
 
         # Ler o cabeçalho para extrair informações dos meses dinamicamente
         info_cabecalho = extrair_meses_do_cabecalho(sheet)
@@ -741,17 +722,14 @@ def process_bpo_file(file):
         col_inicio_totais = info_cabecalho['col_inicio_totais']
         num_meses = info_cabecalho['num_meses']
 
-        print(f"📅 Número de meses detectados: {num_meses}")
         meses_str = ', '.join([f"{m['mes_nome']} {m['ano']}" for m in meses_info])
-        print(f"🗓️  Meses identificados: {meses_str}")
+        logger.info(f"Número de meses detectados: {num_meses} ({meses_str})")
 
         # Processar itens hierárquicos (LINHA 2 em diante)
         itens_hierarquicos = []
         linha_atual = 2  # Começa na linha 2 (linha 1 = cabeçalho)
 
-        print("\n" + "-"*100)
-        print("📋 PROCESSANDO ITENS HIERÁRQUICOS")
-        print("-"*100)
+        logger.debug("PROCESSANDO ITENS HIERÁRQUICOS")
 
         while True:
             row_values = []
@@ -761,7 +739,7 @@ def process_bpo_file(file):
 
             # Verifica se linha está completamente vazia (fim da planilha)
             if all(v is None or str(v).strip() == '' for v in row_values):
-                print(f"⏹️  Linha {linha_atual}: Vazia - fim dos dados")
+                logger.debug(f"Linha {linha_atual}: Vazia - fim dos dados")
                 break
 
             # Processar item se coluna A tem conteúdo
@@ -776,21 +754,14 @@ def process_bpo_file(file):
                 )
                 itens_hierarquicos.append(item)
 
-                # Log apenas das primeiras 5 linhas para não poluir
-                if len(itens_hierarquicos) <= 5:
-                    print(f"✅ Linha {linha_atual}: [{item['codigo']}] {item['nome']}")
-                    print(f"   └─ Meses: {len(item['dados_mensais'])} | Totais: Orçado={formatar_numero(item['resultados_totais']['valor_orcado_total'])}")
-
             linha_atual += 1
 
-        print(f"\n📊 Total de itens processados: {len(itens_hierarquicos)}")
+        logger.debug(f"Total de itens processados: {len(itens_hierarquicos)}")
 
         # ========================================================================
         # CALCULAR TOTAIS (1º CENÁRIO: RESULTADO POR FLUXO DE CAIXA)
         # ========================================================================
-        print("\n" + "-"*100)
-        print("🧮 CALCULANDO TOTAIS - RESULTADO POR FLUXO DE CAIXA")
-        print("-"*100)
+        logger.debug("CALCULANDO TOTAIS - RESULTADO POR FLUXO DE CAIXA")
 
         totais_calculados = calcular_totais_fluxo_caixa(itens_hierarquicos, meses_info)
 
@@ -806,25 +777,14 @@ def process_bpo_file(file):
             }
         }
 
-        print("\n" + "="*100)
-        print("✅ PROCESSAMENTO CONCLUÍDO COM SUCESSO!")
-        print("="*100)
-        print(f"📊 Resumo:")
-        print(f"   • Itens processados: {len(itens_hierarquicos)}")
-        print(f"   • Meses: {num_meses} ({meses_str})")
-        print(f"   • Total de colunas: {total_colunas}")
-        print("="*100 + "\n")
+        logger.info(f"PROCESSAMENTO CONCLUÍDO COM SUCESSO! Itens: {len(itens_hierarquicos)}, Meses: {num_meses}, Colunas: {total_colunas}")
 
         return dados_processados
 
     except Exception as e:
-        print("\n" + "="*100)
-        print(f"❌ ERRO AO PROCESSAR ARQUIVO BPO")
-        print("="*100)
-        print(f"Erro: {str(e)}")
+        logger.error(f"ERRO AO PROCESSAR ARQUIVO BPO: {str(e)}")
         import traceback
         traceback.print_exc()
-        print("="*100 + "\n")
         raise Exception(f"Erro no processamento do BPO: {str(e)}")
 
 

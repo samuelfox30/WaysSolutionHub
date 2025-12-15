@@ -1,5 +1,9 @@
 from flask import Blueprint, render_template, session, redirect, url_for, request, flash, jsonify
 from datetime import datetime
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('admin_pages')
 
 
 admin_bp = Blueprint('admin', __name__)
@@ -430,12 +434,11 @@ def api_dados_bpo_tabela(empresa_id):
             # Extrair totais calculados
             totais = dados.get('totais_calculados', {})
 
-            print(f"\n🔍 DEBUG - Mês {mes}/{ano}:")
-            print(f"   totais keys: {list(totais.keys()) if totais else 'VAZIO'}")
+            logger.debug(f"Mês {mes}/{ano}: totais keys: {list(totais.keys()) if totais else 'VAZIO'}")
             if totais:
                 for cenario in ['fluxo_caixa', 'real', 'real_mp']:
                     if cenario in totais:
-                        print(f"   {cenario}: {list(totais[cenario].keys()) if isinstance(totais[cenario], dict) else type(totais[cenario])}")
+                        logger.debug(f"   {cenario}: {list(totais[cenario].keys()) if isinstance(totais[cenario], dict) else type(totais[cenario])}")
 
             # Os totais_calculados vêm com TODOS os meses do Excel
             # Então apenas precisamos mesclar os dados de cada cenário
@@ -459,9 +462,9 @@ def api_dados_bpo_tabela(empresa_id):
                         if chave_normalizada not in totais_calculados[cenario]:
                             totais_calculados[cenario][chave_normalizada] = mes_value
 
-        print(f"\n📊 TOTAIS CALCULADOS FINAL:")
+        logger.debug(f"TOTAIS CALCULADOS FINAL:")
         for cenario in ['fluxo_caixa', 'real', 'real_mp']:
-            print(f"   {cenario}: {len(totais_calculados[cenario])} meses - {list(totais_calculados[cenario].keys())}")
+            logger.debug(f"   {cenario}: {len(totais_calculados[cenario])} meses - {list(totais_calculados[cenario].keys())}")
 
         return jsonify({
             'itens': itens_lista,
@@ -470,7 +473,7 @@ def api_dados_bpo_tabela(empresa_id):
         })
 
     except Exception as e:
-        print(f"Erro na API dados-bpo-tabela: {e}")
+        logger.error(f"Erro na API dados-bpo-tabela: {e}")
         import traceback
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
@@ -571,7 +574,7 @@ def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
         )
 
     except Exception as e:
-        print(f"[ERRO] Erro ao gerar PDF: {e}")
+        logger.error(f"Erro ao gerar PDF: {e}")
         import traceback
         traceback.print_exc()
         flash(f"Erro ao gerar PDF: {str(e)}", "danger")
@@ -707,7 +710,7 @@ def api_dados_empresa(empresa_id, ano):
                 "percentual": 0
             })
 
-    print("Dados organizados para API:", dados_organizados)
+    logger.debug(f"Dados organizados para API: {len(dados_organizados)} grupos")
 
     return jsonify({
         "ano": ano,
@@ -840,7 +843,7 @@ def upload_dados():
 
         flash(f"Dados da empresa para o ano {ano} foram salvos com sucesso.", "success")
     except Exception as e:
-        print(f"Erro ao processar arquivo: {e}")
+        logger.error(f"Erro ao processar arquivo: {e}")
         flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
@@ -929,7 +932,7 @@ def upload_dados_bpo():
             flash("Nenhum dado BPO foi encontrado na planilha.", "warning")
 
     except Exception as e:
-        print(f"Erro ao processar arquivo BPO: {e}")
+        logger.error(f"Erro ao processar arquivo BPO: {e}")
         flash(f"Erro ao processar o arquivo BPO: {str(e)}", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
@@ -1132,12 +1135,10 @@ def api_dados_bpo(empresa_id):
 
     company_manager.close()
 
-    print("\n" + "="*80)
-    print(f"🔍 DEBUG API DASHBOARD BPO - Empresa {empresa_id}")
-    print("="*80)
-    print(f"Período: {mes_inicio}/{ano_inicio} até {mes_fim}/{ano_fim}")
-    print(f"DRE selecionado: {tipo_dre}")
-    print(f"Total de meses encontrados no DB: {len(meses_data)}")
+    logger.debug(f"API DASHBOARD BPO - Empresa {empresa_id}")
+    logger.debug(f"Período: {mes_inicio}/{ano_inicio} até {mes_fim}/{ano_fim}")
+    logger.debug(f"DRE selecionado: {tipo_dre}")
+    logger.debug(f"Total de meses encontrados no DB: {len(meses_data)}")
 
     # Inicializar totais acumulados
     totais = {
@@ -1176,15 +1177,15 @@ def api_dados_bpo(empresa_id):
         ano_curto = str(ano)[-2:]  # Pega só os 2 últimos dígitos
         labels_meses.append(f"{nome_mes}/{ano_curto}")
 
-        print(f"\n📅 MÊS {mes_num}/{ano}:")
+        logger.debug(f"Processando mês {mes_num}/{ano}")
 
         # Extrair totais_calculados (nova estrutura)
         totais_calculados = dados.get('totais_calculados', {})
 
         # Verificar se totais_calculados está vazio ou None
         if not totais_calculados or totais_calculados == {}:
-            print(f"   ⚠️  totais_calculados vazio para este mês")
-            print(f"   💡 DICA: Faça upload da planilha novamente para recalcular os dados")
+            logger.warning(f"totais_calculados vazio para mês {mes_num}/{ano}")
+            logger.info("DICA: Faça upload da planilha novamente para recalcular os dados")
             receitas_mensais.append(0)
             despesas_mensais.append(0)
             gerais_mensais.append(0)
@@ -1201,7 +1202,7 @@ def api_dados_bpo(empresa_id):
 
             # Verificar se o cenário existe e não está vazio
             if not cenario_data or not isinstance(cenario_data, dict):
-                print(f"   ⚠️  {cenario_key.upper()}: cenário vazio ou inválido")
+                logger.warning(f"{cenario_key.upper()}: cenário vazio ou inválido para mês {mes_num}/{ano}")
                 continue
 
             # Pegar dados do mês (a chave pode ser string ou int)
@@ -1221,10 +1222,7 @@ def api_dados_bpo(empresa_id):
                     totais[cenario_key]['despesa'] += despesa
                     totais[cenario_key]['geral'] += geral
 
-                    print(f"   {cenario_key.upper()}:")
-                    print(f"      Receita: R$ {receita:,.2f}")
-                    print(f"      Despesa: R$ {despesa:,.2f}")
-                    print(f"      Geral:   R$ {geral:,.2f}")
+                    logger.debug(f"{cenario_key.upper()}: Receita: R$ {receita:,.2f}, Despesa: R$ {despesa:,.2f}, Geral: R$ {geral:,.2f}")
 
                     # Se é o DRE selecionado, guardar para gráfico
                     if cenario_key == tipo_dre:
@@ -1232,7 +1230,7 @@ def api_dados_bpo(empresa_id):
                         despesa_grafico = despesa
                         geral_grafico = geral
                 else:
-                    print(f"   ⚠️  {cenario_key.upper()}: estrutura 'realizado' inválida")
+                    logger.warning(f"{cenario_key.upper()}: estrutura 'realizado' inválida para mês {mes_num}/{ano}")
 
                 # Extrair valores de orçamento
                 orcamento = mes_dados.get('orcamento', {})
@@ -1246,49 +1244,29 @@ def api_dados_bpo(empresa_id):
                     totais_orcamento[cenario_key]['despesa'] += despesa_orc
                     totais_orcamento[cenario_key]['geral'] += geral_orc
             else:
-                print(f"   ⚠️  {cenario_key.upper()}: sem dados para mês {mes_num}")
+                logger.warning(f"{cenario_key.upper()}: sem dados para mês {mes_num}")
 
         # Adicionar aos arrays do gráfico
         receitas_mensais.append(receita_grafico)
         despesas_mensais.append(despesa_grafico)
         gerais_mensais.append(geral_grafico)
 
-    print("\n" + "="*80)
-    print("📊 TOTAIS ACUMULADOS FINAIS:")
-    print("="*80)
+    logger.debug("TOTAIS ACUMULADOS FINAIS:")
     for dre_key, valores in totais.items():
-        print(f"{dre_key.upper()}:")
-        print(f"   Receita: R$ {valores['receita']:,.2f}")
-        print(f"   Despesa: R$ {valores['despesa']:,.2f}")
-        print(f"   Geral:   R$ {valores['geral']:,.2f}")
-    print("="*80 + "\n")
+        logger.debug(f"{dre_key.upper()}: Receita: R$ {valores['receita']:,.2f}, Despesa: R$ {valores['despesa']:,.2f}, Geral: R$ {valores['geral']:,.2f}")
 
     # Processar categorias de despesa (itens 2.0X)
     categorias_despesa = {}
     total_receita_orcado = 0
 
-    print("\n" + "="*80)
-    print("🔍 PROCESSANDO CATEGORIAS DE DESPESA")
-    print("="*80)
+    logger.debug("PROCESSANDO CATEGORIAS DE DESPESA")
 
     try:
         for mes_data in meses_data:
             dados = mes_data['dados']
             itens = dados.get('itens_hierarquicos', [])
 
-            print(f"\n📦 Mês {mes_data['mes']}/{mes_data['ano']}: {len(itens)} itens encontrados")
-
-            # Verificar se é lista ou dicionário
-            if isinstance(itens, list):
-                print(f"   Tipo: Lista com {len(itens)} elementos")
-                # Mostrar alguns códigos para debug
-                if len(itens) > 0:
-                    codigos_exemplo = [item.get('codigo', 'sem codigo') for item in itens[:5]]
-                    print(f"   Exemplo de códigos: {codigos_exemplo}")
-            else:
-                print(f"   Tipo: Dicionário com {len(itens)} chaves")
-                codigos_exemplo = list(itens.keys())[:5]
-                print(f"   Exemplo de códigos: {codigos_exemplo}")
+            logger.debug(f"Mês {mes_data['mes']}/{mes_data['ano']}: {len(itens)} itens encontrados")
 
             # Processar cada item (funciona para lista ou dicionário)
             items_to_process = itens if isinstance(itens, list) else itens.items()
@@ -1304,31 +1282,6 @@ def api_dados_bpo(empresa_id):
 
                 # Filtrar apenas itens 2.0X (ex: 2.01, 2.02, não 2.01.01)
                 if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
-                    print(f"   ✓ Despesa encontrada: {codigo} - {item_data.get('nome', 'Sem nome')}")
-
-                    # DEBUG: Mostrar estrutura completa do primeiro item encontrado
-                    if codigo == '2.01' and mes_data['mes'] == 1:
-                        print(f"      🔍 DEBUG - Estrutura completa do item 2.01:")
-                        print(f"         Chaves disponíveis: {list(item_data.keys())}")
-                        for key in item_data.keys():
-                            value = item_data[key]
-                            if isinstance(value, (dict, list)):
-                                print(f"         {key}: {type(value).__name__} com {len(value)} elementos")
-                            else:
-                                print(f"         {key}: {value}")
-
-                        # Mostrar detalhes de dados_mensais
-                        if 'dados_mensais' in item_data:
-                            print(f"      📊 Conteúdo de dados_mensais:")
-                            for idx, mes_dados in enumerate(item_data['dados_mensais']):
-                                print(f"         [{idx}]: {mes_dados}")
-
-                        # Mostrar detalhes de resultados_totais
-                        if 'resultados_totais' in item_data:
-                            print(f"      📊 Conteúdo de resultados_totais:")
-                            for key, value in item_data['resultados_totais'].items():
-                                print(f"         {key}: {value}")
-
                     if codigo not in categorias_despesa:
                         categorias_despesa[codigo] = {
                             'nome': item_data.get('nome', codigo),
@@ -1375,12 +1328,9 @@ def api_dados_bpo(empresa_id):
             # Diferença entre média prevista e média realizada (orçado - realizado)
             cat['diferenca'] = cat['orcado'] - cat['realizado']
 
-        print(f"\n✅ Total de categorias de despesa encontradas: {len(categorias_despesa)}")
-        print(f"💰 Total receita orçado: R$ {total_receita_orcado:,.2f}")
-        print(f"📊 Quantidade de meses processados: {num_meses}")
-        print("="*80 + "\n")
+        logger.debug(f"Total de categorias de despesa: {len(categorias_despesa)}, Total receita orçado: R$ {total_receita_orcado:,.2f}, Meses processados: {num_meses}")
     except Exception as e:
-        print(f"❌ Erro ao processar categorias de despesa: {e}")
+        logger.error(f"Erro ao processar categorias de despesa: {e}")
         import traceback
         traceback.print_exc()
         categorias_despesa = {}
@@ -1389,9 +1339,7 @@ def api_dados_bpo(empresa_id):
     # Processar categorias de receita (itens 1.0X)
     categorias_receita = {}
 
-    print("\n" + "="*80)
-    print("🔍 PROCESSANDO CATEGORIAS DE RECEITA")
-    print("="*80)
+    logger.debug("PROCESSANDO CATEGORIAS DE RECEITA")
 
     try:
         for mes_data in meses_data:
@@ -1442,10 +1390,9 @@ def api_dados_bpo(empresa_id):
             # Diferença entre média prevista e média realizada (orçado - realizado)
             cat['diferenca'] = cat['orcado'] - cat['realizado']
 
-        print(f"\n✅ Total de categorias de receita encontradas: {len(categorias_receita)}")
-        print("="*80 + "\n")
+        logger.debug(f"Total de categorias de receita: {len(categorias_receita)}")
     except Exception as e:
-        print(f"❌ Erro ao processar categorias de receita: {e}")
+        logger.error(f"Erro ao processar categorias de receita: {e}")
         import traceback
         traceback.print_exc()
         categorias_receita = {}
