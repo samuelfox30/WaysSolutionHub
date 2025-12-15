@@ -228,6 +228,93 @@
         height: 3rem;
         border-width: 0.3rem;
     }
+
+    /* Botão Imprimir/PDF */
+    .btn-pdf {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: none;
+        color: white;
+        padding: 12px 40px;
+        font-weight: 700;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(16, 185, 129, 0.4);
+        transition: all 0.3s ease;
+    }
+
+    .btn-pdf:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.6);
+        background: linear-gradient(135deg, #059669 0%, #10b981 100%);
+    }
+
+    /* CSS para Impressão - Esconde elementos desnecessários */
+    @media print {
+        /* Esconde sidebar, header, filtros e botões */
+        .sidebar,
+        .header,
+        .filter-card,
+        .btn-consultar,
+        .btn-pdf,
+        nav,
+        .navbar,
+        .loading {
+            display: none !important;
+        }
+
+        /* Remove margens e ajusta o conteúdo */
+        body {
+            margin: 0;
+            padding: 0;
+        }
+
+        .container-fluid {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+
+        /* Ajusta tabela para impressão */
+        .table-container {
+            box-shadow: none;
+            border-radius: 0;
+            margin: 0;
+            padding: 0;
+        }
+
+        .table-scroll {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+
+        .excel-table {
+            width: 100% !important;
+            font-size: 8pt !important;
+        }
+
+        .excel-table th,
+        .excel-table td {
+            padding: 4px 6px !important;
+            font-size: 8pt !important;
+        }
+
+        /* Ajusta cenários para impressão */
+        .cenarios-section {
+            page-break-before: always;
+            margin: 0;
+            padding: 10px;
+        }
+
+        .cenario-card {
+            page-break-inside: avoid;
+            margin-bottom: 15px;
+        }
+
+        /* Força orientação paisagem */
+        @page {
+            size: landscape;
+            margin: 1cm;
+        }
+    }
 </style>
 
 <div class="container-fluid px-4">
@@ -305,9 +392,15 @@
                 </div>
             </div>
 
-            <div class="col-md-6 d-flex align-items-end">
+            <div class="col-md-3 d-flex align-items-end">
                 <button class="btn btn-consultar w-100" onclick="carregarDados()">
                     <i class="bi bi-search me-2"></i>Consultar Dados BPO
+                </button>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end">
+                <button id="btn-pdf" class="btn btn-pdf w-100" onclick="imprimirPDF()" style="display: none;">
+                    <i class="bi bi-printer-fill me-2"></i>Gerar PDF / Imprimir
                 </button>
             </div>
         </div>
@@ -475,6 +568,9 @@ async function carregarDados() {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('table-container').style.display = 'block';
         document.getElementById('cenarios-section').style.display = 'block';
+
+        // Mostrar botão PDF
+        document.getElementById('btn-pdf').style.display = 'block';
 
     } catch (error) {
         console.error('Erro:', error);
@@ -813,6 +909,11 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
     });
 
     document.getElementById(bodyId).innerHTML = bodyHTML;
+}
+
+// Função para imprimir/gerar PDF
+function imprimirPDF() {
+    window.print();
 }
 </script>
 
