@@ -91,12 +91,13 @@ class Logger:
         """
         logger = Logger.get_logger('app', log_level=logging.INFO)
 
-        if app:
+        if app and len(logger.handlers) > 0:
             # Desabilita o logger padrão do Flask para evitar duplicação
             app.logger.handlers = []
 
             # Redireciona logs do Flask para nosso logger
-            app.logger.addHandler(logger.handlers[0])
+            for handler in logger.handlers:
+                app.logger.addHandler(handler)
             app.logger.setLevel(logging.INFO)
 
         logger.info("="*80)
