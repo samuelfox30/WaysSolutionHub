@@ -984,16 +984,26 @@ async function exportarDashboardPDF() {
             pdf.text(`Ano: ${ano}`, margin + 35, margin + 11);
 
             // === GRÁFICO ===
+            // === GRÁFICO ===
             try {
                 // Encontrar a instância do Chart.js associada a este canvas
                 const chartId = canvas.id;
                 const chartInstance = Object.values(charts).find(chart => chart.canvas.id === chartId);
 
+                console.log(`📊 Processando gráfico ID: ${chartId}`);
+                console.log(`   Instância encontrada:`, !!chartInstance);
+
                 if (chartInstance) {
                     console.log(`🎨 Ativando labels para gráfico: ${chartId}`);
+                    console.log(`   Tipo de gráfico:`, chartInstance.config.type);
 
                     // Ativar datalabels temporariamente com configuração adequada
                     const chartType = chartInstance.config.type;
+
+                    // Garantir que o objeto plugins existe
+                    if (!chartInstance.options.plugins) {
+                        chartInstance.options.plugins = {};
+                    }
 
                     chartInstance.options.plugins.datalabels = {
                         display: true,
@@ -1023,40 +1033,36 @@ async function exportarDashboardPDF() {
                         offset: chartType === 'pie' ? 0 : -2
                     };
 
-                    // Atualizar gráfico para mostrar os labels
-                    chartInstance.update('none'); // 'none' = sem animação
+                    console.log(`   Configuração datalabels aplicada:`, chartInstance.options.plugins.datalabels);
 
-                    // Aguardar um momento para garantir que renderizou
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Atualizar gráfico FORÇANDO re-render
+                    chartInstance.update(); // SEM 'none' para forçar re-render completo
+                    console.log(`   Update() chamado`);
+
+                    // Aguardar mais tempo para garantir que renderizou
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    console.log(`   Aguardou 500ms`);
+                } else {
+                    console.warn(`⚠️ Instância do gráfico ${chartId} NÃO encontrada!`);
                 }
 
                 // Capturar o canvas do gráfico
+                console.log(`📸 Capturando canvas...`);
                 const chartCanvas = await html2canvas(canvas, {
                     scale: 2,
                     backgroundColor: '#ffffff'
                 });
 
                 const chartData = chartCanvas.toDataURL('image/png');
+                console.log(`   Canvas capturado`);
 
                 // Restaurar estado original (desabilitar labels)
                 if (chartInstance) {
                     console.log(`🔄 Desativando labels para gráfico: ${chartId}`);
                     chartInstance.options.plugins.datalabels = { display: false };
-                    chartInstance.update('none');
+                    chartInstance.update();
+                    console.log(`   Labels desativados`);
                 }
-
-                // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
-                const chartHeight = pageHeight - margin * 3 - 20;
-                const chartWidth = pageWidth - margin * 2;
-                const chartY = margin + 20;
-
-                pdf.addImage(chartData, 'PNG', margin, chartY, chartWidth, chartHeight);
-
-                console.log(`✅ Gráfico ${i + 1} adicionado ao PDF`);
-            } catch (err) {
-                console.error(`❌ Erro ao capturar gráfico ${i + 1}:`, err);
-                pdf.setFontSize(12);
-                pdf.setTextColor(255, 0, 0);
                 pdf.text(`Erro ao carregar gráfico ${i + 1}`, pageWidth / 2, pageHeight / 2, { align: 'center' });
                 pdf.setTextColor(0, 0, 0);
             }
