@@ -373,6 +373,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+// Registrar plugin datalabels explicitamente
+Chart.register(ChartDataLabels);
+
 // Desabilitar datalabels por padrão (será ativado apenas para PDF)
 Chart.defaults.set('plugins.datalabels', {
     display: false
@@ -987,11 +990,20 @@ async function exportarDashboardPDF() {
                 const chartId = canvas.id;
                 const chartInstance = Object.values(charts).find(chart => chart.canvas.id === chartId);
 
+                console.log(`📊 Processando gráfico ID: ${chartId}`);
+                console.log(`   Instância encontrada:`, !!chartInstance);
+
                 if (chartInstance) {
                     console.log(`🎨 Ativando labels para gráfico: ${chartId}`);
+                    console.log(`   Tipo de gráfico:`, chartInstance.config.type);
 
                     // Ativar datalabels temporariamente com configuração adequada
                     const chartType = chartInstance.config.type;
+
+                    // Garantir que o objeto plugins existe
+                    if (!chartInstance.options.plugins) {
+                        chartInstance.options.plugins = {};
+                    }
 
                     chartInstance.options.plugins.datalabels = {
                         display: true,
@@ -1021,26 +1033,35 @@ async function exportarDashboardPDF() {
                         offset: chartType === 'pie' ? 0 : -2
                     };
 
-                    // Atualizar gráfico para mostrar os labels
-                    chartInstance.update('none'); // 'none' = sem animação
+                    console.log(`   Configuração datalabels aplicada:`, chartInstance.options.plugins.datalabels);
 
-                    // Aguardar um momento para garantir que renderizou
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Atualizar gráfico FORÇANDO re-render
+                    chartInstance.update(); // SEM 'none' para forçar re-render completo
+                    console.log(`   Update() chamado`);
+
+                    // Aguardar mais tempo para garantir que renderizou
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    console.log(`   Aguardou 500ms`);
+                } else {
+                    console.warn(`⚠️ Instância do gráfico ${chartId} NÃO encontrada!`);
                 }
 
                 // Capturar o canvas do gráfico
+                console.log(`📸 Capturando canvas...`);
                 const chartCanvas = await html2canvas(canvas, {
                     scale: 2,
                     backgroundColor: '#ffffff'
                 });
 
                 const chartData = chartCanvas.toDataURL('image/png');
+                console.log(`   Canvas capturado`);
 
                 // Restaurar estado original (desabilitar labels)
                 if (chartInstance) {
                     console.log(`🔄 Desativando labels para gráfico: ${chartId}`);
                     chartInstance.options.plugins.datalabels = { display: false };
-                    chartInstance.update('none');
+                    chartInstance.update();
+                    console.log(`   Labels desativados`);
                 }
 
                 // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
