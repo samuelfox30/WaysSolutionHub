@@ -290,10 +290,15 @@
                 <input type="number" class="form-control" id="ano_fim" min="2000" max="2100" value="2025">
             </div>
 
-            <!-- Botão Consultar -->
-            <div class="col-md-12">
+            <!-- Botões -->
+            <div class="col-md-9">
                 <button class="btn btn-consultar w-100" onclick="carregarDados()">
                     <i class="bi bi-search me-2"></i>Consultar Dados BPO
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button id="btn-exportar-pdf" class="btn btn-danger w-100" onclick="exportarTabelaPDF()" style="background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%); border: none; padding: 12px; font-weight: 700; border-radius: 10px; box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);">
+                    <i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF
                 </button>
             </div>
         </div>
@@ -821,6 +826,311 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
 
     document.getElementById(bodyId).innerHTML = bodyHTML;
 }
+
+// ===== FUNÇÕES DE EXPORTAÇÃO PDF =====
+
+async function gerarCapaPDF(pdf, empresaNome, periodo, tipoDre) {
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Fundo com gradiente
+    pdf.setFillColor(245, 247, 250);
+    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    // Barra superior decorativa
+    pdf.setFillColor(99, 102, 241); // Azul do BPO
+    pdf.rect(0, 0, pageWidth, 20, 'F');
+
+    // Logo
+    const logoImg = document.querySelector('.navbar-brand img');
+    if (logoImg) {
+        try {
+            const logoCanvas = await html2canvas(logoImg, {
+                scale: 3,
+                backgroundColor: null
+            });
+            const logoData = logoCanvas.toDataURL('image/png');
+            pdf.addImage(logoData, 'PNG', (pageWidth - 60) / 2, 35, 60, 20);
+        } catch (err) {
+            console.warn('⚠️ Erro ao capturar logo:', err);
+        }
+    }
+
+    // Título principal
+    pdf.setFontSize(28);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(51, 51, 51);
+    pdf.text('Relatório BPO - Tabela Completa', pageWidth / 2, 75, { align: 'center' });
+
+    // Subtítulo
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('Dados Mensais Detalhados', pageWidth / 2, 85, { align: 'center' });
+
+    // Linha decorativa
+    pdf.setDrawColor(99, 102, 241);
+    pdf.setLineWidth(0.5);
+    pdf.line(pageWidth / 2 - 40, 90, pageWidth / 2 + 40, 90);
+
+    // Box com informações
+    const boxX = 40;
+    const boxY = 105;
+    const boxWidth = pageWidth - 80;
+    const boxHeight = 50;
+
+    // Sombra do box
+    pdf.setFillColor(200, 200, 200);
+    pdf.roundedRect(boxX + 2, boxY + 2, boxWidth, boxHeight, 3, 3, 'F');
+
+    // Box principal
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'F');
+
+    // Borda do box
+    pdf.setDrawColor(99, 102, 241);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'S');
+
+    // Informações dentro do box
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(51, 51, 51);
+
+    let yPos = boxY + 15;
+    pdf.text('Empresa:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(empresaNome, boxX + 35, yPos);
+
+    yPos += 12;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Período:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(periodo, boxX + 35, yPos);
+
+    yPos += 12;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Tipo DRE:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(tipoDre, boxX + 38, yPos);
+
+    // Data de geração
+    const dataGeracao = new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`Gerado em: ${dataGeracao}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+
+    // Marca d'água
+    pdf.setFontSize(8);
+    pdf.text('WaysSolutionHub', pageWidth / 2, pageHeight - 8, { align: 'center' });
+}
+
+async function exportarTabelaPDF() {
+    try {
+        console.log('📄 Iniciando exportação de PDF da tabela...');
+
+        // Verificar se há dados carregados
+        const tableContainer = document.getElementById('table-container');
+        if (tableContainer.style.display === 'none') {
+            alert('Por favor, carregue os dados antes de exportar o PDF.');
+            return;
+        }
+
+        // Esconder botão durante exportação
+        const btnExportar = document.getElementById('btn-exportar-pdf');
+        const textoOriginal = btnExportar.innerHTML;
+        btnExportar.innerHTML = '<i class="bi bi-hourglass-split me-2"></i>Gerando PDF...';
+        btnExportar.disabled = true;
+
+        // Importar jsPDF
+        const { jsPDF } = window.jspdf;
+
+        // Criar PDF em modo paisagem (landscape)
+        const pdf = new jsPDF({
+            orientation: 'landscape',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        // Informações do cabeçalho
+        const empresaNome = '{{ empresa_nome }}';
+        const tipoDre = document.getElementById('tipo_dre').options[document.getElementById('tipo_dre').selectedIndex].text;
+        const mesInicio = document.getElementById('mes_inicio').value;
+        const anoInicio = document.getElementById('ano_inicio').value;
+        const mesFim = document.getElementById('mes_fim').value;
+        const anoFim = document.getElementById('ano_fim').value;
+        const periodo = `${mesInicio}/${anoInicio} até ${mesFim}/${anoFim}`;
+
+        // === GERAR CAPA ===
+        console.log('📄 Gerando capa do relatório...');
+        await gerarCapaPDF(pdf, empresaNome, periodo, tipoDre);
+
+        // === CAPTURAR TABELA PRINCIPAL ===
+        console.log('📊 Capturando tabela principal...');
+        pdf.addPage();
+
+        const tableElement = document.getElementById('table-container');
+        const canvas = await html2canvas(tableElement, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+        const margin = 10;
+
+        // Calcular dimensões da imagem
+        const imgWidth = pageWidth - (margin * 2);
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+        // Adicionar título
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Tabela Completa BPO', pageWidth / 2, margin + 5, { align: 'center' });
+
+        // Adicionar imagem da tabela
+        let yPosition = margin + 12;
+        if (imgHeight > pageHeight - margin * 2 - 12) {
+            // Se a imagem for muito grande, dividir em múltiplas páginas
+            const pageImgHeight = pageHeight - margin * 2 - 12;
+            let remainingHeight = imgHeight;
+            let currentY = 0;
+
+            while (remainingHeight > 0) {
+                if (currentY > 0) {
+                    pdf.addPage();
+                    yPosition = margin;
+                }
+
+                const heightToDraw = Math.min(pageImgHeight, remainingHeight);
+                const cropCanvas = document.createElement('canvas');
+                const cropContext = cropCanvas.getContext('2d');
+
+                const sourceY = (currentY / imgHeight) * canvas.height;
+                const sourceHeight = (heightToDraw / imgHeight) * canvas.height;
+
+                cropCanvas.width = canvas.width;
+                cropCanvas.height = sourceHeight;
+
+                cropContext.drawImage(
+                    canvas,
+                    0, sourceY,
+                    canvas.width, sourceHeight,
+                    0, 0,
+                    canvas.width, sourceHeight
+                );
+
+                const cropImgData = cropCanvas.toDataURL('image/png');
+                pdf.addImage(cropImgData, 'PNG', margin, yPosition, imgWidth, heightToDraw);
+
+                currentY += heightToDraw;
+                remainingHeight -= heightToDraw;
+            }
+        } else {
+            pdf.addImage(imgData, 'PNG', margin, yPosition, imgWidth, imgHeight);
+        }
+
+        // === CAPTURAR SEÇÃO DE CENÁRIOS ===
+        const cenariosSection = document.getElementById('cenarios-section');
+        if (cenariosSection && cenariosSection.style.display !== 'none') {
+            console.log('📊 Capturando seção de cenários...');
+            pdf.addPage();
+
+            const cenariosCanvas = await html2canvas(cenariosSection, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff'
+            });
+
+            const cenariosImgData = cenariosCanvas.toDataURL('image/png');
+            const cenariosImgWidth = pageWidth - (margin * 2);
+            const cenariosImgHeight = (cenariosCanvas.height * cenariosImgWidth) / cenariosCanvas.width;
+
+            // Adicionar título
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('Totais por Cenário', pageWidth / 2, margin + 5, { align: 'center' });
+
+            yPosition = margin + 12;
+            if (cenariosImgHeight > pageHeight - margin * 2 - 12) {
+                // Dividir em múltiplas páginas se necessário
+                const pageImgHeight = pageHeight - margin * 2 - 12;
+                let remainingHeight = cenariosImgHeight;
+                let currentY = 0;
+
+                while (remainingHeight > 0) {
+                    if (currentY > 0) {
+                        pdf.addPage();
+                        yPosition = margin;
+                    }
+
+                    const heightToDraw = Math.min(pageImgHeight, remainingHeight);
+                    const cropCanvas = document.createElement('canvas');
+                    const cropContext = cropCanvas.getContext('2d');
+
+                    const sourceY = (currentY / cenariosImgHeight) * cenariosCanvas.height;
+                    const sourceHeight = (heightToDraw / cenariosImgHeight) * cenariosCanvas.height;
+
+                    cropCanvas.width = cenariosCanvas.width;
+                    cropCanvas.height = sourceHeight;
+
+                    cropContext.drawImage(
+                        cenariosCanvas,
+                        0, sourceY,
+                        cenariosCanvas.width, sourceHeight,
+                        0, 0,
+                        cenariosCanvas.width, sourceHeight
+                    );
+
+                    const cropImgData = cropCanvas.toDataURL('image/png');
+                    pdf.addImage(cropImgData, 'PNG', margin, yPosition, cenariosImgWidth, heightToDraw);
+
+                    currentY += heightToDraw;
+                    remainingHeight -= heightToDraw;
+                }
+            } else {
+                pdf.addImage(cenariosImgData, 'PNG', margin, yPosition, cenariosImgWidth, cenariosImgHeight);
+            }
+        }
+
+        // Salvar PDF
+        const timestamp = new Date().getTime();
+        pdf.save(`Relatorio_BPO_Tabela_${empresaNome}_${timestamp}.pdf`);
+
+        console.log('✅ PDF gerado com sucesso!');
+
+        // Restaurar botão
+        btnExportar.innerHTML = textoOriginal;
+        btnExportar.disabled = false;
+
+    } catch (error) {
+        console.error('❌ Erro ao gerar PDF:', error);
+        alert('Erro ao gerar PDF. Verifique o console para mais detalhes.');
+
+        // Restaurar botão em caso de erro
+        const btnExportar = document.getElementById('btn-exportar-pdf');
+        if (btnExportar) {
+            btnExportar.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>Exportar PDF';
+            btnExportar.disabled = false;
+        }
+    }
+}
 </script>
+
+<!-- Bibliotecas para exportação PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
 {% endblock %}

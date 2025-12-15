@@ -821,6 +821,110 @@ function atualizarDados() {
         });
 }
 
+async function gerarCapaPDF(pdf, empresaNome, periodo, tipoDre) {
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Fundo com gradiente
+    pdf.setFillColor(245, 247, 250);
+    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    // Barra superior decorativa
+    pdf.setFillColor(99, 102, 241); // Azul do BPO
+    pdf.rect(0, 0, pageWidth, 20, 'F');
+
+    // Logo
+    const logoImg = document.querySelector('.navbar-brand img');
+    if (logoImg) {
+        try {
+            const logoCanvas = await html2canvas(logoImg, {
+                scale: 3,
+                backgroundColor: null
+            });
+            const logoData = logoCanvas.toDataURL('image/png');
+            pdf.addImage(logoData, 'PNG', (pageWidth - 60) / 2, 35, 60, 20);
+        } catch (err) {
+            console.warn('⚠️ Erro ao capturar logo:', err);
+        }
+    }
+
+    // Título principal
+    pdf.setFontSize(28);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(51, 51, 51);
+    pdf.text('Relatório BPO', pageWidth / 2, 75, { align: 'center' });
+
+    // Subtítulo
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('Business Process Outsourcing', pageWidth / 2, 85, { align: 'center' });
+
+    // Linha decorativa
+    pdf.setDrawColor(99, 102, 241);
+    pdf.setLineWidth(0.5);
+    pdf.line(pageWidth / 2 - 40, 90, pageWidth / 2 + 40, 90);
+
+    // Box com informações
+    const boxX = 40;
+    const boxY = 105;
+    const boxWidth = pageWidth - 80;
+    const boxHeight = 50;
+
+    // Sombra do box
+    pdf.setFillColor(200, 200, 200);
+    pdf.roundedRect(boxX + 2, boxY + 2, boxWidth, boxHeight, 3, 3, 'F');
+
+    // Box principal
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'F');
+
+    // Borda do box
+    pdf.setDrawColor(99, 102, 241);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'S');
+
+    // Informações dentro do box
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(51, 51, 51);
+
+    let yPos = boxY + 15;
+    pdf.text('Empresa:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(empresaNome, boxX + 35, yPos);
+
+    yPos += 12;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Período:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(periodo, boxX + 35, yPos);
+
+    yPos += 12;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Tipo DRE:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(tipoDre, boxX + 38, yPos);
+
+    // Data de geração
+    const dataGeracao = new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`Gerado em: ${dataGeracao}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+
+    // Marca d'água
+    pdf.setFontSize(8);
+    pdf.text('WaysSolutionHub', pageWidth / 2, pageHeight - 8, { align: 'center' });
+}
+
 async function exportarDashboardPDF() {
     try {
         console.log('📄 Iniciando exportação de PDF...');
@@ -854,13 +958,10 @@ async function exportarDashboardPDF() {
         const mesFim = document.getElementById('mes_fim').value;
         const anoFim = document.getElementById('ano_fim').value;
         const periodo = `${mesInicio}/${anoInicio} até ${mesFim}/${anoFim}`;
-        const dataGeracao = new Date().toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+
+        // === GERAR CAPA ===
+        console.log('📄 Gerando capa do relatório...');
+        await gerarCapaPDF(pdf, empresaNome, periodo, tipoDre);
 
         // Obter todos os canvas de gráficos visíveis
         const canvasElements = [
