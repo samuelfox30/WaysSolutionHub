@@ -368,9 +368,15 @@
 <div id="charts-container" style="display: none;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
+// Desabilitar datalabels por padrão (será ativado apenas para PDF)
+Chart.defaults.set('plugins.datalabels', {
+    display: false
+});
+
 let charts = {};
 let dadosAtuais = null;
 let anoSelecionado = null;
@@ -976,6 +982,51 @@ async function exportarDashboardPDF() {
 
             // === GRÁFICO ===
             try {
+                // Encontrar a instância do Chart.js associada a este canvas
+                const chartId = canvas.id;
+                const chartInstance = Object.values(charts).find(chart => chart.canvas.id === chartId);
+
+                if (chartInstance) {
+                    console.log(`🎨 Ativando labels para gráfico: ${chartId}`);
+
+                    // Ativar datalabels temporariamente com configuração adequada
+                    const chartType = chartInstance.config.type;
+
+                    chartInstance.options.plugins.datalabels = {
+                        display: true,
+                        color: '#fff',
+                        font: {
+                            weight: 'bold',
+                            size: chartType === 'pie' ? 11 : 10
+                        },
+                        formatter: (value, context) => {
+                            if (chartType === 'pie') {
+                                // Para pizza, mostrar percentual
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                                return percent + '%';
+                            } else {
+                                // Para barras, mostrar valor em milhares
+                                const absValue = Math.abs(value);
+                                if (absValue >= 1000) {
+                                    return 'R$ ' + (absValue / 1000).toFixed(0) + 'k';
+                                } else {
+                                    return 'R$ ' + absValue.toFixed(0);
+                                }
+                            }
+                        },
+                        anchor: chartType === 'pie' ? 'center' : 'end',
+                        align: chartType === 'pie' ? 'center' : 'end',
+                        offset: chartType === 'pie' ? 0 : -2
+                    };
+
+                    // Atualizar gráfico para mostrar os labels
+                    chartInstance.update('none'); // 'none' = sem animação
+
+                    // Aguardar um momento para garantir que renderizou
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
                 // Capturar o canvas do gráfico
                 const chartCanvas = await html2canvas(canvas, {
                     scale: 2,
@@ -983,6 +1034,13 @@ async function exportarDashboardPDF() {
                 });
 
                 const chartData = chartCanvas.toDataURL('image/png');
+
+                // Restaurar estado original (desabilitar labels)
+                if (chartInstance) {
+                    console.log(`🔄 Desativando labels para gráfico: ${chartId}`);
+                    chartInstance.options.plugins.datalabels = { display: false };
+                    chartInstance.update('none');
+                }
 
                 // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
                 const chartHeight = pageHeight - margin * 3 - 20;
