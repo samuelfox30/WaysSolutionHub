@@ -682,17 +682,12 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 // Registrar plugin datalabels explicitamente
-Chart.register(ChartDataLabels);
 
 // Desabilitar datalabels por padrão (será ativado apenas para PDF)
-Chart.defaults.set('plugins.datalabels', {
-    display: false
-});
 
 let chartReceita, chartDespesa, chartGeral, chartPizzaDespesa, chartPizzaReceita;
 
@@ -929,90 +924,13 @@ async function exportarDashboardPDF() {
 
             // === GRÁFICO ===
             try {
-                // Encontrar a instância do Chart.js associada a este canvas
-                const chartId = canvas.id;
-                let chartInstance = null;
-
-                // Os gráficos BPO são armazenados em variáveis globais
-                if (chartId === 'chartReceita') chartInstance = chartReceita;
-                else if (chartId === 'chartDespesa') chartInstance = chartDespesa;
-                else if (chartId === 'chartGeral') chartInstance = chartGeral;
-                else if (chartId === 'chartPizzaDespesa') chartInstance = chartPizzaDespesa;
-                else if (chartId === 'chartPizzaReceita') chartInstance = chartPizzaReceita;
-
-                console.log(`📊 Processando gráfico ID: ${chartId}`);
-                console.log(`   Instância encontrada:`, !!chartInstance);
-
-                if (chartInstance) {
-                    console.log(`🎨 Ativando labels para gráfico: ${chartId}`);
-                    console.log(`   Tipo de gráfico:`, chartInstance.config.type);
-
-                    // Ativar datalabels temporariamente com configuração adequada
-                    const chartType = chartInstance.config.type;
-
-                    // Garantir que o objeto plugins existe
-                    if (!chartInstance.options.plugins) {
-                        chartInstance.options.plugins = {};
-                    }
-
-                    chartInstance.options.plugins.datalabels = {
-                        display: true,
-                        color: '#fff',
-                        font: {
-                            weight: 'bold',
-                            size: chartType === 'pie' ? 11 : 10
-                        },
-                        formatter: (value, context) => {
-                            if (chartType === 'pie') {
-                                // Para pizza, mostrar percentual
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                                return percent + '%';
-                            } else {
-                                // Para barras, mostrar valor em milhares
-                                const absValue = Math.abs(value);
-                                if (absValue >= 1000) {
-                                    return 'R$ ' + (absValue / 1000).toFixed(0) + 'k';
-                                } else {
-                                    return 'R$ ' + absValue.toFixed(0);
-                                }
-                            }
-                        },
-                        anchor: chartType === 'pie' ? 'center' : 'end',
-                        align: chartType === 'pie' ? 'center' : 'end',
-                        offset: chartType === 'pie' ? 0 : -2
-                    };
-
-                    console.log(`   Configuração datalabels aplicada:`, chartInstance.options.plugins.datalabels);
-
-                    // Atualizar gráfico FORÇANDO re-render
-                    chartInstance.update(); // SEM 'none' para forçar re-render completo
-                    console.log(`   Update() chamado`);
-
-                    // Aguardar mais tempo para garantir que renderizou
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    console.log(`   Aguardou 500ms`);
-                } else {
-                    console.warn(`⚠️ Instância do gráfico ${chartId} NÃO encontrada!`);
-                }
-
                 // Capturar o canvas do gráfico
-                console.log(`📸 Capturando canvas...`);
                 const chartCanvas = await html2canvas(canvas, {
                     scale: 2,
                     backgroundColor: '#ffffff'
                 });
 
                 const chartData = chartCanvas.toDataURL('image/png');
-                console.log(`   Canvas capturado`);
-
-                // Restaurar estado original (desabilitar labels)
-                if (chartInstance) {
-                    console.log(`🔄 Desativando labels para gráfico: ${chartId}`);
-                    chartInstance.options.plugins.datalabels = { display: false };
-                    chartInstance.update();
-                    console.log(`   Labels desativados`);
-                }
 
                 // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
                 const chartHeight = pageHeight - margin * 3 - 20;
