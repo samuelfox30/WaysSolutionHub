@@ -1,5 +1,9 @@
 import mysql.connector
 from mysql.connector import errorcode
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('database')
 
 # Credenciais do banco de dados centralizadas
 DB_CONFIG = {
@@ -43,18 +47,18 @@ class DatabaseConnection:
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                print("Erro de autenticação: Verifique seu usuário ou senha.")
+                logger.error("Erro de autenticação: Verifique seu usuário ou senha.")
             else:
-                print(f"Erro ao conectar ao banco de dados: {err}")
+                logger.error(f"Erro ao conectar ao banco de dados: {err}")
             self.connection = None
 
     def create_database_if_not_exists(self):
         try:
             self.cursor.execute(f"CREATE DATABASE IF NOT EXISTS {self.database_name}")
             self.connection.commit()
-            print(f"Banco de dados '{self.database_name}' verificado/criado com sucesso.")
+            logger.info(f"Banco de dados '{self.database_name}' verificado/criado com sucesso.")
         except mysql.connector.Error as err:
-            print(f"Erro ao criar o banco de dados: {err}")
+            logger.error(f"Erro ao criar o banco de dados: {err}")
 
     def create_user_table_if_not_exists(self):
         """Cria a tabela de usuários (sem campos de empresa)"""
@@ -72,9 +76,9 @@ class DatabaseConnection:
         try:
             self.cursor.execute(table_schema)
             self.connection.commit()
-            print("Tabela 'users' verificada/criada com sucesso.")
+            logger.info("Tabela 'users' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
-            print(f"Erro ao criar a tabela de usuários: {err}")
+            logger.error(f"Erro ao criar a tabela de usuários: {err}")
 
     def create_empresa_table_if_not_exists(self):
         """Cria a tabela de empresas"""
@@ -95,9 +99,9 @@ class DatabaseConnection:
         try:
             self.cursor.execute(table_schema)
             self.connection.commit()
-            print("Tabela 'empresas' verificada/criada com sucesso.")
+            logger.info("Tabela 'empresas' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
-            print(f"Erro ao criar a tabela de empresas: {err}")
+            logger.error(f"Erro ao criar a tabela de empresas: {err}")
 
     def create_user_empresa_table_if_not_exists(self):
         """Cria a tabela de relacionamento muitos-para-muitos entre users e empresas"""
@@ -115,9 +119,9 @@ class DatabaseConnection:
         try:
             self.cursor.execute(table_schema)
             self.connection.commit()
-            print("Tabela 'user_empresa' verificada/criada com sucesso.")
+            logger.info("Tabela 'user_empresa' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
-            print(f"Erro ao criar a tabela de relacionamento user_empresa: {err}")
+            logger.error(f"Erro ao criar a tabela de relacionamento user_empresa: {err}")
 
     def create_empresa_tables_if_not_exists(self):
         try:
@@ -238,10 +242,10 @@ class DatabaseConnection:
 
             # Commit final
             self.connection.commit()
-            print("Todas as tabelas de dados verificadas/criadas com sucesso (FK EMPRESA, SEM coluna MÊS).")
+            logger.info("Todas as tabelas de dados verificadas/criadas com sucesso (FK EMPRESA, SEM coluna MÊS).")
 
         except mysql.connector.Error as err:
-            print(f"Erro ao criar as tabelas de empresas: {err}")
+            logger.error(f"Erro ao criar as tabelas de empresas: {err}")
 
     def create_bpo_tables_if_not_exists(self):
         """Cria tabelas para armazenar dados BPO (mensal)"""
@@ -261,9 +265,9 @@ class DatabaseConnection:
             )
             self.cursor.execute(bpo_schema)
             self.connection.commit()
-            print("Tabela 'TbBpoDados' verificada/criada com sucesso.")
+            logger.info("Tabela 'TbBpoDados' verificada/criada com sucesso.")
         except mysql.connector.Error as err:
-            print(f"Erro ao criar tabelas BPO: {err}")
+            logger.error(f"Erro ao criar tabelas BPO: {err}")
 
     def insert_default_grupos_subgrupos(self):
         try:
@@ -314,10 +318,10 @@ class DatabaseConnection:
                             (s, grupo_id)
                         )
             self.connection.commit()
-            print("Grupos e subgrupos padrão inseridos/verificados com sucesso.")
+            logger.info("Grupos e subgrupos padrão inseridos/verificados com sucesso.")
 
         except mysql.connector.Error as err:
-            print(f"Erro ao inserir grupos/subgrupos padrão: {err}")
+            logger.error(f"Erro ao inserir grupos/subgrupos padrão: {err}")
 
     def get_connection(self):
         return self.connection
@@ -326,4 +330,4 @@ class DatabaseConnection:
         if self.connection and self.connection.is_connected():
             self.cursor.close()
             self.connection.close()
-            print("Conexão com o banco de dados fechada.")
+            logger.info("Conexão com o banco de dados fechada.")

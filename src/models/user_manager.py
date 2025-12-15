@@ -1,5 +1,9 @@
 from models.auth import DatabaseConnection
 import mysql.connector
+from utils.logger import get_logger
+
+# Inicializar logger
+logger = get_logger('user_manager')
 
 class UserManager:
     def __init__(self):
@@ -11,18 +15,18 @@ class UserManager:
 
     def find_user_by_email(self, email):
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Conexão com o banco de dados não está ativa.")
+            logger.error("Conexão com o banco de dados não está ativa.")
             return None
-            
+
         try:
             query = "SELECT * FROM users WHERE email = %s"
             self.cursor.execute(query, (email,))
             user = self.cursor.fetchone()
-            
+
             return user
-            
+
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar usuário: {err}")
+            logger.error(f"Erro ao buscar usuário: {err}")
             return None
         finally:
             # Feche a conexão do cursor após a operação, mas não a conexão principal
@@ -47,7 +51,7 @@ class UserManager:
             int|bool: user_id on success, False otherwise.
         """
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Conexão com o banco de dados não está ativa.")
+            logger.error("Conexão com o banco de dados não está ativa.")
             return False
 
         try:
@@ -68,11 +72,11 @@ class UserManager:
 
             # Retorna o ID do usuário criado
             user_id = self.cursor.lastrowid
-            print(f"[DEBUG] Usuário '{name}' criado com sucesso. ID: {user_id}")
+            logger.info(f"Usuário '{name}' criado com sucesso. ID: {user_id}")
             return user_id
 
         except mysql.connector.Error as err:
-            print(f"Erro ao cadastrar usuário: {err}")
+            logger.error(f"Erro ao cadastrar usuário: {err}")
             self.db_connection.rollback()
             return False
         finally:
@@ -92,7 +96,7 @@ class UserManager:
             return users
 
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar todos os usuários: {err}")
+            logger.error(f"Erro ao buscar todos os usuários: {err}")
             return []
 
 
@@ -107,23 +111,23 @@ class UserManager:
             bool: True em caso de sucesso, False em caso de falha.
         """
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Erro: Conexão com o banco de dados não está ativa.")
+            logger.error("Erro: Conexão com o banco de dados não está ativa.")
             return False
-        
+
         try:
             if not self.cursor:
                 self.cursor = self.db_connection.cursor(dictionary=True)
 
             query = "DELETE FROM users WHERE id = %s"
             self.cursor.execute(query, (user_id,))
-            
+
             # Confirma a operação de exclusão no banco de dados
             self.db_connection.commit()
-            print(f"Usuário com ID {user_id} excluído com sucesso.")
+            logger.info(f"Usuário com ID {user_id} excluído com sucesso.")
             return True
 
         except mysql.connector.Error as err:
-            print(f"Erro ao tentar excluir usuário: {err}")
+            logger.error(f"Erro ao tentar excluir usuário: {err}")
             # Desfaz a operação em caso de erro
             self.db_connection.rollback()
             return False
@@ -152,7 +156,7 @@ class UserManager:
             bool: True em caso de sucesso, False em caso de falha.
         """
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Erro: Conexão com o banco de dados não está ativa.")
+            logger.error("Erro: Conexão com o banco de dados não está ativa.")
             return False
 
         try:
@@ -166,11 +170,11 @@ class UserManager:
             """
             self.cursor.execute(query, (nome, email, telefone, perfil, user_id))
             self.db_connection.commit()
-            print(f"Usuário com ID {user_id} atualizado com sucesso.")
+            logger.info(f"Usuário com ID {user_id} atualizado com sucesso.")
             return True
 
         except mysql.connector.Error as err:
-            print(f"Erro ao atualizar usuário: {err}")
+            logger.error(f"Erro ao atualizar usuário: {err}")
             self.db_connection.rollback()
             return False
 
@@ -190,7 +194,7 @@ class UserManager:
             bool: True em caso de sucesso, False em caso de falha.
         """
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Erro: Conexão com o banco de dados não está ativa.")
+            logger.error("Erro: Conexão com o banco de dados não está ativa.")
             return False
 
         try:
@@ -208,11 +212,11 @@ class UserManager:
             """
             self.cursor.execute(query, (hashed_password, user_id))
             self.db_connection.commit()
-            print(f"Senha do usuário com ID {user_id} atualizada com sucesso.")
+            logger.info(f"Senha do usuário com ID {user_id} atualizada com sucesso.")
             return True
 
         except mysql.connector.Error as err:
-            print(f"Erro ao atualizar senha do usuário: {err}")
+            logger.error(f"Erro ao atualizar senha do usuário: {err}")
             self.db_connection.rollback()
             return False
 
@@ -237,7 +241,7 @@ class UserManager:
             bool: True em caso de sucesso, False em caso de falha
         """
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Erro: Conexão com o banco de dados não está ativa.")
+            logger.error("Erro: Conexão com o banco de dados não está ativa.")
             return False
 
         try:
@@ -248,18 +252,18 @@ class UserManager:
             check_query = "SELECT * FROM user_empresa WHERE user_id = %s AND empresa_id = %s"
             self.cursor.execute(check_query, (user_id, empresa_id))
             if self.cursor.fetchone():
-                print(f"[DEBUG] Vínculo entre user_id={user_id} e empresa_id={empresa_id} já existe.")
+                logger.info(f"Vínculo entre user_id={user_id} e empresa_id={empresa_id} já existe.")
                 return True
 
             # Cria o vínculo
             insert_query = "INSERT INTO user_empresa (user_id, empresa_id) VALUES (%s, %s)"
             self.cursor.execute(insert_query, (user_id, empresa_id))
             self.db_connection.commit()
-            print(f"[DEBUG] Vínculo criado: user_id={user_id} <-> empresa_id={empresa_id}")
+            logger.info(f"Vínculo criado: user_id={user_id} <-> empresa_id={empresa_id}")
             return True
 
         except mysql.connector.Error as err:
-            print(f"Erro ao vincular usuário e empresa: {err}")
+            logger.error(f"Erro ao vincular usuário e empresa: {err}")
             self.db_connection.rollback()
             return False
 
@@ -275,7 +279,7 @@ class UserManager:
             bool: True em caso de sucesso, False em caso de falha
         """
         if not self.db_connection or not self.db_connection.is_connected():
-            print("Erro: Conexão com o banco de dados não está ativa.")
+            logger.error("Erro: Conexão com o banco de dados não está ativa.")
             return False
 
         try:
@@ -285,11 +289,11 @@ class UserManager:
             query = "DELETE FROM user_empresa WHERE user_id = %s AND empresa_id = %s"
             self.cursor.execute(query, (user_id, empresa_id))
             self.db_connection.commit()
-            print(f"[DEBUG] Vínculo removido: user_id={user_id} <-> empresa_id={empresa_id}")
+            logger.info(f"Vínculo removido: user_id={user_id} <-> empresa_id={empresa_id}")
             return True
 
         except mysql.connector.Error as err:
-            print(f"Erro ao desvincular usuário e empresa: {err}")
+            logger.error(f"Erro ao desvincular usuário e empresa: {err}")
             self.db_connection.rollback()
             return False
 
@@ -319,7 +323,7 @@ class UserManager:
             return empresas
 
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar empresas do usuário: {err}")
+            logger.error(f"Erro ao buscar empresas do usuário: {err}")
             return []
 
     def get_usuarios_da_empresa(self, empresa_id):
@@ -348,7 +352,7 @@ class UserManager:
             return users
 
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar usuários da empresa: {err}")
+            logger.error(f"Erro ao buscar usuários da empresa: {err}")
             return []
 
     def get_user_by_id(self, user_id):
@@ -371,7 +375,7 @@ class UserManager:
             return user
 
         except mysql.connector.Error as err:
-            print(f"Erro ao buscar usuário por ID: {err}")
+            logger.error(f"Erro ao buscar usuário por ID: {err}")
             return None
 
     def close(self):
