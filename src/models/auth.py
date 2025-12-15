@@ -1,11 +1,6 @@
 import mysql.connector
 from mysql.connector import errorcode
 
-# Import do sistema de logging
-from utils.logger import get_logger, log_database_connection
-
-logger = get_logger('database.connection')
-
 # Credenciais do banco de dados centralizadas
 DB_CONFIG = {
     'host': "localhost",
@@ -29,8 +24,6 @@ class DatabaseConnection:
         self.database_name = DB_CONFIG['database']
         self.connection = None
 
-        logger.info(f"🔌 Iniciando conexão com banco de dados: {self.database_name}@{self.host}")
-
         try:
             self.connection = mysql.connector.connect(
                 host=self.host,
@@ -38,14 +31,9 @@ class DatabaseConnection:
                 password=self.password
             )
             self.cursor = self.connection.cursor(buffered=True)
-
-            logger.info(f"✅ Conexão estabelecida com sucesso: {self.database_name}@{self.host}")
-            log_database_connection(self.host, self.database_name, success=True)
-
+            
             self.create_database_if_not_exists()
             self.connection.database = self.database_name
-            logger.debug(f"📂 Banco de dados selecionado: {self.database_name}")
-
             self.create_user_table_if_not_exists()
             self.create_empresa_table_if_not_exists()
             self.create_user_empresa_table_if_not_exists()
@@ -55,11 +43,9 @@ class DatabaseConnection:
 
         except mysql.connector.Error as err:
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                logger.critical(f"🔐 ERRO DE AUTENTICAÇÃO: Usuário/senha incorretos - {self.host}")
-                log_database_connection(self.host, self.database_name, success=False, error="Acesso negado")
+                print("Erro de autenticação: Verifique seu usuário ou senha.")
             else:
-                logger.critical(f"💥 ERRO AO CONECTAR: {err}")
-                log_database_connection(self.host, self.database_name, success=False, error=str(err))
+                print(f"Erro ao conectar ao banco de dados: {err}")
             self.connection = None
 
     def create_database_if_not_exists(self):
