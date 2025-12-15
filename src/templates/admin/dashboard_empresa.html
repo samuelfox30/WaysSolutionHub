@@ -883,9 +883,117 @@ function atualizarGraficos(dadosGrupo) {
     }, 100);
 }
 
+async function gerarCapaPDF(pdf, empresaNome, ano, tipoDashboard = 'Viabilidade', cenarios = []) {
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+
+    // Fundo com gradiente (simulado com retângulos)
+    pdf.setFillColor(245, 247, 250);
+    pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+
+    // Barra superior decorativa
+    pdf.setFillColor(255, 153, 0); // Laranja
+    pdf.rect(0, 0, pageWidth, 20, 'F');
+
+    // Logo (se existir)
+    const logoImg = document.querySelector('.navbar-brand img');
+    if (logoImg) {
+        try {
+            const logoCanvas = await html2canvas(logoImg, {
+                scale: 3,
+                backgroundColor: null
+            });
+            const logoData = logoCanvas.toDataURL('image/png');
+            // Logo centralizada
+            pdf.addImage(logoData, 'PNG', (pageWidth - 60) / 2, 35, 60, 20);
+        } catch (err) {
+            console.warn('⚠️ Erro ao capturar logo:', err);
+        }
+    }
+
+    // Título principal
+    pdf.setFontSize(28);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(51, 51, 51);
+    pdf.text(`Relatório de ${tipoDashboard}`, pageWidth / 2, 75, { align: 'center' });
+
+    // Subtítulo
+    pdf.setFontSize(16);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('Análise Financeira Detalhada', pageWidth / 2, 85, { align: 'center' });
+
+    // Linha decorativa
+    pdf.setDrawColor(255, 153, 0);
+    pdf.setLineWidth(0.5);
+    pdf.line(pageWidth / 2 - 40, 90, pageWidth / 2 + 40, 90);
+
+    // Box com informações principais
+    const boxX = 40;
+    const boxY = 105;
+    const boxWidth = pageWidth - 80;
+    const boxHeight = 50;
+
+    // Sombra do box
+    pdf.setFillColor(200, 200, 200);
+    pdf.roundedRect(boxX + 2, boxY + 2, boxWidth, boxHeight, 3, 3, 'F');
+
+    // Box principal
+    pdf.setFillColor(255, 255, 255);
+    pdf.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'F');
+
+    // Borda do box
+    pdf.setDrawColor(255, 153, 0);
+    pdf.setLineWidth(0.8);
+    pdf.roundedRect(boxX, boxY, boxWidth, boxHeight, 3, 3, 'S');
+
+    // Informações dentro do box
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setTextColor(51, 51, 51);
+
+    let yPos = boxY + 15;
+    pdf.text('Empresa:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(empresaNome, boxX + 35, yPos);
+
+    yPos += 12;
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('Período:', boxX + 10, yPos);
+    pdf.setFont('helvetica', 'normal');
+    pdf.text(String(ano), boxX + 35, yPos);
+
+    // Se for viabilidade e tiver cenários
+    if (tipoDashboard === 'Viabilidade' && cenarios.length > 0) {
+        yPos += 12;
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Cenários:', boxX + 10, yPos);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text(cenarios.join(', '), boxX + 35, yPos);
+    }
+
+    // Data de geração (rodapé da capa)
+    const dataGeracao = new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    pdf.setFontSize(10);
+    pdf.setFont('helvetica', 'italic');
+    pdf.setTextColor(120, 120, 120);
+    pdf.text(`Gerado em: ${dataGeracao}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+
+    // Marca d'água
+    pdf.setFontSize(8);
+    pdf.text('WaysSolutionHub', pageWidth / 2, pageHeight - 8, { align: 'center' });
+}
+
 async function exportarDashboardPDF() {
     try {
-        console.log('📄 Iniciando exportação de PDF...');
+        console.log('📄 Iniciando exportação de PDF com 3 cenários...');
 
         // Esconder botão durante exportação
         const btnExportar = document.getElementById('btn-exportar-pdf');
@@ -910,108 +1018,126 @@ async function exportarDashboardPDF() {
 
         // Informações do cabeçalho
         const empresaNome = '{{ empresa_nome }}';
-        const grupoViabilidade = grupoViabilidadeSelecionado || 'N/A';
         const ano = anoSelecionado || new Date().getFullYear();
-        const dataGeracao = new Date().toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
 
-        // Obter todos os canvas de gráficos visíveis
-        const chartsContainer = document.getElementById('charts-container');
-        const canvasElements = chartsContainer.querySelectorAll('canvas');
+        // Lista dos 3 cenários de viabilidade
+        const cenarios = ['Cenário 1', 'Cenário 2', 'Cenário 3'];
 
-        console.log(`📊 Encontrados ${canvasElements.length} gráficos para exportar`);
+        // === GERAR CAPA ===
+        console.log('📄 Gerando capa do relatório...');
+        await gerarCapaPDF(pdf, empresaNome, ano, 'Viabilidade', cenarios);
 
-        if (canvasElements.length === 0) {
-            alert('Nenhum gráfico disponível para exportar.');
-            btnExportar.innerHTML = textoOriginal;
-            btnExportar.disabled = false;
-            return;
-        }
+        // === PROCESSAR CADA CENÁRIO ===
+        for (let cenarioIdx = 0; cenarioIdx < cenarios.length; cenarioIdx++) {
+            const cenarioNome = cenarios[cenarioIdx];
 
-        let isFirstPage = true;
+            console.log(`📊 Processando ${cenarioNome}...`);
 
-        // Processar cada canvas
-        for (let i = 0; i < canvasElements.length; i++) {
-            const canvas = canvasElements[i];
+            // Buscar dados do cenário (simular clique no botão do cenário)
+            const viabilityBtn = document.querySelector(`.viability-btn[onclick*="'${cenarioNome}'"]`);
+            if (viabilityBtn) {
+                viabilityBtn.click();
+                // Aguardar carregar os gráficos
+                await new Promise(resolve => setTimeout(resolve, 1500));
+            } else {
+                console.warn(`⚠️ Botão do ${cenarioNome} não encontrado!`);
+                continue;
+            }
 
-            console.log(`📈 Processando gráfico ${i + 1}/${canvasElements.length}...`);
+            // Obter todos os canvas de gráficos visíveis
+            const chartsContainer = document.getElementById('charts-container');
+            const canvasElements = chartsContainer.querySelectorAll('canvas');
 
-            // Adicionar nova página se não for a primeira
-            if (!isFirstPage) {
+            console.log(`📊 ${cenarioNome}: Encontrados ${canvasElements.length} gráficos`);
+
+            if (canvasElements.length === 0) {
+                console.warn(`⚠️ Nenhum gráfico encontrado para ${cenarioNome}`);
+                continue;
+            }
+
+            // Processar cada canvas do cenário
+            for (let i = 0; i < canvasElements.length; i++) {
+                const canvas = canvasElements[i];
+
+                console.log(`📈 ${cenarioNome} - Gráfico ${i + 1}/${canvasElements.length}...`);
+
+                // Adicionar nova página
                 pdf.addPage();
-            }
-            isFirstPage = false;
 
-            // === CABEÇALHO ===
-            // Logo (se existir)
-            const logoImg = document.querySelector('.navbar-brand img');
-            if (logoImg) {
-                try {
-                    const logoCanvas = await html2canvas(logoImg, {
-                        scale: 2,
-                        backgroundColor: null
-                    });
-                    const logoData = logoCanvas.toDataURL('image/png');
-                    pdf.addImage(logoData, 'PNG', margin, margin, 30, 10);
-                } catch (err) {
-                    console.warn('⚠️ Erro ao capturar logo:', err);
+                // === CABEÇALHO ===
+                // Logo (se existir)
+                const logoImg = document.querySelector('.navbar-brand img');
+                if (logoImg) {
+                    try {
+                        const logoCanvas = await html2canvas(logoImg, {
+                            scale: 2,
+                            backgroundColor: null
+                        });
+                        const logoData = logoCanvas.toDataURL('image/png');
+                        pdf.addImage(logoData, 'PNG', margin, margin, 30, 10);
+                    } catch (err) {
+                        console.warn('⚠️ Erro ao capturar logo:', err);
+                    }
                 }
-            }
 
-            // Título do relatório
-            pdf.setFontSize(16);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('Dashboard de Viabilidade', pageWidth / 2, margin + 5, { align: 'center' });
+                // Título do relatório
+                pdf.setFontSize(16);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Dashboard de Viabilidade', pageWidth / 2, margin + 5, { align: 'center' });
 
-            // Informações do filtro
-            pdf.setFontSize(10);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text(`Empresa: ${empresaNome}`, margin + 35, margin + 3);
-            pdf.text(`Grupo: ${grupoViabilidade}`, margin + 35, margin + 7);
-            pdf.text(`Ano: ${ano}`, margin + 35, margin + 11);
+                // Informações do filtro
+                pdf.setFontSize(10);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text(`Empresa: ${empresaNome}`, margin + 35, margin + 3);
+                pdf.text(`Cenário: ${cenarioNome}`, margin + 35, margin + 7);
+                pdf.text(`Ano: ${ano}`, margin + 35, margin + 11);
 
-            // === GRÁFICO ===
-            try {
-                // Capturar o canvas do gráfico
-                const chartCanvas = await html2canvas(canvas, {
-                    scale: 2,
-                    backgroundColor: '#ffffff'
+                // === GRÁFICO ===
+                try {
+                    // Capturar o canvas do gráfico
+                    const chartCanvas = await html2canvas(canvas, {
+                        scale: 2,
+                        backgroundColor: '#ffffff'
+                    });
+
+                    const chartData = chartCanvas.toDataURL('image/png');
+
+                    // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
+                    const chartHeight = pageHeight - margin * 3 - 20;
+                    const chartWidth = pageWidth - margin * 2;
+                    const chartY = margin + 20;
+
+                    pdf.addImage(chartData, 'PNG', margin, chartY, chartWidth, chartHeight);
+
+                    console.log(`✅ ${cenarioNome} - Gráfico ${i + 1} adicionado`);
+                } catch (err) {
+                    console.error(`❌ Erro ao capturar gráfico ${i + 1}:`, err);
+                    pdf.setFontSize(12);
+                    pdf.setTextColor(255, 0, 0);
+                    pdf.text(`Erro ao carregar gráfico ${i + 1}`, pageWidth / 2, pageHeight / 2, { align: 'center' });
+                    pdf.setTextColor(0, 0, 0);
+                }
+
+                // === RODAPÉ ===
+                const dataGeracao = new Date().toLocaleDateString('pt-BR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
                 });
 
-                const chartData = chartCanvas.toDataURL('image/png');
-
-                // Dimensões do gráfico (deixar espaço para cabeçalho e rodapé)
-                const chartHeight = pageHeight - margin * 3 - 20;
-                const chartWidth = pageWidth - margin * 2;
-                const chartY = margin + 20;
-
-                pdf.addImage(chartData, 'PNG', margin, chartY, chartWidth, chartHeight);
-
-                console.log(`✅ Gráfico ${i + 1} adicionado ao PDF`);
-            } catch (err) {
-                console.error(`❌ Erro ao capturar gráfico ${i + 1}:`, err);
-                pdf.setFontSize(12);
-                pdf.setTextColor(255, 0, 0);
-                pdf.text(`Erro ao carregar gráfico ${i + 1}`, pageWidth / 2, pageHeight / 2, { align: 'center' });
+                pdf.setFontSize(8);
+                pdf.setFont('helvetica', 'italic');
+                pdf.setTextColor(128, 128, 128);
+                pdf.text(`Gerado em: ${dataGeracao}`, margin, pageHeight - 10);
+                pdf.text(`${cenarioNome} - Gráfico ${i + 1}/${canvasElements.length}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
                 pdf.setTextColor(0, 0, 0);
             }
-
-            // === RODAPÉ ===
-            pdf.setFontSize(8);
-            pdf.setFont('helvetica', 'italic');
-            pdf.setTextColor(128, 128, 128);
-            pdf.text(`Gerado em: ${dataGeracao}`, margin, pageHeight - 10);
-            pdf.text(`Página ${i + 1} de ${canvasElements.length}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-            pdf.setTextColor(0, 0, 0);
         }
 
         // Salvar PDF
-        const nomeArquivo = `Dashboard_Viabilidade_${empresaNome.replace(/[^a-zA-Z0-9]/g, '_')}_${grupoViabilidade}_${ano}_${new Date().getTime()}.pdf`;
+        const nomeArquivo = `Relatorio_Viabilidade_${empresaNome.replace(/[^a-zA-Z0-9]/g, '_')}_${ano}_${new Date().getTime()}.pdf`;
         pdf.save(nomeArquivo);
 
         console.log(`✅ PDF gerado com sucesso: ${nomeArquivo}`);
