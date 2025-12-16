@@ -28,16 +28,37 @@ class DatabaseConnection:
         self.database_name = DB_CONFIG['database']
         self.connection = None
 
+        # Log detalhado da configuração (sem senha)
+        logger.info("="*60)
+        logger.info("INICIANDO CONEXÃO COM BANCO DE DADOS")
+        logger.info(f"Host: {self.host}")
+        logger.info(f"User: {self.user}")
+        logger.info(f"Database: {self.database_name}")
+        logger.info("="*60)
+
         try:
+            logger.info("Tentando estabelecer conexão MySQL...")
             self.connection = mysql.connector.connect(
                 host=self.host,
                 user=self.user,
                 password=self.password
             )
+            logger.info(f"✓ Conexão MySQL estabelecida com sucesso!")
+            logger.info(f"  - Connection ID: {self.connection.connection_id}")
+            logger.info(f"  - Server Info: {self.connection.get_server_info()}")
+            logger.info(f"  - Connection está ativa: {self.connection.is_connected()}")
+
             self.cursor = self.connection.cursor(buffered=True)
-            
+            logger.info("✓ Cursor criado com sucesso")
+
+            logger.info("Verificando/criando database...")
             self.create_database_if_not_exists()
+
+            logger.info(f"Selecionando database '{self.database_name}'...")
             self.connection.database = self.database_name
+            logger.info(f"✓ Database '{self.database_name}' selecionado")
+
+            logger.info("Criando/verificando tabelas...")
             self.create_user_table_if_not_exists()
             self.create_empresa_table_if_not_exists()
             self.create_user_empresa_table_if_not_exists()
@@ -45,11 +66,27 @@ class DatabaseConnection:
             self.create_bpo_tables_if_not_exists()
             self.insert_default_grupos_subgrupos()
 
+            logger.info("="*60)
+            logger.info("✓ INICIALIZAÇÃO DO BANCO CONCLUÍDA COM SUCESSO")
+            logger.info("="*60)
+
         except mysql.connector.Error as err:
+            logger.error("="*60)
+            logger.error("✗ ERRO NA CONEXÃO COM BANCO DE DADOS")
+            logger.error(f"Erro número: {err.errno}")
+            logger.error(f"Código SQL State: {err.sqlstate if hasattr(err, 'sqlstate') else 'N/A'}")
+            logger.error(f"Mensagem de erro: {err.msg if hasattr(err, 'msg') else str(err)}")
+
             if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-                logger.error("Erro de autenticação: Verifique seu usuário ou senha.")
+                logger.error("Tipo: ERRO DE AUTENTICAÇÃO")
+                logger.error(f"  - Verifique usuário '{self.user}' e senha")
+                logger.error(f"  - Verifique permissões no host '{self.host}'")
+            elif err.errno == errorcode.ER_BAD_DB_ERROR:
+                logger.error("Tipo: DATABASE NÃO EXISTE")
             else:
-                logger.error(f"Erro ao conectar ao banco de dados: {err}")
+                logger.error(f"Tipo: {type(err).__name__}")
+
+            logger.error("="*60)
             self.connection = None
 
     def create_database_if_not_exists(self):

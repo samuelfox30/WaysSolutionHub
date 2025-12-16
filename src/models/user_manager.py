@@ -7,30 +7,73 @@ logger = get_logger('user_manager')
 
 class UserManager:
     def __init__(self):
+        logger.info("-" * 50)
+        logger.info("Inicializando UserManager...")
         self.db_connector = DatabaseConnection()
         self.db_connection = self.db_connector.get_connection()
         self.cursor = None
+
         if self.db_connection:
+            logger.info("✓ Conexão obtida do DatabaseConnection")
+            logger.info(f"  - Conexão ativa: {self.db_connection.is_connected()}")
             self.cursor = self.db_connection.cursor(dictionary=True)
+            logger.info("✓ Cursor dictionary criado para UserManager")
+        else:
+            logger.error("✗ FALHA ao obter conexão do DatabaseConnection")
+        logger.info("-" * 50)
 
     def find_user_by_email(self, email):
+        logger.info("=" * 50)
+        logger.info("BUSCAR USUÁRIO POR EMAIL")
+        logger.info(f"Email solicitado: {email}")
+
         if not self.db_connection or not self.db_connection.is_connected():
-            logger.error("Conexão com o banco de dados não está ativa.")
+            logger.error("✗ Conexão com o banco de dados não está ativa.")
+            logger.error(f"  - db_connection existe: {self.db_connection is not None}")
+            if self.db_connection:
+                logger.error(f"  - is_connected: {self.db_connection.is_connected()}")
+            logger.info("=" * 50)
             return None
 
         try:
             query = "SELECT * FROM users WHERE email = %s"
+            logger.info(f"Query SQL: {query}")
+            logger.info(f"Parâmetros: {(email,)}")
+
+            logger.info("Executando query...")
             self.cursor.execute(query, (email,))
+
+            logger.info("Buscando resultado (fetchone)...")
             user = self.cursor.fetchone()
 
+            if user:
+                logger.info("✓ Usuário encontrado!")
+                logger.info(f"  - ID: {user.get('id')}")
+                logger.info(f"  - Nome: {user.get('nome')}")
+                logger.info(f"  - Email: {user.get('email')}")
+                logger.info(f"  - Role: {user.get('role')}")
+                logger.info(f"  - Telefone: {user.get('telefone')}")
+                logger.info(f"  - Created at: {user.get('created_at')}")
+                logger.info(f"  - Password hash presente: {bool(user.get('password'))}")
+                logger.info(f"  - Tamanho password hash: {len(user.get('password', ''))} caracteres")
+            else:
+                logger.warning("✗ Nenhum usuário encontrado com este email")
+
+            logger.info("=" * 50)
             return user
 
         except mysql.connector.Error as err:
-            logger.error(f"Erro ao buscar usuário: {err}")
+            logger.error("=" * 50)
+            logger.error("✗ ERRO AO BUSCAR USUÁRIO")
+            logger.error(f"Tipo do erro: {type(err).__name__}")
+            logger.error(f"Erro número: {err.errno if hasattr(err, 'errno') else 'N/A'}")
+            logger.error(f"Mensagem: {err.msg if hasattr(err, 'msg') else str(err)}")
+            logger.error("=" * 50)
             return None
         finally:
             # Feche a conexão do cursor após a operação, mas não a conexão principal
             if self.cursor:
+                logger.info("Fechando cursor após busca de usuário...")
                 self.cursor.close()
                 self.cursor = None
 
