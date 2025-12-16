@@ -293,8 +293,7 @@
     .btn-filter,
     .btn-pdf,
     nav,
-    .navbar,
-    .section-header {
+    .navbar {
         display: none !important;
     }
 
@@ -305,37 +304,71 @@
     }
 
     .container-fluid {
-        padding: 0 !important;
+        padding: 10px !important;
         margin: 0 !important;
         max-width: 100% !important;
     }
 
-    /* Ajusta cards DRE */
+    /* Mantém títulos de seção */
+    .section-header {
+        margin-top: 5px !important;
+        margin-bottom: 10px !important;
+        page-break-after: avoid;
+        font-size: 14pt !important;
+    }
+
+    /* Ajusta cards DRE - 3 por página */
     .dre-card {
         page-break-inside: avoid;
         box-shadow: none;
         border: 1px solid #ddd;
         margin-bottom: 10px;
+        padding: 10px !important;
     }
 
-    /* Ajusta gráficos */
+    /* Força quebra de página após os cards DRE */
+    .row:has(.dre-card) {
+        page-break-after: always;
+    }
+
+    /* Cada gráfico em uma página */
     .chart-card {
+        page-break-before: always;
         page-break-inside: avoid;
         box-shadow: none;
         border: 1px solid #ddd;
-        margin-bottom: 15px;
+        margin-bottom: 10px;
+        padding: 15px;
     }
 
-    /* Ajusta tabelas */
+    /* Primeiro gráfico não quebra antes */
+    .chart-card:first-of-type {
+        page-break-before: avoid;
+    }
+
+    /* Canvas dos gráficos */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+    }
+
+    /* Tabelas em nova página */
     .styled-table {
+        page-break-before: always;
         page-break-inside: avoid;
-        font-size: 9pt;
+        font-size: 8pt;
     }
 
-    /* Orientação paisagem */
+    .styled-table th,
+    .styled-table td {
+        padding: 4px 6px !important;
+        font-size: 8pt !important;
+    }
+
+    /* Orientação retrato */
     @page {
-        size: landscape;
-        margin: 1cm;
+        size: portrait;
+        margin: 1.5cm 1cm;
     }
 }
 
