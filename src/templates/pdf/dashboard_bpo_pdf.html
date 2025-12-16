@@ -343,8 +343,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for codigo in categorias_despesa|dictsort %}
-                {% set cat = categorias_despesa[codigo] %}
+                {% for codigo, cat in categorias_despesa.items()|sort %}
                 <tr>
                     <td>{{ cat.nome }}</td>
                     <td>R$ {{ "{:,.2f}".format(cat.orcado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
@@ -368,8 +367,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for codigo in categorias_receita|dictsort %}
-                {% set cat = categorias_receita[codigo] %}
+                {% for codigo, cat in categorias_receita.items()|sort %}
                 <tr>
                     <td>{{ cat.nome }}</td>
                     <td>R$ {{ "{:,.2f}".format(cat.orcado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
