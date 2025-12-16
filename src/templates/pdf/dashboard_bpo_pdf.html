@@ -381,7 +381,7 @@
         <!-- FOOTER -->
         <div class="footer">
             <p>Documento gerado automaticamente pelo Ways Solution Hub</p>
-            <p>Data de geração: {{ "{:%d/%m/%Y %H:%M:%S}".format(now()) }}</p>
+            <p>Data de geração: {{ data_geracao.strftime('%d/%m/%Y %H:%M:%S') }}</p>
         </div>
     </div>
 </body>

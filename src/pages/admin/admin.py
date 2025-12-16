@@ -1685,7 +1685,8 @@ def dashboard_bpo_pdf(empresa_id):
         gerais_mensais=gerais_mensais,
         categorias_despesa=categorias_despesa,
         categorias_receita=categorias_receita,
-        total_receita_orcado=total_receita_orcado
+        total_receita_orcado=total_receita_orcado,
+        data_geracao=datetime.now()
     )
 
     # Gerar PDF usando weasyprint
