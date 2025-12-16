@@ -1190,9 +1190,19 @@ function atualizarCategoriasReceita(categorias, numMeses) {
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
 }
 
-// Função para imprimir/gerar PDF
+// Função para gerar PDF
 function imprimirPDF() {
-    window.print();
+    const tipo_dre = document.getElementById('tipo_dre').value;
+    const mes_inicio = document.getElementById('mes_inicio').value;
+    const ano_inicio = document.getElementById('ano_inicio').value;
+    const mes_fim = document.getElementById('mes_fim').value;
+    const ano_fim = document.getElementById('ano_fim').value;
+
+    // Construir URL do PDF com parâmetros
+    const url = `/admin/dashboard-bpo/{{ empresa_id }}/pdf?tipo_dre=${tipo_dre}&mes_inicio=${mes_inicio}&ano_inicio=${ano_inicio}&mes_fim=${mes_fim}&ano_fim=${ano_fim}`;
+
+    // Abrir PDF em nova aba
+    window.open(url, '_blank');
 }
 
 // Carregar ao iniciar
