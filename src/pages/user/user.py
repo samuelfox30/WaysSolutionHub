@@ -1262,12 +1262,18 @@ def dashboard_bpo_pdf_user():
         data_geracao=datetime.now()
     )
 
-    # Gerar PDF usando weasyprint
-    from weasyprint import HTML
+    # Gerar PDF usando xhtml2pdf
+    from xhtml2pdf import pisa
     from io import BytesIO
 
     pdf_file = BytesIO()
-    HTML(string=html_string).write_pdf(pdf_file)
+    pisa_status = pisa.CreatePDF(html_string, dest=pdf_file)
+
+    if pisa_status.err:
+        logger.error(f"Erro ao gerar PDF: {pisa_status.err}")
+        flash("Erro ao gerar PDF. Verifique os logs.", "danger")
+        return redirect(url_for('user.selecionar_empresa'))
+
     pdf_file.seek(0)
 
     # Criar nome do arquivo
