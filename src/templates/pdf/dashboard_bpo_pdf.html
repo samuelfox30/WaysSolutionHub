@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard BPO - {{ empresa.nome }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            line-height: 1.4;
+            color: #333;
+        }
+
+        .container {
+            width: 100%;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #6366f1;
+        }
+
+        .header h1 {
+            color: #1e293b;
+            font-size: 20pt;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #64748b;
+            font-size: 11pt;
+        }
+
+        /* Section Title */
+        .section-title {
+            background: #f1f5f9;
+            padding: 10px 15px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1e293b;
+            border-left: 4px solid #6366f1;
+        }
+
+        /* Cards DRE */
+        .dre-cards {
+            display: table;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .dre-card {
+            display: table-cell;
+            width: 33.33%;
+            padding: 10px;
+            vertical-align: top;
+        }
+
+        .dre-card-inner {
+            border: 1px solid #e2e8f0;
+            padding: 12px;
+            border-radius: 8px;
+            background: #f8fafc;
+        }
+
+        .dre-card-title {
+            font-weight: bold;
+            font-size: 11pt;
+            color: #1e293b;
+            margin-bottom: 8px;
+            padding-bottom: 6px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .dre-card-metric {
+            display: table;
+            width: 100%;
+            margin-bottom: 6px;
+            font-size: 9pt;
+        }
+
+        .dre-card-metric-label {
+            display: table-cell;
+            color: #64748b;
+        }
+
+        .dre-card-metric-value {
+            display: table-cell;
+            text-align: right;
+            font-weight: bold;
+            color: #1e293b;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+
+        table thead {
+            background: #6366f1;
+            color: white;
+        }
+
+        table th {
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 9pt;
+        }
+
+        table td {
+            padding: 6px 8px;
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 8pt;
+        }
+
+        table tbody tr:nth-child(even) {
+            background: #f8fafc;
+        }
+
+        table tbody tr:hover {
+            background: #f1f5f9;
+        }
+
+        table tbody th {
+            background: #f8fafc;
+            color: #1e293b;
+            font-weight: 600;
+            text-align: left;
+            padding-left: 12px;
+        }
+
+        /* Monthly Data Table */
+        .monthly-table {
+            page-break-inside: avoid;
+        }
+
+        .monthly-table th:first-child,
+        .monthly-table td:first-child {
+            text-align: left;
+            padding-left: 12px;
+        }
+
+        /* Categories Table */
+        .categories-table {
+            font-size: 8pt;
+        }
+
+        .categories-table td:first-child {
+            text-align: left;
+            padding-left: 10px;
+            font-weight: 500;
+        }
+
+        /* Page Break */
+        .page-break {
+            page-break-after: always;
+        }
+
+        .no-break {
+            page-break-inside: avoid;
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 8pt;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>Dashboard BPO - {{ empresa.nome }}</h1>
+            <p>Período: {{ mes_inicio }}/{{ ano_inicio }} até {{ mes_fim }}/{{ ano_fim }}</p>
+            <p>Tipo de DRE: {{ tipo_dre_nome }}</p>
+        </div>
+
+        <!-- RESULTADO GERAL -->
+        <div class="section-title">Resultado Geral - Todos os DREs</div>
+
+        <div class="dre-cards no-break">
+            <!-- Card Fluxo de Caixa -->
+            <div class="dre-card">
+                <div class="dre-card-inner">
+                    <div class="dre-card-title">Resultado por Fluxo de Caixa</div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Receita:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.fluxo_caixa.receita).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Despesa:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.fluxo_caixa.despesa).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Resultado:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.fluxo_caixa.geral).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Real -->
+            <div class="dre-card">
+                <div class="dre-card-inner">
+                    <div class="dre-card-title">Resultado Real</div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Receita:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.real.receita).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Despesa:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.real.despesa).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Resultado:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.real.geral).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card Real + MP -->
+            <div class="dre-card">
+                <div class="dre-card-inner">
+                    <div class="dre-card-title">Resultado Real + Custo MP</div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Receita:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.real_mp.receita).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Despesa:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.real_mp.despesa).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                    <div class="dre-card-metric">
+                        <span class="dre-card-metric-label">Resultado:</span>
+                        <span class="dre-card-metric-value">R$ {{ "{:,.2f}".format(totais.real_mp.geral).replace(',', 'X').replace('.', ',').replace('X', '.') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TABELA DO DRE SELECIONADO -->
+        <div class="section-title">Resumo do DRE Selecionado ({{ tipo_dre_nome }})</div>
+
+        <table class="no-break">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Média Prevista</th>
+                    <th>Média Realizada</th>
+                    <th>Diferença</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set dre_sel = totais[tipo_dre] %}
+                {% set dre_orc = totais_orcamento[tipo_dre] %}
+                {% set media_prev_rec = (dre_orc.receita / num_meses) if num_meses > 0 else 0 %}
+                {% set media_prev_desp = (dre_orc.despesa / num_meses) if num_meses > 0 else 0 %}
+                {% set media_prev_res = (dre_orc.geral / num_meses) if num_meses > 0 else 0 %}
+                {% set media_real_rec = (dre_sel.receita / num_meses) if num_meses > 0 else 0 %}
+                {% set media_real_desp = (dre_sel.despesa / num_meses) if num_meses > 0 else 0 %}
+                {% set media_real_res = (dre_sel.geral / num_meses) if num_meses > 0 else 0 %}
+                {% set dif_rec = media_real_rec - media_prev_rec %}
+                {% set dif_desp = media_real_desp - media_prev_desp %}
+                {% set dif_res = media_real_res - media_prev_res %}
+                <tr>
+                    <th>Total Receitas</th>
+                    <td>R$ {{ "{:,.2f}".format(media_prev_rec).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(media_real_rec).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(dif_rec).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                <tr>
+                    <th>Total Despesas</th>
+                    <td>R$ {{ "{:,.2f}".format(media_prev_desp).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(media_real_desp).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(dif_desp).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                <tr>
+                    <th>Total Resultado</th>
+                    <td>R$ {{ "{:,.2f}".format(media_prev_res).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(media_real_res).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(dif_res).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- EVOLUÇÃO MENSAL -->
+        <div class="section-title">Evolução Mensal ({{ tipo_dre_nome }})</div>
+
+        <table class="monthly-table no-break">
+            <thead>
+                <tr>
+                    <th>Mês</th>
+                    <th>Receita</th>
+                    <th>Despesa</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in range(labels_meses|length) %}
+                <tr>
+                    <td>{{ labels_meses[i] }}</td>
+                    <td>R$ {{ "{:,.2f}".format(receitas_mensais[i]).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(despesas_mensais[i]).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(gerais_mensais[i]).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- PAGE BREAK -->
+        <div class="page-break"></div>
+
+        <!-- CATEGORIAS DE DESPESA -->
+        <div class="section-title">Despesas por Categorias</div>
+
+        <table class="categories-table no-break">
+            <thead>
+                <tr>
+                    <th>Natureza</th>
+                    <th>Média Prevista</th>
+                    <th>Média Realizada</th>
+                    <th>Média Diferença</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for codigo in categorias_despesa|dictsort %}
+                {% set cat = categorias_despesa[codigo] %}
+                <tr>
+                    <td>{{ cat.nome }}</td>
+                    <td>R$ {{ "{:,.2f}".format(cat.orcado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(cat.realizado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(cat.diferenca).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- CATEGORIAS DE RECEITA -->
+        <div class="section-title">Receitas por Categoria</div>
+
+        <table class="categories-table no-break">
+            <thead>
+                <tr>
+                    <th>Natureza</th>
+                    <th>Média Prevista</th>
+                    <th>Média Realizada</th>
+                    <th>Média Diferença</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for codigo in categorias_receita|dictsort %}
+                {% set cat = categorias_receita[codigo] %}
+                <tr>
+                    <td>{{ cat.nome }}</td>
+                    <td>R$ {{ "{:,.2f}".format(cat.orcado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(cat.realizado).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                    <td>R$ {{ "{:,.2f}".format(cat.diferenca).replace(',', 'X').replace('.', ',').replace('X', '.') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Documento gerado automaticamente pelo Ways Solution Hub</p>
+            <p>Data de geração: {{ "{:%d/%m/%Y %H:%M:%S}".format(now()) }}</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1410,3 +1410,304 @@ def api_dados_bpo(empresa_id):
         'total_receita_orcado': total_receita_orcado
     })
 
+
+@admin_bp.route('/admin/dashboard-bpo/<int:empresa_id>/pdf')
+def dashboard_bpo_pdf(empresa_id):
+    """Gera PDF do Dashboard BPO de uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado.", "danger")
+        return redirect(url_for('index.login'))
+
+    # Buscar empresa
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    empresa = company_manager.buscar_empresa_por_id(empresa_id)
+
+    if not empresa:
+        company_manager.close()
+        flash("Empresa não encontrada.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # Parâmetros de filtro
+    ano_inicio = int(request.args.get('ano_inicio', 2025))
+    mes_inicio = int(request.args.get('mes_inicio', 1))
+    ano_fim = int(request.args.get('ano_fim', 2025))
+    mes_fim = int(request.args.get('mes_fim', 12))
+    tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
+
+    # Buscar todos os meses
+    meses_data = []
+    ano_atual = ano_inicio
+    mes_atual = mes_inicio
+
+    while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
+        dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
+        if dados:
+            meses_data.append({
+                'ano': ano_atual,
+                'mes': mes_atual,
+                'dados': dados['dados']
+            })
+        mes_atual += 1
+        if mes_atual > 12:
+            mes_atual = 1
+            ano_atual += 1
+
+    company_manager.close()
+
+    logger.info(f"Gerando PDF do Dashboard BPO - Empresa {empresa_id}")
+    logger.info(f"Período: {mes_inicio}/{ano_inicio} até {mes_fim}/{ano_fim}")
+    logger.info(f"DRE selecionado: {tipo_dre}")
+
+    # Inicializar totais acumulados
+    totais = {
+        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+    }
+
+    # Totais de orçamento
+    totais_orcamento = {
+        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+    }
+
+    # Arrays para dados mensais
+    labels_meses = []
+    receitas_mensais = []
+    despesas_mensais = []
+    gerais_mensais = []
+
+    # Nomes dos meses
+    nomes_meses = {
+        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+    }
+
+    # Processar cada mês
+    for mes_data in meses_data:
+        mes_num = mes_data['mes']
+        ano = mes_data['ano']
+        dados = mes_data['dados']
+
+        # Label para o mês
+        nome_mes = nomes_meses.get(mes_num, str(mes_num))
+        ano_curto = str(ano)[-2:]
+        labels_meses.append(f"{nome_mes}/{ano_curto}")
+
+        # Extrair totais_calculados
+        totais_calculados = dados.get('totais_calculados', {})
+
+        if not totais_calculados:
+            receitas_mensais.append(0)
+            despesas_mensais.append(0)
+            gerais_mensais.append(0)
+            continue
+
+        # Variáveis para dados deste mês
+        receita_grafico = 0
+        despesa_grafico = 0
+        geral_grafico = 0
+
+        # Processar cada cenário
+        for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
+            cenario_data = totais_calculados.get(cenario_key, {})
+
+            if not cenario_data or not isinstance(cenario_data, dict):
+                continue
+
+            mes_dados = cenario_data.get(mes_num, cenario_data.get(str(mes_num), {}))
+
+            if mes_dados and isinstance(mes_dados, dict):
+                # Valores realizados
+                realizado = mes_dados.get('realizado', {})
+                if isinstance(realizado, dict):
+                    receita = realizado.get('receita', 0) or 0
+                    despesa = realizado.get('despesa', 0) or 0
+                    geral = realizado.get('geral', 0) or 0
+
+                    totais[cenario_key]['receita'] += receita
+                    totais[cenario_key]['despesa'] += despesa
+                    totais[cenario_key]['geral'] += geral
+
+                    if cenario_key == tipo_dre:
+                        receita_grafico = receita
+                        despesa_grafico = despesa
+                        geral_grafico = geral
+
+                # Valores de orçamento
+                orcamento = mes_dados.get('orcamento', {})
+                if isinstance(orcamento, dict):
+                    receita_orc = orcamento.get('receita', 0) or 0
+                    despesa_orc = orcamento.get('despesa', 0) or 0
+                    geral_orc = orcamento.get('geral', 0) or 0
+
+                    totais_orcamento[cenario_key]['receita'] += receita_orc
+                    totais_orcamento[cenario_key]['despesa'] += despesa_orc
+                    totais_orcamento[cenario_key]['geral'] += geral_orc
+
+        receitas_mensais.append(receita_grafico)
+        despesas_mensais.append(despesa_grafico)
+        gerais_mensais.append(geral_grafico)
+
+    # Processar categorias de despesa
+    categorias_despesa = {}
+    total_receita_orcado = 0
+
+    try:
+        for mes_data in meses_data:
+            dados = mes_data['dados']
+            itens = dados.get('itens_hierarquicos', [])
+
+            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+            for item in items_to_process:
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
+
+                if codigo.startswith('2.') and len(codigo.split('.')) == 2:
+                    if codigo not in categorias_despesa:
+                        categorias_despesa[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
+
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+
+                        if categorias_despesa[codigo]['orcado'] == 0:
+                            categorias_despesa[codigo]['orcado'] = orcado_val
+
+                        categorias_despesa[codigo]['realizado'] += realizado_val
+
+            if total_receita_orcado == 0:
+                totais_calc = dados.get('totais_calculados', {})
+                cenario_fc = totais_calc.get(tipo_dre, {})
+                if cenario_fc and isinstance(cenario_fc, dict) and len(cenario_fc) > 0:
+                    try:
+                        primeiro_mes = list(cenario_fc.keys())[0]
+                        mes_info = cenario_fc.get(primeiro_mes, {})
+                        if isinstance(mes_info, dict):
+                            orcamento_info = mes_info.get('orcamento', {})
+                            if isinstance(orcamento_info, dict):
+                                total_receita_orcado = orcamento_info.get('receita', 0) or 0
+                    except (IndexError, KeyError, TypeError):
+                        pass
+
+        num_meses = len(meses_data) if len(meses_data) > 0 else 1
+        for codigo in categorias_despesa:
+            cat = categorias_despesa[codigo]
+            cat['realizado'] = cat['realizado'] / num_meses
+            cat['diferenca'] = cat['orcado'] - cat['realizado']
+
+    except Exception as e:
+        logger.error(f"Erro ao processar categorias de despesa no PDF: {e}")
+        categorias_despesa = {}
+
+    # Processar categorias de receita
+    categorias_receita = {}
+
+    try:
+        for mes_data in meses_data:
+            dados = mes_data['dados']
+            itens = dados.get('itens_hierarquicos', [])
+
+            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+            for item in items_to_process:
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
+
+                if codigo.startswith('1.') and len(codigo.split('.')) == 2:
+                    if codigo not in categorias_receita:
+                        categorias_receita[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
+
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+
+                        if categorias_receita[codigo]['orcado'] == 0:
+                            categorias_receita[codigo]['orcado'] = orcado_val
+
+                        categorias_receita[codigo]['realizado'] += realizado_val
+
+        num_meses = len(meses_data) if len(meses_data) > 0 else 1
+        for codigo in categorias_receita:
+            cat = categorias_receita[codigo]
+            cat['realizado'] = cat['realizado'] / num_meses
+            cat['diferenca'] = cat['orcado'] - cat['realizado']
+
+    except Exception as e:
+        logger.error(f"Erro ao processar categorias de receita no PDF: {e}")
+        categorias_receita = {}
+
+    # Mapear nome do tipo de DRE
+    tipo_dre_nome = {
+        'fluxo_caixa': 'Resultado por Fluxo de Caixa',
+        'real': 'Resultado Real',
+        'real_mp': 'Resultado Real + Custo MP'
+    }
+
+    # Renderizar template HTML para PDF
+    html_string = render_template(
+        'pdf/dashboard_bpo_pdf.html',
+        empresa=empresa,
+        tipo_dre=tipo_dre,
+        tipo_dre_nome=tipo_dre_nome.get(tipo_dre, tipo_dre),
+        mes_inicio=mes_inicio,
+        ano_inicio=ano_inicio,
+        mes_fim=mes_fim,
+        ano_fim=ano_fim,
+        totais=totais,
+        totais_orcamento=totais_orcamento,
+        num_meses=len(meses_data),
+        labels_meses=labels_meses,
+        receitas_mensais=receitas_mensais,
+        despesas_mensais=despesas_mensais,
+        gerais_mensais=gerais_mensais,
+        categorias_despesa=categorias_despesa,
+        categorias_receita=categorias_receita,
+        total_receita_orcado=total_receita_orcado
+    )
+
+    # Gerar PDF usando weasyprint
+    from weasyprint import HTML
+    from io import BytesIO
+
+    pdf_file = BytesIO()
+    HTML(string=html_string).write_pdf(pdf_file)
+    pdf_file.seek(0)
+
+    # Criar nome do arquivo
+    filename = f"Dashboard_BPO_{empresa['nome']}_{mes_inicio}-{ano_inicio}_a_{mes_fim}-{ano_fim}.pdf"
+    filename = filename.replace(' ', '_').replace('/', '-')
+
+    logger.info(f"PDF gerado com sucesso: {filename}")
+
+    # Retornar PDF como download
+    from flask import send_file
+    return send_file(
+        pdf_file,
+        mimetype='application/pdf',
+        as_attachment=True,
+        download_name=filename
+    )
+
