@@ -264,114 +264,6 @@
     color: white;
 }
 
-/* Botão PDF */
-.btn-pdf {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    border: none;
-    color: white;
-    font-weight: 600;
-    padding: 0.625rem 1.5rem;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-}
-
-.btn-pdf:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-    background: linear-gradient(135deg, #059669, #10b981);
-    color: white;
-}
-
-/* CSS para Impressão */
-@media print {
-    /* Esconde elementos desnecessários */
-    .sidebar,
-    .header,
-    .bpo-banner,
-    .filter-card,
-    .btn-filter,
-    .btn-pdf,
-    nav,
-    .navbar {
-        display: none !important;
-    }
-
-    /* Ajusta layout */
-    body {
-        margin: 0;
-        padding: 0;
-    }
-
-    .container-fluid {
-        padding: 10px !important;
-        margin: 0 !important;
-        max-width: 100% !important;
-    }
-
-    /* Mantém títulos de seção */
-    .section-header {
-        margin-top: 5px !important;
-        margin-bottom: 10px !important;
-        page-break-after: avoid;
-        font-size: 14pt !important;
-    }
-
-    /* Ajusta cards DRE - 3 por página */
-    .dre-card {
-        page-break-inside: avoid;
-        box-shadow: none;
-        border: 1px solid #ddd;
-        margin-bottom: 10px;
-        padding: 10px !important;
-    }
-
-    /* Força quebra de página após os cards DRE */
-    .row:has(.dre-card) {
-        page-break-after: always;
-    }
-
-    /* Cada gráfico em uma página */
-    .chart-card {
-        page-break-before: always;
-        page-break-inside: avoid;
-        box-shadow: none;
-        border: 1px solid #ddd;
-        margin-bottom: 10px;
-        padding: 15px;
-    }
-
-    /* Primeiro gráfico não quebra antes */
-    .chart-card:first-of-type {
-        page-break-before: avoid;
-    }
-
-    /* Canvas dos gráficos */
-    canvas {
-        max-width: 100% !important;
-        height: auto !important;
-    }
-
-    /* Tabelas em nova página */
-    .styled-table {
-        page-break-before: always;
-        page-break-inside: avoid;
-        font-size: 8pt;
-    }
-
-    .styled-table th,
-    .styled-table td {
-        padding: 4px 6px !important;
-        font-size: 8pt !important;
-    }
-
-    /* Orientação retrato */
-    @page {
-        size: portrait;
-        margin: 1.5cm 1cm;
-    }
-}
-
 /* Form controls */
 .form-label {
     color: #475569;
@@ -462,12 +354,6 @@
                     <button class="btn btn-filter w-100" onclick="atualizarDados()">
                         <i class="bi bi-search me-1"></i>
                         Filtrar
-                    </button>
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button id="btn-pdf" class="btn btn-pdf w-100" onclick="imprimirPDF()" style="display: none;">
-                        <i class="bi bi-printer-fill me-1"></i>
-                        PDF
                     </button>
                 </div>
             </div>
@@ -912,9 +798,6 @@ function atualizarDados() {
 
             // Atualizar categorias de receita
             atualizarCategoriasReceita(data.categorias_receita, data.num_meses);
-
-            // Mostrar botão PDF
-            document.getElementById('btn-pdf').style.display = 'block';
         })
         .catch(error => {
             console.error('Erro ao carregar dados:', error);
@@ -1188,21 +1071,6 @@ function atualizarCategoriasReceita(categorias, numMeses) {
     });
 
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
-}
-
-// Função para gerar PDF
-function imprimirPDF() {
-    const tipo_dre = document.getElementById('tipo_dre').value;
-    const mes_inicio = document.getElementById('mes_inicio').value;
-    const ano_inicio = document.getElementById('ano_inicio').value;
-    const mes_fim = document.getElementById('mes_fim').value;
-    const ano_fim = document.getElementById('ano_fim').value;
-
-    // Construir URL do PDF com parâmetros
-    const url = `/user/bpo/pdf?tipo_dre=${tipo_dre}&mes_inicio=${mes_inicio}&ano_inicio=${ano_inicio}&mes_fim=${mes_fim}&ano_fim=${ano_fim}`;
-
-    // Abrir PDF em nova aba
-    window.open(url, '_blank');
 }
 
 // Carregar ao iniciar
