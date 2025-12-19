@@ -34,10 +34,21 @@ def process_uploaded_file(file):
         """
         if valor is None or valor == 0:
             return valor
-        
+
+        # Log do valor original para debug
+        logger.debug(f"Normalizando percentual - Valor original: {valor} (tipo: {type(valor).__name__})")
+
         # Excel armazena porcentagens como decimal, então multiplica por 100
         # Ex: 0.18313253012048192 * 100 = 18.313253012048192%
-        return valor * 100
+        valor_normalizado = valor * 100
+
+        # Log do valor normalizado e verificação de limites
+        if valor_normalizado > 99999999.99 or valor_normalizado < -99999999.99:
+            logger.error(f"ERRO: Valor de percentual fora do limite do banco! Original: {valor}, Normalizado: {valor_normalizado}")
+            logger.error(f"Limite do banco: DECIMAL(10,2) = -99999999.99 até 99999999.99")
+
+        logger.debug(f"Valor normalizado: {valor_normalizado}")
+        return valor_normalizado
 
     subgrupos = [
         "RECEITA",
@@ -118,8 +129,25 @@ def process_uploaded_file(file):
                 if desc_str in ignorar_descricoes:
                     continue
 
+                # Log detalhado do item sendo processado
+                logger.debug(f"Linha {r} | Cenário: {nome_cenario} | Subgrupo: {nome} | Desc: {str(desc).strip()[:30]} | Perc original: {perc} | Valor: {valr}")
+
                 # Normalizar o percentual
-                perc_normalizado = normalizar_percentual(perc)
+                try:
+                    perc_normalizado = normalizar_percentual(perc)
+                except Exception as e:
+                    logger.error(f"ERRO ao normalizar percentual na linha {r}, coluna {col_perc}{r}")
+                    logger.error(f"Cenário: {nome_cenario}, Subgrupo: {nome}, Descrição: {str(desc).strip()}")
+                    logger.error(f"Valor do percentual: {perc} (tipo: {type(perc).__name__})")
+                    raise
+
+                # Validar se o percentual normalizado está dentro dos limites
+                if perc_normalizado is not None and (perc_normalizado > 99999999.99 or perc_normalizado < -99999999.99):
+                    logger.error(f"ERRO: Percentual fora dos limites do banco de dados!")
+                    logger.error(f"Linha {r}, Coluna {col_perc}{r} | Cenário: {nome_cenario} | Subgrupo: {nome}")
+                    logger.error(f"Descrição: {str(desc).strip()}")
+                    logger.error(f"Valor original: {perc}, Valor normalizado: {perc_normalizado}")
+                    raise Exception(f"Valor de percentual fora dos limites na linha {r} (Descrição: '{str(desc).strip()}'): {perc_normalizado}. O valor deve estar entre -99999999.99 e 99999999.99")
 
                 item = {
                     "cenario": nome_cenario,
