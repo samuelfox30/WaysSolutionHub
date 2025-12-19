@@ -199,16 +199,41 @@ def process_uploaded_file(file):
     print("BUSCANDO SUBGRUPOS ESPECIAIS NA PLANILHA")
     print("="*80)
 
+    # Dicionário para acumular múltiplas ocorrências
+    especiais_todas_ocorrencias = {}
+
     for row in range(1, ws.max_row + 1):
         valor = ws[f"A{row}"].value
         if valor in especiais_nomes:
+            # Verificar se é célula mesclada (título de seção)
+            if not is_merged(ws[f"A{row}"]):
+                print(f"  ⚠ '{valor}' na linha {row} - NÃO é título de seção (célula não mesclada), ignorando...")
+                logger.debug(f"'{valor}' na linha {row} ignorado - célula não mesclada")
+                continue
+
             inicio = row + 2  # pula uma linha após o título
             fim = inicio
             while fim <= ws.max_row and not is_blank_row(fim):
                 fim += 1
-            especiais[valor] = (inicio, fim - 1)
+
+            # Acumular múltiplas ocorrências ao invés de sobrescrever
+            if valor not in especiais_todas_ocorrencias:
+                especiais_todas_ocorrencias[valor] = []
+
+            especiais_todas_ocorrencias[valor].append((inicio, fim - 1))
             logger.info(f"✓ Subgrupo especial '{valor}' encontrado na linha {row} (dados: linhas {inicio} a {fim - 1})")
             print(f"✓ Encontrado: '{valor}' na linha {row} | Dados: linhas {inicio} até {fim - 1}")
+
+    # Consolidar: pegar última ocorrência de cada (compatibilidade) ou juntar múltiplas
+    for nome, lista_ranges in especiais_todas_ocorrencias.items():
+        if len(lista_ranges) == 1:
+            especiais[nome] = lista_ranges[0]
+        else:
+            # Para GASTOS OPERACIONAIS com múltiplas ocorrências, usar a última
+            # (ou podemos juntar todas - vou fazer isso)
+            print(f"  ⚠ '{nome}' tem {len(lista_ranges)} ocorrências - vamos processar TODAS")
+            logger.info(f"'{nome}' tem {len(lista_ranges)} ocorrências, serão processadas todas")
+            especiais[nome] = lista_ranges  # Salvar como lista para processar depois
 
     # Log dos subgrupos especiais encontrados vs não encontrados
     print("\n" + "-"*80)
@@ -229,79 +254,157 @@ def process_uploaded_file(file):
     print("PROCESSANDO DADOS DOS SUBGRUPOS ESPECIAIS")
     print("="*80)
 
-    for nome, (ini, fim) in especiais.items():
-        print(f"\n>>> Processando: {nome} (linhas {ini} a {fim})")
-        lista_itens = []
-        for r in range(ini, fim + 1):
-            desc = ws[f"A{r}"].value
-            if desc is None:
-                continue
+    for nome, ranges in especiais.items():
+        # Se for múltiplas ocorrências, ranges é uma lista; se não, é uma tupla
+        if isinstance(ranges, list):
+            # Múltiplas ocorrências
+            print(f"\n>>> Processando: {nome} ({len(ranges)} seções encontradas)")
+            lista_itens = []
+            for idx, (ini, fim) in enumerate(ranges, 1):
+                print(f"    Seção {idx}: linhas {ini} a {fim}")
+                for r in range(ini, fim + 1):
+                    desc = ws[f"A{r}"].value
+                    if desc is None:
+                        continue
 
-            desc_str = str(desc).strip()
-            if desc_str == "" or desc_str == "0":
-                continue
+                    desc_str = str(desc).strip()
+                    if desc_str == "" or desc_str == "0":
+                        continue
 
-            if nome in ("DIVIDAS", "INVESTIMENTOS"):
-                parc = ws[f"B{r}"].value
-                juros = ws[f"E{r}"].value
-                total = ws[f"F{r}"].value
+                    if nome in ("DIVIDAS", "INVESTIMENTOS"):
+                        parc = ws[f"B{r}"].value
+                        juros = ws[f"E{r}"].value
+                        total = ws[f"F{r}"].value
 
-                # Ignorar se todos os valores forem 0 ou None
-                if all(v in (None, 0, 0.0) for v in (parc, juros, total)):
+                        if all(v in (None, 0, 0.0) for v in (parc, juros, total)):
+                            continue
+
+                        item = {
+                            "subgrupo": nome,
+                            "descricao": desc_str,
+                            "valor_parc": parc,
+                            "valor_juros": juros,
+                            "valor_total_parcela": total
+                        }
+
+                    elif nome == "INVESTIMENTOS GERAL NO NEGOCIO":
+                        val = ws[f"B{r}"].value
+                        if val in (None, 0, 0.0):
+                            continue
+                        item = {
+                            "subgrupo": nome,
+                            "descricao": desc_str,
+                            "valor": val
+                        }
+
+                    elif nome == "GASTOS OPERACIONAIS":
+                        custo_km = ws[f"B{r}"].value
+                        custo_mensal = ws[f"C{r}"].value
+
+                        print(f"      [GASTOS OP] Linha {r}: Desc='{desc_str}' | Custo KM={custo_km} | Custo Mensal={custo_mensal}")
+
+                        if all(v in (None, 0, 0.0) for v in (custo_km, custo_mensal)):
+                            print(f"        └─> IGNORADO (ambos os valores são 0 ou None)")
+                            continue
+
+                        item = {
+                            "subgrupo": nome,
+                            "descricao": desc_str,
+                            "custo_km": custo_km,
+                            "custo_mensal": custo_mensal
+                        }
+                        print(f"        └─> ADICIONADO ✓")
+
+                    lista_itens.append(item)
+                    total_itens_especiais += 1
+
+            dados_especiais[nome] = lista_itens
+
+            if nome == "GASTOS OPERACIONAIS":
+                print(f"\n{'='*80}")
+                print(f"RESULTADO GASTOS OPERACIONAIS: {len(lista_itens)} itens extraídos de {len(ranges)} seções")
+                if len(lista_itens) == 0:
+                    print("⚠️  ATENÇÃO: Nenhum item de GASTOS OPERACIONAIS foi extraído!")
+                    print("   Verifique se existem valores não-zero nas colunas B e C da seção GASTOS OPERACIONAIS")
+                print(f"{'='*80}\n")
+
+            logger.info(f"Subgrupo especial '{nome}': {len(lista_itens)} itens extraídos")
+
+        else:
+            # Ocorrência única (comportamento original)
+            ini, fim = ranges
+            print(f"\n>>> Processando: {nome} (linhas {ini} a {fim})")
+            lista_itens = []
+            for r in range(ini, fim + 1):
+                desc = ws[f"A{r}"].value
+                if desc is None:
                     continue
 
-                item = {
-                    "subgrupo": nome,
-                    "descricao": desc_str,
-                    "valor_parc": parc,
-                    "valor_juros": juros,
-                    "valor_total_parcela": total
-                }
-
-            elif nome == "INVESTIMENTOS GERAL NO NEGOCIO":
-                val = ws[f"B{r}"].value
-                if val in (None, 0, 0.0):
-                    continue
-                item = {
-                    "subgrupo": nome,
-                    "descricao": desc_str,
-                    "valor": val
-                }
-
-            elif nome == "GASTOS OPERACIONAIS":
-                custo_km = ws[f"B{r}"].value
-                custo_mensal = ws[f"C{r}"].value
-
-                print(f"  [GASTOS OP] Linha {r}: Desc='{desc_str}' | Custo KM={custo_km} | Custo Mensal={custo_mensal}")
-
-                # Ignorar se ambos forem 0 ou None
-                if all(v in (None, 0, 0.0) for v in (custo_km, custo_mensal)):
-                    print(f"    └─> IGNORADO (ambos os valores são 0 ou None)")
+                desc_str = str(desc).strip()
+                if desc_str == "" or desc_str == "0":
                     continue
 
-                item = {
-                    "subgrupo": nome,
-                    "descricao": desc_str,
-                    "custo_km": custo_km,
-                    "custo_mensal": custo_mensal
-                }
-                print(f"    └─> ADICIONADO ✓")
+                if nome in ("DIVIDAS", "INVESTIMENTOS"):
+                    parc = ws[f"B{r}"].value
+                    juros = ws[f"E{r}"].value
+                    total = ws[f"F{r}"].value
 
-            lista_itens.append(item)
-            total_itens_especiais += 1
+                    # Ignorar se todos os valores forem 0 ou None
+                    if all(v in (None, 0, 0.0) for v in (parc, juros, total)):
+                        continue
 
-        dados_especiais[nome] = lista_itens
+                    item = {
+                        "subgrupo": nome,
+                        "descricao": desc_str,
+                        "valor_parc": parc,
+                        "valor_juros": juros,
+                        "valor_total_parcela": total
+                    }
 
-        # Log especial para GASTOS OPERACIONAIS
-        if nome == "GASTOS OPERACIONAIS":
-            print(f"\n{'='*80}")
-            print(f"RESULTADO GASTOS OPERACIONAIS: {len(lista_itens)} itens extraídos")
-            if len(lista_itens) == 0:
-                print("⚠️  ATENÇÃO: Nenhum item de GASTOS OPERACIONAIS foi extraído!")
-                print("   Verifique se existem valores não-zero nas colunas B e C da seção GASTOS OPERACIONAIS")
-            print(f"{'='*80}\n")
+                elif nome == "INVESTIMENTOS GERAL NO NEGOCIO":
+                    val = ws[f"B{r}"].value
+                    if val in (None, 0, 0.0):
+                        continue
+                    item = {
+                        "subgrupo": nome,
+                        "descricao": desc_str,
+                        "valor": val
+                    }
 
-        logger.info(f"Subgrupo especial '{nome}': {len(lista_itens)} itens extraídos")
+                elif nome == "GASTOS OPERACIONAIS":
+                    custo_km = ws[f"B{r}"].value
+                    custo_mensal = ws[f"C{r}"].value
+
+                    print(f"  [GASTOS OP] Linha {r}: Desc='{desc_str}' | Custo KM={custo_km} | Custo Mensal={custo_mensal}")
+
+                    # Ignorar se ambos forem 0 ou None
+                    if all(v in (None, 0, 0.0) for v in (custo_km, custo_mensal)):
+                        print(f"    └─> IGNORADO (ambos os valores são 0 ou None)")
+                        continue
+
+                    item = {
+                        "subgrupo": nome,
+                        "descricao": desc_str,
+                        "custo_km": custo_km,
+                        "custo_mensal": custo_mensal
+                    }
+                    print(f"    └─> ADICIONADO ✓")
+
+                lista_itens.append(item)
+                total_itens_especiais += 1
+
+            dados_especiais[nome] = lista_itens
+
+            # Log especial para GASTOS OPERACIONAIS
+            if nome == "GASTOS OPERACIONAIS":
+                print(f"\n{'='*80}")
+                print(f"RESULTADO GASTOS OPERACIONAIS: {len(lista_itens)} itens extraídos")
+                if len(lista_itens) == 0:
+                    print("⚠️  ATENÇÃO: Nenhum item de GASTOS OPERACIONAIS foi extraído!")
+                    print("   Verifique se existem valores não-zero nas colunas B e C da seção GASTOS OPERACIONAIS")
+                print(f"{'='*80}\n")
+
+            logger.info(f"Subgrupo especial '{nome}': {len(lista_itens)} itens extraídos")
 
     # ============================
     # VALIDAÇÃO FINAL
