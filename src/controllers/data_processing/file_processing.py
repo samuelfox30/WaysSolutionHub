@@ -1,7 +1,7 @@
 from openpyxl import load_workbook
-from utils.logger import setup_logger
+from utils.logger import get_logger
 
-logger = setup_logger('file_processing')
+logger = get_logger('file_processing')
 
 def process_uploaded_file(file):
     logger.info("Iniciando processamento do arquivo de viabilidade")
