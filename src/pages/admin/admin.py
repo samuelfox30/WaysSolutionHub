@@ -833,17 +833,47 @@ def upload_dados():
         from controllers.data_processing.file_processing import process_uploaded_file
         from models.company_manager import CompanyManager
 
+        logger.info(f"Iniciando upload de dados de viabilidade - Empresa ID: {empresa_id}, Ano: {ano}")
+
+        # Processar arquivo Excel
+        logger.info("Processando arquivo Excel...")
         dados = process_uploaded_file(arquivo)
         d1 = dados[0]
         d2 = dados[1]
 
+        # Validar dados processados
+        if not d1 and not d2:
+            logger.error("Falha no processamento: listas de dados vazias")
+            flash("Erro: Nenhum dado foi extraído do arquivo. Verifique se o arquivo está no formato correto de Viabilidade Financeira.", "danger")
+            return redirect(url_for('admin.gerenciar_empresas'))
+
+        # Salvar no banco de dados
+        logger.info("Salvando dados no banco de dados...")
         company_manager = CompanyManager()
-        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
+        resultado = company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
         company_manager.close()
 
-        flash(f"Dados da empresa para o ano {ano} foram salvos com sucesso.", "success")
+        # Verificar resultado do salvamento
+        if resultado and resultado.get("success"):
+            total = resultado.get("total_geral", 0)
+            normais = resultado.get("total_itens_normais", 0)
+            especiais = resultado.get("total_itens_especiais", 0)
+
+            mensagem = f"Dados da empresa para o ano {ano} foram salvos com sucesso! "
+            mensagem += f"Total de {total} itens salvos ({normais} itens normais + {especiais} itens especiais)."
+
+            if resultado.get("erros"):
+                mensagem += f" Avisos: {len(resultado['erros'])} problemas encontrados (verifique os logs)."
+                logger.warning(f"Upload concluído com avisos: {resultado['erros']}")
+
+            logger.info(f"Upload concluído com sucesso: {total} itens salvos")
+            flash(mensagem, "success")
+        else:
+            logger.error("Falha no salvamento: resultado inválido")
+            flash("Erro: Falha ao salvar os dados no banco. Verifique os logs.", "danger")
+
     except Exception as e:
-        logger.error(f"Erro ao processar arquivo: {e}")
+        logger.error(f"Erro ao processar arquivo de viabilidade: {str(e)}", exc_info=True)
         flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
