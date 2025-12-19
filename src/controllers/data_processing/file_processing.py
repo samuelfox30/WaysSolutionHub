@@ -38,6 +38,16 @@ def process_uploaded_file(file):
         # Log do valor original para debug
         logger.debug(f"Normalizando percentual - Valor original: {valor} (tipo: {type(valor).__name__})")
 
+        # Validar se o valor é numérico
+        if isinstance(valor, str):
+            logger.error(f"ERRO: Valor de percentual é TEXTO ao invés de número! Valor: '{valor}'")
+            raise ValueError(f"A célula contém TEXTO ('{valor}') ao invés de um valor numérico. Verifique se a célula está formatada como número.")
+
+        # Validar se é um tipo numérico válido
+        if not isinstance(valor, (int, float)):
+            logger.error(f"ERRO: Tipo de dado inválido para percentual! Tipo: {type(valor).__name__}, Valor: {valor}")
+            raise ValueError(f"Tipo de dado inválido: {type(valor).__name__}. Esperado: número (int ou float).")
+
         # Excel armazena porcentagens como decimal, então multiplica por 100
         # Ex: 0.18313253012048192 * 100 = 18.313253012048192%
         valor_normalizado = valor * 100
@@ -135,11 +145,17 @@ def process_uploaded_file(file):
                 # Normalizar o percentual
                 try:
                     perc_normalizado = normalizar_percentual(perc)
+                except ValueError as e:
+                    # Erro de tipo de dado (string, etc)
+                    logger.error(f"ERRO na linha {r}, coluna {col_perc}{r}")
+                    logger.error(f"Cenário: {nome_cenario}, Subgrupo: {nome}, Descrição: {str(desc).strip()}")
+                    logger.error(f"Valor do percentual: '{perc}' (tipo: {type(perc).__name__})")
+                    raise Exception(f"Erro na linha {r}, coluna {col_perc}{r} (Descrição: '{str(desc).strip()}'): {str(e)}")
                 except Exception as e:
                     logger.error(f"ERRO ao normalizar percentual na linha {r}, coluna {col_perc}{r}")
                     logger.error(f"Cenário: {nome_cenario}, Subgrupo: {nome}, Descrição: {str(desc).strip()}")
                     logger.error(f"Valor do percentual: {perc} (tipo: {type(perc).__name__})")
-                    raise
+                    raise Exception(f"Erro inesperado na linha {r}, coluna {col_perc}{r}: {str(e)}")
 
                 # Validar se o percentual normalizado está dentro dos limites
                 if perc_normalizado is not None and (perc_normalizado > 99999999.99 or perc_normalizado < -99999999.99):
