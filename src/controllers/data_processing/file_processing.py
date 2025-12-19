@@ -194,6 +194,11 @@ def process_uploaded_file(file):
         "GASTOS OPERACIONAIS"
     ]
 
+    logger.info("Iniciando busca por subgrupos especiais...")
+    print("\n" + "="*80)
+    print("BUSCANDO SUBGRUPOS ESPECIAIS NA PLANILHA")
+    print("="*80)
+
     for row in range(1, ws.max_row + 1):
         valor = ws[f"A{row}"].value
         if valor in especiais_nomes:
@@ -202,12 +207,30 @@ def process_uploaded_file(file):
             while fim <= ws.max_row and not is_blank_row(fim):
                 fim += 1
             especiais[valor] = (inicio, fim - 1)
+            logger.info(f"✓ Subgrupo especial '{valor}' encontrado na linha {row} (dados: linhas {inicio} a {fim - 1})")
+            print(f"✓ Encontrado: '{valor}' na linha {row} | Dados: linhas {inicio} até {fim - 1}")
+
+    # Log dos subgrupos especiais encontrados vs não encontrados
+    print("\n" + "-"*80)
+    print("RESUMO DOS SUBGRUPOS ESPECIAIS:")
+    for nome_esperado in especiais_nomes:
+        if nome_esperado in especiais:
+            print(f"  ✓ {nome_esperado} - ENCONTRADO")
+        else:
+            print(f"  ✗ {nome_esperado} - NÃO ENCONTRADO")
+            logger.warning(f"Subgrupo especial '{nome_esperado}' NÃO foi encontrado na planilha")
+    print("-"*80 + "\n")
 
     # Extrair dados dos especiais
     dados_especiais = {}
     total_itens_especiais = 0
 
+    print("\n" + "="*80)
+    print("PROCESSANDO DADOS DOS SUBGRUPOS ESPECIAIS")
+    print("="*80)
+
     for nome, (ini, fim) in especiais.items():
+        print(f"\n>>> Processando: {nome} (linhas {ini} a {fim})")
         lista_itens = []
         for r in range(ini, fim + 1):
             desc = ws[f"A{r}"].value
@@ -249,8 +272,11 @@ def process_uploaded_file(file):
                 custo_km = ws[f"B{r}"].value
                 custo_mensal = ws[f"C{r}"].value
 
+                print(f"  [GASTOS OP] Linha {r}: Desc='{desc_str}' | Custo KM={custo_km} | Custo Mensal={custo_mensal}")
+
                 # Ignorar se ambos forem 0 ou None
                 if all(v in (None, 0, 0.0) for v in (custo_km, custo_mensal)):
+                    print(f"    └─> IGNORADO (ambos os valores são 0 ou None)")
                     continue
 
                 item = {
@@ -259,11 +285,22 @@ def process_uploaded_file(file):
                     "custo_km": custo_km,
                     "custo_mensal": custo_mensal
                 }
+                print(f"    └─> ADICIONADO ✓")
 
             lista_itens.append(item)
             total_itens_especiais += 1
 
         dados_especiais[nome] = lista_itens
+
+        # Log especial para GASTOS OPERACIONAIS
+        if nome == "GASTOS OPERACIONAIS":
+            print(f"\n{'='*80}")
+            print(f"RESULTADO GASTOS OPERACIONAIS: {len(lista_itens)} itens extraídos")
+            if len(lista_itens) == 0:
+                print("⚠️  ATENÇÃO: Nenhum item de GASTOS OPERACIONAIS foi extraído!")
+                print("   Verifique se existem valores não-zero nas colunas B e C da seção GASTOS OPERACIONAIS")
+            print(f"{'='*80}\n")
+
         logger.info(f"Subgrupo especial '{nome}': {len(lista_itens)} itens extraídos")
 
     # ============================
