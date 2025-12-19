@@ -1,10 +1,18 @@
 from openpyxl import load_workbook
+from utils.logger import setup_logger
+
+logger = setup_logger('file_processing')
 
 def process_uploaded_file(file):
-    print("\n\nINICIANDO ANÁLISE DO ARQUIVO UPLOAD... \n\n")
+    logger.info("Iniciando processamento do arquivo de viabilidade")
 
-    wb = load_workbook(file, data_only=True)
-    ws = wb.active
+    try:
+        wb = load_workbook(file, data_only=True)
+        ws = wb.active
+        logger.info(f"Arquivo carregado com sucesso. Planilha ativa: {ws.title}")
+    except Exception as e:
+        logger.error(f"Erro ao carregar arquivo Excel: {str(e)}")
+        raise Exception(f"Não foi possível carregar o arquivo Excel. Verifique se o arquivo está no formato correto. Erro: {str(e)}")
 
     def is_merged(cell):
         for merged_range in ws.merged_cells.ranges:
@@ -42,11 +50,20 @@ def process_uploaded_file(file):
     ]
 
     # Colunas de cada cenário
-    cenarios = [
-        {"nome": ws["A1"].value, "cols": ("A", "B", "C")},
-        {"nome": ws["E1"].value, "cols": ("E", "F", "G")},
-        {"nome": ws["I1"].value, "cols": ("I", "J", "K")},
-    ]
+    try:
+        cenarios = [
+            {"nome": ws["A1"].value, "cols": ("A", "B", "C")},
+            {"nome": ws["E1"].value, "cols": ("E", "F", "G")},
+            {"nome": ws["I1"].value, "cols": ("I", "J", "K")},
+        ]
+        logger.info(f"Cenários identificados: {[c['nome'] for c in cenarios]}")
+
+        # Validar se os cenários foram identificados
+        if not any(c["nome"] for c in cenarios):
+            raise Exception("Não foi possível identificar os cenários (VIABILIDADE REAL, PE, IDEAL) na planilha. Verifique se o arquivo está no formato correto.")
+    except Exception as e:
+        logger.error(f"Erro ao identificar cenários: {str(e)}")
+        raise
 
     # Detectar blocos nomeados (usando col A)
     blocos = {}
@@ -59,10 +76,14 @@ def process_uploaded_file(file):
                 fim += 1
             blocos[valor] = (inicio, fim - 1)
 
+    logger.info(f"Blocos identificados: {list(blocos.keys())}")
+
     # Adicionar o bloco GERAL antes do primeiro subgrupo
     if blocos:
         primeiro_inicio = min(v[0] for v in blocos.values())
         blocos = {"GERAL": (3, primeiro_inicio - 2), **blocos}
+    else:
+        logger.warning("Nenhum bloco de subgrupo foi identificado na planilha")
 
     # Palavras-chave a ignorar
     ignorar_descricoes = {
@@ -74,11 +95,15 @@ def process_uploaded_file(file):
 
     # Extrair dados para cada cenário (os blocos normais)
     lista_cenarios = []
+    total_itens_processados = 0
+
     for cenario in cenarios:
         nome_cenario = cenario["nome"]
         col_desc, col_perc, col_val = cenario["cols"]
 
         dados = {}
+        itens_cenario = 0
+
         for nome, (ini, fim) in blocos.items():
             lista_itens = []
             for r in range(ini, fim + 1):
@@ -104,8 +129,11 @@ def process_uploaded_file(file):
                     "valor": valr
                 }
                 lista_itens.append(item)
+                itens_cenario += 1
+                total_itens_processados += 1
             dados[nome] = lista_itens
 
+        logger.info(f"Cenário '{nome_cenario}': {itens_cenario} itens extraídos")
         lista_cenarios.append(dados)
 
     # ============================
@@ -133,6 +161,8 @@ def process_uploaded_file(file):
 
     # Extrair dados dos especiais
     dados_especiais = {}
+    total_itens_especiais = 0
+
     for nome, (ini, fim) in especiais.items():
         lista_itens = []
         for r in range(ini, fim + 1):
@@ -187,11 +217,28 @@ def process_uploaded_file(file):
                 }
 
             lista_itens.append(item)
+            total_itens_especiais += 1
+
         dados_especiais[nome] = lista_itens
+        logger.info(f"Subgrupo especial '{nome}': {len(lista_itens)} itens extraídos")
 
     # ============================
-    # PRINTS PARA CONFERÊNCIA
+    # VALIDAÇÃO FINAL
     # ============================
+    logger.info(f"Processamento concluído: {total_itens_processados} itens normais + {total_itens_especiais} itens especiais = {total_itens_processados + total_itens_especiais} itens totais")
+
+    # Validar se algum dado foi processado
+    if total_itens_processados == 0 and total_itens_especiais == 0:
+        logger.error("FALHA: Nenhum dado foi extraído da planilha. Verifique se o formato está correto.")
+        raise Exception("Nenhum dado foi extraído da planilha. Verifique se o arquivo está no formato esperado de Viabilidade Financeira.")
+
+    if total_itens_processados == 0:
+        logger.warning("AVISO: Nenhum item normal foi extraído, apenas itens especiais")
+
+    # ============================
+    # PRINTS PARA CONFERÊNCIA (DEBUG)
+    # ============================
+    logger.debug("Iniciando impressão dos dados extraídos para conferência")
 
     for dic in lista_cenarios:
         print("\n============================")
@@ -208,4 +255,5 @@ def process_uploaded_file(file):
         for i in itens:
             print(i)
 
+    logger.info("Arquivo processado com sucesso")
     return lista_cenarios, dados_especiais

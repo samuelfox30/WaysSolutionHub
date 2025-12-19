@@ -12,17 +12,28 @@ class CompanyManager(DatabaseConnection):
         Salva dados da empresa para um ANO específico (SEM mês).
         Remove os dados antigos do mesmo ano antes de inserir os novos.
         Agora recebe diretamente o empresa_id ao invés do nome da empresa.
+        Retorna um dicionário com estatísticas do salvamento.
         """
+        total_itens_salvos = 0
+        total_itens_especiais_salvos = 0
+        erros_encontrados = []
+
         try:
             # 1. Verificar se a empresa existe
-            self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
+            logger.info(f"Verificando existência da empresa_id={empresa_id}")
+            self.cursor.execute("SELECT id, nome FROM empresas WHERE id = %s", (empresa_id,))
             row = self.cursor.fetchone()
             if not row:
+                logger.error(f"Empresa com ID '{empresa_id}' não encontrada na tabela empresas")
                 raise Exception(f"Empresa com ID '{empresa_id}' não encontrada na tabela empresas.")
+
+            empresa_nome = row[1]
+            logger.info(f"Empresa encontrada: {empresa_nome} (ID: {empresa_id})")
 
             # ============================
             # 2. Limpar dados existentes do mesmo ANO (para evitar duplicação)
             # ============================
+            logger.info(f"Removendo dados antigos para empresa_id={empresa_id}, ano={ano_selecionado}")
             tabelas = [
                 "TbItens",
                 "TbItensDividas",
@@ -30,12 +41,20 @@ class CompanyManager(DatabaseConnection):
                 "TbItensInvestimentoGeral",
                 "TbItensGastosOperacionais"
             ]
+            registros_removidos = 0
             for tabela in tabelas:
+                self.cursor.execute(
+                    f"SELECT COUNT(*) FROM {tabela} WHERE empresa_id = %s AND ano = %s",
+                    (empresa_id, ano_selecionado)
+                )
+                count = self.cursor.fetchone()[0]
+                registros_removidos += count
+
                 self.cursor.execute(
                     f"DELETE FROM {tabela} WHERE empresa_id = %s AND ano = %s",
                     (empresa_id, ano_selecionado)
                 )
-            logger.debug(f"Dados antigos removidos para empresa_id={empresa_id}, ano={ano_selecionado}")
+            logger.info(f"{registros_removidos} registros antigos removidos")
 
             # ============================
             # 3. Mapeamento de nomes do Excel -> nomes no banco
@@ -63,6 +82,7 @@ class CompanyManager(DatabaseConnection):
             # ============================
             # 4. Inserir Itens Normais (TbItens) - SEM MÊS
             # ============================
+            logger.info("Iniciando inserção de itens normais")
             for cenario in lista_cenarios:
                 # Descobrir o nome do cenário olhando o primeiro item de qualquer subgrupo
                 nome_cenario = None
@@ -72,11 +92,16 @@ class CompanyManager(DatabaseConnection):
                         break
 
                 if not nome_cenario:
+                    logger.warning("Cenário sem nome encontrado, pulando...")
                     continue
 
                 grupo_id = grupo_map.get(nome_cenario)
                 if not grupo_id:
+                    logger.warning(f"Cenário '{nome_cenario}' não mapeado no grupo_map, pulando...")
+                    erros_encontrados.append(f"Cenário '{nome_cenario}' não reconhecido")
                     continue
+
+                logger.info(f"Processando cenário: {nome_cenario} (grupo_id={grupo_id})")
 
                 for subgrupo_nome, itens in cenario.items():
                     nome_subgrupo_excel = subgrupo_nome.strip().upper()
@@ -88,9 +113,12 @@ class CompanyManager(DatabaseConnection):
                     )
                     subgrupo_row = self.cursor.fetchone()
                     if not subgrupo_row:
+                        logger.warning(f"Subgrupo '{nome_subgrupo_banco}' não encontrado para grupo_id={grupo_id}")
+                        erros_encontrados.append(f"Subgrupo '{nome_subgrupo_banco}' não encontrado no banco para o cenário '{nome_cenario}'")
                         continue
                     subgrupo_id = subgrupo_row[0]
 
+                    itens_salvos_subgrupo = 0
                     for item in itens:
                         valor = item.get("valor") if item.get("valor") is not None else 0.00
                         sql = """
@@ -106,18 +134,28 @@ class CompanyManager(DatabaseConnection):
                             empresa_id
                         )
                         self.cursor.execute(sql, values)
+                        total_itens_salvos += 1
+                        itens_salvos_subgrupo += 1
+
+                    logger.info(f"  - Subgrupo '{nome_subgrupo_banco}': {itens_salvos_subgrupo} itens salvos")
 
             # ============================
             # 5. Inserir Itens Especiais - SEM MÊS
             # ============================
+            logger.info("Iniciando inserção de itens especiais")
             for grupo_id in [1, 2, 3]:
                 # DIVIDAS
+                dividas_count = 0
                 for it in dados_especiais.get("DIVIDAS", []):
                     self.cursor.execute(
                         "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
                         ("Dividas", grupo_id)
                     )
-                    subgrupo_id = self.cursor.fetchone()[0]
+                    subgrupo_row = self.cursor.fetchone()
+                    if not subgrupo_row:
+                        logger.warning(f"Subgrupo 'Dividas' não encontrado para grupo_id={grupo_id}")
+                        continue
+                    subgrupo_id = subgrupo_row[0]
                     sql = """
                         INSERT INTO TbItensDividas (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -127,14 +165,21 @@ class CompanyManager(DatabaseConnection):
                         ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
+                    total_itens_especiais_salvos += 1
+                    dividas_count += 1
 
                 # INVESTIMENTOS
+                investimentos_count = 0
                 for it in dados_especiais.get("INVESTIMENTOS", []):
                     self.cursor.execute(
                         "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
                         ("Investimentos", grupo_id)
                     )
-                    subgrupo_id = self.cursor.fetchone()[0]
+                    subgrupo_row = self.cursor.fetchone()
+                    if not subgrupo_row:
+                        logger.warning(f"Subgrupo 'Investimentos' não encontrado para grupo_id={grupo_id}")
+                        continue
+                    subgrupo_id = subgrupo_row[0]
                     sql = """
                         INSERT INTO TbItensInvestimentos (descricao, valor_parc, valor_juros, valor_total_parc, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -144,14 +189,21 @@ class CompanyManager(DatabaseConnection):
                         ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
+                    total_itens_especiais_salvos += 1
+                    investimentos_count += 1
 
                 # INVESTIMENTOS GERAL
+                investimentos_geral_count = 0
                 for it in dados_especiais.get("INVESTIMENTOS GERAL NO NEGOCIO", []):
                     self.cursor.execute(
                         "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
                         ("InvestimentosGeral", grupo_id)
                     )
-                    subgrupo_id = self.cursor.fetchone()[0]
+                    subgrupo_row = self.cursor.fetchone()
+                    if not subgrupo_row:
+                        logger.warning(f"Subgrupo 'InvestimentosGeral' não encontrado para grupo_id={grupo_id}")
+                        continue
+                    subgrupo_id = subgrupo_row[0]
                     sql = """
                         INSERT INTO TbItensInvestimentoGeral (descricao, valor, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s)
@@ -161,14 +213,21 @@ class CompanyManager(DatabaseConnection):
                         ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
+                    total_itens_especiais_salvos += 1
+                    investimentos_geral_count += 1
 
                 # GASTOS OPERACIONAIS
+                gastos_op_count = 0
                 for it in dados_especiais.get("GASTOS OPERACIONAIS", []):
                     self.cursor.execute(
                         "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
                         ("GastosOperacionais", grupo_id)
                     )
-                    subgrupo_id = self.cursor.fetchone()[0]
+                    subgrupo_row = self.cursor.fetchone()
+                    if not subgrupo_row:
+                        logger.warning(f"Subgrupo 'GastosOperacionais' não encontrado para grupo_id={grupo_id}")
+                        continue
+                    subgrupo_id = subgrupo_row[0]
                     sql = """
                         INSERT INTO TbItensGastosOperacionais (descricao, valor_custo_km, valor_mensal, ano, subgrupo_id, empresa_id)
                         VALUES (%s, %s, %s, %s, %s, %s)
@@ -178,16 +237,44 @@ class CompanyManager(DatabaseConnection):
                         ano_selecionado, subgrupo_id, empresa_id
                     )
                     self.cursor.execute(sql, values)
+                    total_itens_especiais_salvos += 1
+                    gastos_op_count += 1
+
+                if dividas_count > 0 or investimentos_count > 0 or investimentos_geral_count > 0 or gastos_op_count > 0:
+                    logger.info(f"  - Grupo {grupo_id}: {dividas_count} dívidas, {investimentos_count} investimentos, {investimentos_geral_count} investimentos gerais, {gastos_op_count} gastos operacionais")
 
             # ============================
-            # 6. Commit final
+            # 6. Commit final e validação
             # ============================
+            total_geral = total_itens_salvos + total_itens_especiais_salvos
+
+            if total_geral == 0:
+                logger.error("FALHA: Nenhum item foi salvo no banco de dados")
+                self.connection.rollback()
+                raise Exception("Nenhum item foi salvo no banco de dados. Verifique os logs para mais detalhes.")
+
             self.connection.commit()
-            logger.info("Itens salvos com sucesso no banco de dados (dados antigos sobrescritos).")
+            logger.info(f"Salvamento concluído com sucesso: {total_itens_salvos} itens normais + {total_itens_especiais_salvos} itens especiais = {total_geral} itens totais")
+
+            if erros_encontrados:
+                logger.warning(f"Avisos durante o salvamento: {', '.join(erros_encontrados)}")
+
+            return {
+                "success": True,
+                "total_itens_normais": total_itens_salvos,
+                "total_itens_especiais": total_itens_especiais_salvos,
+                "total_geral": total_geral,
+                "erros": erros_encontrados
+            }
 
         except mysql.connector.Error as err:
-            logger.error(f"Erro ao salvar itens: {err}")
+            logger.error(f"Erro MySQL ao salvar itens: {err}")
             self.connection.rollback()
+            raise Exception(f"Erro ao salvar dados no banco: {str(err)}")
+        except Exception as e:
+            logger.error(f"Erro ao salvar itens: {str(e)}")
+            self.connection.rollback()
+            raise
 
 
     def buscar_dados_empresa(self, empresa_id, ano_selecionado):
