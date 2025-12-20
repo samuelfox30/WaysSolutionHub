@@ -112,6 +112,8 @@ def process_uploaded_file(file):
         "RESULTADO REAL",
         "RESULTADO IDEAL",
         "PONTO DE EQUILIBRIO",
+        "CUSTO KM",
+        "CUSTO MENSAL",
         "0"
     }
 
