@@ -647,6 +647,12 @@ function atualizarGraficos(dadosGrupo) {
 
     // 3. Processar subgrupos na ORDEM ESPECÍFICA
     // Ordem: GastosAdm → GastosOperacionais → Gastos Operacionais Veículos → MateriaPrima → Obrigacoes → Pessoal → Dividas → Investimentos
+    console.log("\n====== PROCESSANDO SUBGRUPOS ======");
+    console.log("Todos os subgrupos disponíveis em dadosGrupo:", Object.keys(dadosGrupo));
+    console.log("dadosGrupo['GastosOperacionais']:", dadosGrupo['GastosOperacionais']);
+    console.log("dadosGrupo['Gastos Operacionais Veículos']:", dadosGrupo['Gastos Operacionais Veículos']);
+    console.log("===================================\n");
+
     const ordemSubgrupos = [
         'GastosAdm',
         'GastosOperacionais',
@@ -669,7 +675,18 @@ function atualizarGraficos(dadosGrupo) {
 
     // Processar cada subgrupo na ordem definida
     ordemSubgrupos.forEach(subgrupo => {
+        // Log específico para GASTOS OPERACIONAIS
+        if (subgrupo === 'GastosOperacionais' || subgrupo === 'Gastos Operacionais Veículos') {
+            console.log(`\n>>> Processando: ${subgrupo}`);
+            console.log(`   Existe? ${!!dadosGrupo[subgrupo]}`);
+            console.log(`   Quantidade de itens: ${dadosGrupo[subgrupo] ? dadosGrupo[subgrupo].length : 0}`);
+            console.log(`   Dados:`, dadosGrupo[subgrupo]);
+        }
+
         if (!dadosGrupo[subgrupo] || dadosGrupo[subgrupo].length === 0) {
+            if (subgrupo === 'GastosOperacionais' || subgrupo === 'Gastos Operacionais Veículos') {
+                console.log(`   ⚠️ ${subgrupo} NÃO TEM DADOS OU ESTÁ VAZIO!`);
+            }
             return; // Pular se não existir ou estiver vazio
         }
 
