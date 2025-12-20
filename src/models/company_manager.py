@@ -7,6 +7,33 @@ logger = get_logger('company_manager')
 
 class CompanyManager(DatabaseConnection):
 
+    def garantir_subgrupo_veiculos(self):
+        """
+        Garante que o subgrupo 'GastosOperacionaisVeiculos' existe para todos os grupos.
+        Se não existir, cria automaticamente.
+        """
+        logger.info("Verificando/criando subgrupo 'GastosOperacionaisVeiculos' para todos os grupos")
+
+        for grupo_id in [1, 2, 3]:
+            # Verificar se já existe
+            self.cursor.execute(
+                "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
+                ("GastosOperacionaisVeiculos", grupo_id)
+            )
+            existe = self.cursor.fetchone()
+
+            if not existe:
+                # Criar o subgrupo
+                self.cursor.execute(
+                    "INSERT INTO TbSubGrupo (nome, grupo_id) VALUES (%s, %s)",
+                    ("GastosOperacionaisVeiculos", grupo_id)
+                )
+                logger.info(f"  ✓ Subgrupo 'GastosOperacionaisVeiculos' criado para grupo_id={grupo_id}")
+            else:
+                logger.debug(f"  ✓ Subgrupo 'GastosOperacionaisVeiculos' já existe para grupo_id={grupo_id}")
+
+        self.connection.commit()
+
     def salvar_itens_empresa(self, empresa_id, ano_selecionado, lista_cenarios, dados_especiais):
         """
         Salva dados da empresa para um ANO específico (SEM mês).
@@ -31,7 +58,12 @@ class CompanyManager(DatabaseConnection):
             logger.info(f"Empresa encontrada: {empresa_nome} (ID: {empresa_id})")
 
             # ============================
-            # 2. Limpar dados existentes do mesmo ANO (para evitar duplicação)
+            # 2. Garantir que subgrupo de veículos existe
+            # ============================
+            self.garantir_subgrupo_veiculos()
+
+            # ============================
+            # 3. Limpar dados existentes do mesmo ANO (para evitar duplicação)
             # ============================
             logger.info(f"Removendo dados antigos para empresa_id={empresa_id}, ano={ano_selecionado}")
             tabelas = [
@@ -57,7 +89,7 @@ class CompanyManager(DatabaseConnection):
             logger.info(f"{registros_removidos} registros antigos removidos")
 
             # ============================
-            # 3. Mapeamento de nomes do Excel -> nomes no banco
+            # 4. Mapeamento de nomes do Excel -> nomes no banco
             # ============================
             subgrupo_map = {
                 "GERAL": "Geral",
@@ -80,7 +112,7 @@ class CompanyManager(DatabaseConnection):
             }
 
             # ============================
-            # 4. Inserir Itens Normais (TbItens) - SEM MÊS
+            # 5. Inserir Itens Normais (TbItens) - SEM MÊS
             # ============================
             logger.info("Iniciando inserção de itens normais")
             for cenario in lista_cenarios:
@@ -140,7 +172,7 @@ class CompanyManager(DatabaseConnection):
                     logger.info(f"  - Subgrupo '{nome_subgrupo_banco}': {itens_salvos_subgrupo} itens salvos")
 
             # ============================
-            # 5. Inserir Itens Especiais - SEM MÊS
+            # 6. Inserir Itens Especiais - SEM MÊS
             # ============================
             logger.info("Iniciando inserção de itens especiais")
             for grupo_id in [1, 2, 3]:
@@ -216,16 +248,17 @@ class CompanyManager(DatabaseConnection):
                     total_itens_especiais_salvos += 1
                     investimentos_geral_count += 1
 
-                # GASTOS OPERACIONAIS
+                # GASTOS OPERACIONAIS (VEÍCULOS)
                 gastos_op_count = 0
                 for it in dados_especiais.get("GASTOS OPERACIONAIS", []):
+                    # IMPORTANTE: Usar "GastosOperacionaisVeiculos" para diferenciar dos dados normais
                     self.cursor.execute(
                         "SELECT id FROM TbSubGrupo WHERE nome = %s AND grupo_id = %s",
-                        ("GastosOperacionais", grupo_id)
+                        ("GastosOperacionaisVeiculos", grupo_id)
                     )
                     subgrupo_row = self.cursor.fetchone()
                     if not subgrupo_row:
-                        logger.warning(f"Subgrupo 'GastosOperacionais' não encontrado para grupo_id={grupo_id}")
+                        logger.warning(f"Subgrupo 'GastosOperacionaisVeiculos' não encontrado para grupo_id={grupo_id}")
                         continue
                     subgrupo_id = subgrupo_row[0]
                     sql = """
@@ -244,7 +277,7 @@ class CompanyManager(DatabaseConnection):
                     logger.info(f"  - Grupo {grupo_id}: {dividas_count} dívidas, {investimentos_count} investimentos, {investimentos_geral_count} investimentos gerais, {gastos_op_count} gastos operacionais")
 
             # ============================
-            # 6. Commit final e validação
+            # 7. Commit final e validação
             # ============================
             total_geral = total_itens_salvos + total_itens_especiais_salvos
 
