@@ -66,9 +66,10 @@ def process_uploaded_file(file):
         "OBRIGAÇÕES",
         "GASTOS ADM",
         "MATERIA PRIMA",
+        "GASTOS OPERACIONAIS",
         "PESSOAL"
     ]
-    # Nota: "GASTOS OPERACIONAIS" é processado como subgrupo especial, não como bloco normal
+    # Nota: "GASTOS OPERACIONAIS" aparece DUAS vezes: como bloco normal E como especial (veículos)
 
     # Colunas de cada cenário
     try:
