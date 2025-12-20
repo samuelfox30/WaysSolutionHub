@@ -142,6 +142,13 @@ def process_uploaded_file(file):
                 if desc_str in ignorar_descricoes:
                     continue
 
+                # Verificar se o percentual é uma string (cabeçalho de coluna)
+                if isinstance(perc, str):
+                    perc_upper = perc.strip().upper()
+                    if perc_upper in ignorar_descricoes or perc_upper in ["CUSTO KM", "CUSTO MENSAL", "%", "PERCENTUAL", "PORCENTAGEM"]:
+                        logger.debug(f"Ignorando linha {r} - cabeçalho detectado (percentual='{perc}')")
+                        continue
+
                 # Log detalhado do item sendo processado
                 logger.debug(f"Linha {r} | Cenário: {nome_cenario} | Subgrupo: {nome} | Desc: {str(desc).strip()[:30]} | Perc original: {perc} | Valor: {valr}")
 
