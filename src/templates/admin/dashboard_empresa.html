@@ -432,42 +432,6 @@ async function carregarDadosGrupo() {
             return;
         }
 
-        // ====== LOGS DETALHADOS DOS DADOS DA API ======
-        console.log("\n" + "=".repeat(80));
-        console.log("📥 DADOS RECEBIDOS DA API");
-        console.log("=".repeat(80));
-        console.log("Ano:", dados.ano);
-        console.log("Grupos disponíveis:", Object.keys(dados.dados));
-
-        // Mostrar dados de CADA grupo
-        Object.keys(dados.dados).forEach(grupo => {
-            console.log(`\n>>> GRUPO: ${grupo}`);
-            console.log(`    Subgrupos disponíveis:`, Object.keys(dados.dados[grupo]));
-
-            // Mostrar dados específicos de GASTOS OPERACIONAIS
-            if (dados.dados[grupo]['GastosOperacionais']) {
-                console.log(`\n    📊 GastosOperacionais (NORMAL):`);
-                console.log(`       Quantidade: ${dados.dados[grupo]['GastosOperacionais'].length} itens`);
-                console.log(`       Primeiro item:`, dados.dados[grupo]['GastosOperacionais'][0]);
-                console.log(`       Estrutura:`, dados.dados[grupo]['GastosOperacionais'][0] ? Object.keys(dados.dados[grupo]['GastosOperacionais'][0]) : 'N/A');
-            } else {
-                console.log(`    ⚠️  GastosOperacionais (NORMAL): NÃO ENCONTRADO`);
-            }
-
-            if (dados.dados[grupo]['Gastos Operacionais Veículos']) {
-                console.log(`\n    🚗 Gastos Operacionais Veículos (ESPECIAL):`);
-                console.log(`       Quantidade: ${dados.dados[grupo]['Gastos Operacionais Veículos'].length} itens`);
-                console.log(`       Primeiro item:`, dados.dados[grupo]['Gastos Operacionais Veículos'][0]);
-                console.log(`       Estrutura:`, dados.dados[grupo]['Gastos Operacionais Veículos'][0] ? Object.keys(dados.dados[grupo]['Gastos Operacionais Veículos'][0]) : 'N/A');
-            } else {
-                console.log(`    ⚠️  Gastos Operacionais Veículos (ESPECIAL): NÃO ENCONTRADO`);
-            }
-        });
-
-        console.log("\n" + "=".repeat(80));
-        console.log("FIM DOS DADOS DA API");
-        console.log("=".repeat(80) + "\n");
-
         dadosAtuais = dados;
 
         // Pegar dados do grupo selecionado - JÁ VEM CALCULADO DO PYTHON
@@ -683,12 +647,6 @@ function atualizarGraficos(dadosGrupo) {
 
     // 3. Processar subgrupos na ORDEM ESPECÍFICA
     // Ordem: GastosAdm → GastosOperacionais → Gastos Operacionais Veículos → MateriaPrima → Obrigacoes → Pessoal → Dividas → Investimentos
-    console.log("\n====== PROCESSANDO SUBGRUPOS ======");
-    console.log("Todos os subgrupos disponíveis em dadosGrupo:", Object.keys(dadosGrupo));
-    console.log("dadosGrupo['GastosOperacionais']:", dadosGrupo['GastosOperacionais']);
-    console.log("dadosGrupo['Gastos Operacionais Veículos']:", dadosGrupo['Gastos Operacionais Veículos']);
-    console.log("===================================\n");
-
     const ordemSubgrupos = [
         'GastosAdm',
         'GastosOperacionais',
@@ -711,18 +669,7 @@ function atualizarGraficos(dadosGrupo) {
 
     // Processar cada subgrupo na ordem definida
     ordemSubgrupos.forEach(subgrupo => {
-        // Log específico para GASTOS OPERACIONAIS
-        if (subgrupo === 'GastosOperacionais' || subgrupo === 'Gastos Operacionais Veículos') {
-            console.log(`\n>>> Processando: ${subgrupo}`);
-            console.log(`   Existe? ${!!dadosGrupo[subgrupo]}`);
-            console.log(`   Quantidade de itens: ${dadosGrupo[subgrupo] ? dadosGrupo[subgrupo].length : 0}`);
-            console.log(`   Dados:`, dadosGrupo[subgrupo]);
-        }
-
         if (!dadosGrupo[subgrupo] || dadosGrupo[subgrupo].length === 0) {
-            if (subgrupo === 'GastosOperacionais' || subgrupo === 'Gastos Operacionais Veículos') {
-                console.log(`   ⚠️ ${subgrupo} NÃO TEM DADOS OU ESTÁ VAZIO!`);
-            }
             return; // Pular se não existir ou estiver vazio
         }
 

@@ -593,69 +593,11 @@ def api_dados_empresa(empresa_id, ano):
     data_results = company_manager.buscar_dados_empresa(empresa_id, ano)
     company_manager.close()
 
-    # ====== LOGS DETALHADOS DO BANCO DE DADOS ======
-    logger.info("="*80)
-    logger.info(f"📊 DADOS RECUPERADOS DO BANCO - Empresa ID: {empresa_id}, Ano: {ano}")
-    logger.info("="*80)
-
-    if data_results:
-        logger.info(f"✓ TbItens: {len(data_results.get('TbItens', [])) if data_results.get('TbItens') else 0} registros")
-        logger.info(f"✓ TbItensGastosOperacionais: {len(data_results.get('TbItensGastosOperacionais', [])) if data_results.get('TbItensGastosOperacionais') else 0} registros")
-        logger.info(f"✓ TbItensInvestimentos: {len(data_results.get('TbItensInvestimentos', [])) if data_results.get('TbItensInvestimentos') else 0} registros")
-        logger.info(f"✓ TbItensDividas: {len(data_results.get('TbItensDividas', [])) if data_results.get('TbItensDividas') else 0} registros")
-        logger.info(f"✓ TbItensInvestimentoGeral: {len(data_results.get('TbItensInvestimentoGeral', [])) if data_results.get('TbItensInvestimentoGeral') else 0} registros")
-    else:
-        logger.warning("⚠️ data_results está vazio ou None!")
-
-    logger.info("="*80)
-
     # Organizar dados por SUBGRUPO dentro de cada grupo de viabilidade
     dados_organizados = {}
 
     # Processar TbItens
     if data_results and data_results.get('TbItens'):
-        logger.info("\n🔍 PROCESSANDO TbItens (dados normais - percentual + valor):")
-
-        # Contar por grupo e subgrupo
-        contagem_por_grupo = {}
-        gastos_op_encontrados = []
-
-        for item in data_results['TbItens']:
-            grupo = item[0]
-            subgrupo = item[1]
-
-            if grupo not in contagem_por_grupo:
-                contagem_por_grupo[grupo] = {}
-            if subgrupo not in contagem_por_grupo[grupo]:
-                contagem_por_grupo[grupo][subgrupo] = 0
-            contagem_por_grupo[grupo][subgrupo] += 1
-
-            # Detectar GastosOperacionais especificamente
-            if subgrupo == 'GastosOperacionais':
-                gastos_op_encontrados.append({
-                    'grupo': grupo,
-                    'descricao': item[2],
-                    'percentual': item[3],
-                    'valor': item[4]
-                })
-
-        # Log da contagem
-        for grupo, subgrupos in contagem_por_grupo.items():
-            logger.info(f"  Grupo: {grupo}")
-            for subgrupo, count in subgrupos.items():
-                logger.info(f"    └─ {subgrupo}: {count} itens")
-
-        # Log específico de GastosOperacionais
-        logger.info(f"\n🎯 GastosOperacionais (NORMAL) encontrados no banco: {len(gastos_op_encontrados)} registros")
-        if gastos_op_encontrados:
-            for item in gastos_op_encontrados:
-                logger.info(f"  ✓ Grupo: {item['grupo']} | Desc: {item['descricao'][:30]} | Perc: {item['percentual']} | Valor: {item['valor']}")
-        else:
-            logger.warning("  ⚠️ NENHUM GastosOperacionais (normal) encontrado em TbItens!")
-
-        logger.info("")
-
-        # Processar normalmente
         for item in data_results['TbItens']:
             grupo = item[0]
             subgrupo = item[1]
@@ -745,41 +687,6 @@ def api_dados_empresa(empresa_id, ano):
 
     # Processar Gastos Operacionais (COM NOME DIFERENCIADO)
     if data_results and data_results.get('TbItensGastosOperacionais'):
-        logger.info("🔍 PROCESSANDO TbItensGastosOperacionais (dados especiais - veículos):")
-
-        # Contar por grupo
-        contagem_veiculos = {}
-        veiculos_detalhes = []
-
-        for item in data_results['TbItensGastosOperacionais']:
-            grupo = item[0]
-            descricao = item[2]
-            custo_km = item[3] if len(item) > 3 else None
-            custo_mensal = item[4] if len(item) > 4 else None
-
-            if grupo not in contagem_veiculos:
-                contagem_veiculos[grupo] = 0
-            contagem_veiculos[grupo] += 1
-
-            veiculos_detalhes.append({
-                'grupo': grupo,
-                'descricao': descricao,
-                'custo_km': custo_km,
-                'custo_mensal': custo_mensal
-            })
-
-        # Log da contagem por grupo
-        for grupo, count in contagem_veiculos.items():
-            logger.info(f"  Grupo: {grupo} → {count} veículos")
-
-        # Log detalhado
-        logger.info(f"\n🚗 Gastos Operacionais Veículos (ESPECIAL) no banco: {len(veiculos_detalhes)} registros")
-        for item in veiculos_detalhes:
-            logger.info(f"  ✓ Grupo: {item['grupo']} | Desc: {item['descricao'][:30]} | Custo KM: {item['custo_km']} | Custo Mensal: {item['custo_mensal']}")
-
-        logger.info("")
-
-        # Processar normalmente
         for item in data_results['TbItensGastosOperacionais']:
             grupo = item[0]
             subgrupo_original = item[1]  # Pode ser "GastosOperacionais"
@@ -926,47 +833,17 @@ def upload_dados():
         from controllers.data_processing.file_processing import process_uploaded_file
         from models.company_manager import CompanyManager
 
-        logger.info(f"Iniciando upload de dados de viabilidade - Empresa ID: {empresa_id}, Ano: {ano}")
-
-        # Processar arquivo Excel
-        logger.info("Processando arquivo Excel...")
         dados = process_uploaded_file(arquivo)
         d1 = dados[0]
         d2 = dados[1]
 
-        # Validar dados processados
-        if not d1 and not d2:
-            logger.error("Falha no processamento: listas de dados vazias")
-            flash("Erro: Nenhum dado foi extraído do arquivo. Verifique se o arquivo está no formato correto de Viabilidade Financeira.", "danger")
-            return redirect(url_for('admin.gerenciar_empresas'))
-
-        # Salvar no banco de dados
-        logger.info("Salvando dados no banco de dados...")
         company_manager = CompanyManager()
-        resultado = company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
+        company_manager.salvar_itens_empresa(int(empresa_id), int(ano), d1, d2)
         company_manager.close()
 
-        # Verificar resultado do salvamento
-        if resultado and resultado.get("success"):
-            total = resultado.get("total_geral", 0)
-            normais = resultado.get("total_itens_normais", 0)
-            especiais = resultado.get("total_itens_especiais", 0)
-
-            mensagem = f"Dados da empresa para o ano {ano} foram salvos com sucesso! "
-            mensagem += f"Total de {total} itens salvos ({normais} itens normais + {especiais} itens especiais)."
-
-            if resultado.get("erros"):
-                mensagem += f" Avisos: {len(resultado['erros'])} problemas encontrados (verifique os logs)."
-                logger.warning(f"Upload concluído com avisos: {resultado['erros']}")
-
-            logger.info(f"Upload concluído com sucesso: {total} itens salvos")
-            flash(mensagem, "success")
-        else:
-            logger.error("Falha no salvamento: resultado inválido")
-            flash("Erro: Falha ao salvar os dados no banco. Verifique os logs.", "danger")
-
+        flash(f"Dados da empresa para o ano {ano} foram salvos com sucesso.", "success")
     except Exception as e:
-        logger.error(f"Erro ao processar arquivo de viabilidade: {str(e)}", exc_info=True)
+        logger.error(f"Erro ao processar arquivo: {e}")
         flash(f"Erro ao processar o arquivo: {str(e)}", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
