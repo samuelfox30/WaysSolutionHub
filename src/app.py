@@ -26,3 +26,6 @@ if __name__ == '__main__':
     logger.info("Iniciando servidor Flask em modo debug")
     logger.info("Host: 0.0.0.0, Debug: True")
     app.run(debug=True, host='0.0.0.0')
+
+
+# oi
