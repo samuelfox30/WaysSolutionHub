@@ -9,43 +9,42 @@ jobs:
     name: 🎉 Deploy
     runs-on: ubuntu-latest
     steps:
-    # 1. Baixa o código
+    # 1. Baixa o código do GitHub
     - name: 🚚 Get latest code
       uses: actions/checkout@v4
 
-    # 2. Envia os arquivos (Passo que você já tinha)
-    - name: 📂 Sync files
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+    # 2. Envia os arquivos via SFTP (Usando SCP Action)
+    - name: 📂 Sync files via SFTP
+      uses: appleboy/scp-action@v0.1.7
       with:
-        server: ${{ secrets.SFTP_SERVER }}
+        host: ${{ secrets.SFTP_SERVER }}
         username: ${{ secrets.SFTP_USERNAME }}
         password: ${{ secrets.SFTP_PASSWORD }}
-        protocol: sftp
-        port: 22 
-        server-dir: /home/ubuntu/meu-projeto-flask/ # CONFIRA ESSE CAMINHO
-        exclude: |
-          **/.git*
-          **/.git*/**
-          **/venv/**
-          **/__pycache__/**
-          .github/**
+        port: 22
+        source: "."
+        target: "/home/ubuntu/meu-projeto-flask/"
+        # Removemos .git e venv para não deixar o upload lento
+        rm: false
+        strip_components: 0
+        exclude: ".git,.github,.gitignore,venv,__pycache__"
 
-    # 3. O PULO DO GATO: Rodar comandos no servidor
-    - name: 🚀 Restart Flask Service
+    # 3. Conecta via SSH para instalar libs e reiniciar
+    - name: 🚀 Install Req & Restart
       uses: appleboy/ssh-action@v1.0.3
       with:
         host: ${{ secrets.SFTP_SERVER }}
         username: ${{ secrets.SFTP_USERNAME }}
         password: ${{ secrets.SFTP_PASSWORD }}
         port: 22
-        # Aqui estão os comandos que seriam digitados no terminal
         script: |
+          # Entra na pasta
           cd /home/ubuntu/meu-projeto-flask/
           
-          # 1. Ativar venv e instalar libs novas
+          # Ativa venv e atualiza dependências
+          # (Se seu venv tiver outro nome, ajuste aqui)
           source venv/bin/activate
           pip install -r requirements.txt
           
-          # 2. Reiniciar o serviço (Supondo que você usa Systemd/Gunicorn)
-          # Você precisa ter permissão de sudo ou configurar para não pedir senha
+          # Reinicia o serviço do Flask
+          # ATENÇÃO: Troque 'meuflaskapp' pelo nome do seu serviço real
           sudo systemctl restart meuflaskapp
