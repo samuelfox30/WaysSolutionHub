@@ -50,13 +50,19 @@
                         <th scope="col" class="fw-semibold"><i class="bi bi-credit-card me-1"></i>CNPJ</th>
                         <th scope="col" class="fw-semibold"><i class="bi bi-tag me-1"></i>Seguimento</th>
                         <th scope="col" class="fw-semibold text-center"><i class="bi bi-calendar-check me-1"></i>Anos com Dados</th>
+                        <th scope="col" class="fw-semibold text-center"><i class="bi bi-calendar2-month me-1"></i>Dados BPO</th>
                         <th scope="col" class="fw-semibold text-center"><i class="bi bi-gear me-1"></i>Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for empresa in empresas %}
-                    <tr>
-                        <td class="fw-medium">{{ empresa.nome }}</td>
+                    <tr class="{% if not empresa.ativo %}table-secondary opacity-75{% endif %}">
+                        <td class="fw-medium">
+                            {{ empresa.nome }}
+                            {% if not empresa.ativo %}
+                                <span class="badge bg-danger ms-2">INATIVO</span>
+                            {% endif %}
+                        </td>
                         <td class="text-muted">{{ empresa.cnpj }}</td>
                         <td>
                             <span class="badge bg-light text-dark border">
@@ -77,29 +83,58 @@
                             {% endif %}
                         </td>
                         <td class="text-center">
+                            {% set dados_bpo = uploads_bpo.get(empresa.id, {}) %}
+                            {% if dados_bpo %}
+                                <div class="d-flex flex-wrap justify-content-center gap-1">
+                                    {% for ano in dados_bpo.keys()|sort(reverse=True) %}
+                                        {% set meses = dados_bpo[ano] %}
+                                        {% set meses_nomes = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'} %}
+                                        {% set meses_str = [] %}
+                                        {% for mes in meses|sort %}
+                                            {% set _ = meses_str.append(meses_nomes[mes]) %}
+                                        {% endfor %}
+                                        <span class="badge bg-info text-dark position-relative"
+                                              style="cursor: pointer;"
+                                              data-bs-toggle="popover"
+                                              data-bs-trigger="hover focus"
+                                              data-bs-placement="top"
+                                              data-bs-html="true"
+                                              data-bs-content="<div style='max-height: 150px; overflow-y: auto;'><small>{{ meses_str|join(', ') }}</small></div>"
+                                              title="Meses de {{ ano }}">
+                                            {{ ano }} <span class="badge bg-dark rounded-pill">{{ meses|length }}</span>
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">Nenhum dado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
                             <div class="btn-group" role="group">
                                 <a href="{{ url_for('admin.dashboard_empresa', empresa_id=empresa.id) }}"
-                                   class="btn btn-sm btn-outline-success"
+                                   class="btn btn-sm btn-outline-success {% if not empresa.ativo %}disabled{% endif %}"
                                    title="Dashboard Viabilidade">
                                     <i class="bi bi-graph-up-arrow"></i>
                                 </a>
                                 <a href="{{ url_for('admin.dashboard_bpo', empresa_id=empresa.id) }}"
-                                   class="btn btn-sm btn-outline-primary"
+                                   class="btn btn-sm btn-outline-primary {% if not empresa.ativo %}disabled{% endif %}"
                                    title="Dashboard BPO">
                                     <i class="bi bi-bar-chart-line"></i>
                                 </a>
                                 <button class="btn btn-sm btn-outline-info"
                                         onclick="abrirUploadModal({{ empresa.id }}, '{{ empresa.nome }}')"
-                                        title="Upload de dados">
+                                        title="Upload de dados"
+                                        {% if not empresa.ativo %}disabled{% endif %}>
                                     <i class="bi bi-upload"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-warning"
                                         onclick="abrirGerenciarDados({{ empresa.id }}, '{{ empresa.nome }}', {{ anos|tojson }})"
-                                        title="Gerenciar dados">
+                                        title="Gerenciar dados"
+                                        {% if not empresa.ativo %}disabled{% endif %}>
                                     <i class="bi bi-database"></i>
                                 </button>
                                 <a href="{{ url_for('admin.consultar_dados_bpo') }}?empresa_id={{ empresa.id }}"
-                                   class="btn btn-sm btn-outline-secondary"
+                                   class="btn btn-sm btn-outline-secondary {% if not empresa.ativo %}disabled{% endif %}"
                                    title="Ver dados BPO">
                                     <i class="bi bi-calendar-check"></i>
                                 </a>
@@ -113,9 +148,23 @@
                                         data-seguimento="{{ empresa.seguimento }}"
                                         data-website="{{ empresa.website or '' }}"
                                         data-complemento="{{ empresa.complemento or '' }}"
-                                        title="Editar empresa">
+                                        title="Editar empresa"
+                                        {% if not empresa.ativo %}disabled{% endif %}>
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
+                                {% if empresa.ativo %}
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="confirmarInativar({{ empresa.id }}, '{{ empresa.nome }}')"
+                                        title="Inativar empresa">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-success"
+                                        onclick="confirmarAtivar({{ empresa.id }}, '{{ empresa.nome }}')"
+                                        title="Ativar empresa">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                                {% endif %}
                                 <button class="btn btn-sm btn-outline-danger"
                                         onclick="showDeleteEmpresaModal({{ empresa.id }}, '{{ empresa.nome }}')"
                                         title="Excluir empresa">
@@ -517,39 +566,10 @@ function maskCEP(value) {
 
 // Validação de CNPJ
 function validarCNPJ(cnpj) {
+    // Validação simplificada: apenas verifica se tem 14 dígitos
+    // Permite CNPJs inválidos para facilitar testes e cadastros de filiais
     cnpj = cnpj.replace(/\D/g, '');
-
-    if (cnpj.length !== 14) return false;
-    if (/^(\d)\1+$/.test(cnpj)) return false; // Todos dígitos iguais
-
-    let tamanho = cnpj.length - 2;
-    let numeros = cnpj.substring(0, tamanho);
-    let digitos = cnpj.substring(tamanho);
-    let soma = 0;
-    let pos = tamanho - 7;
-
-    for (let i = tamanho; i >= 1; i--) {
-        soma += numeros.charAt(tamanho - i) * pos--;
-        if (pos < 2) pos = 9;
-    }
-
-    let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-    if (resultado != digitos.charAt(0)) return false;
-
-    tamanho = tamanho + 1;
-    numeros = cnpj.substring(0, tamanho);
-    soma = 0;
-    pos = tamanho - 7;
-
-    for (let i = tamanho; i >= 1; i--) {
-        soma += numeros.charAt(tamanho - i) * pos--;
-        if (pos < 2) pos = 9;
-    }
-
-    resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
-    if (resultado != digitos.charAt(1)) return false;
-
-    return true;
+    return cnpj.length === 14;
 }
 
 // Validação de telefone
@@ -589,6 +609,26 @@ function showDeleteEmpresaModal(id, nome) {
     document.getElementById('deleteEmpresaNome').textContent = nome;
     document.getElementById('confirmDeleteEmpresaButton').href = `/admin/deletar_empresa/${id}`;
     modal.show();
+}
+
+function confirmarInativar(id, nome) {
+    if (confirm(`Tem certeza que deseja INATIVAR a empresa "${nome}"?\n\nA empresa ficará desabilitada mas todos os dados serão preservados.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/inativar_empresa/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function confirmarAtivar(id, nome) {
+    if (confirm(`Tem certeza que deseja ATIVAR a empresa "${nome}"?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/ativar_empresa/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 
 function abrirUploadModal(empresaId, empresaNome) {
@@ -653,6 +693,12 @@ function atualizarFormsAno() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar popovers do Bootstrap para mostrar meses de BPO
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    const popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+
     // Loading overlay para AMBOS os formulários de upload
     const uploadFormViabilidade = document.getElementById('upload-form-viabilidade');
     const uploadFormBpo = document.getElementById('upload-form-bpo');

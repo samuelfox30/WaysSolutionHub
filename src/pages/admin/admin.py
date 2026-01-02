@@ -178,17 +178,28 @@ def gerenciar_empresas():
 
     from models.company_manager import CompanyManager
     company_manager = CompanyManager()
+
+    # Executar migrações do banco de dados
+    company_manager.remover_unique_cnpj()  # Permitir CNPJ duplicado (matriz/filiais)
+    company_manager.adicionar_coluna_ativo_se_nao_existir()  # Adicionar coluna ativo
+
     empresas = company_manager.listar_todas_empresas()
 
-    # Para cada empresa, buscar anos com dados
+    # Para cada empresa, buscar anos com dados de Viabilidade
     uploads = {}
     for empresa in empresas:
         anos_com_dados = company_manager.get_anos_com_dados(empresa['id'])
         uploads[empresa['id']] = anos_com_dados
 
+    # Para cada empresa, buscar meses com dados de BPO
+    uploads_bpo = {}
+    for empresa in empresas:
+        meses_com_dados_bpo = company_manager.get_meses_com_dados_bpo(empresa['id'])
+        uploads_bpo[empresa['id']] = meses_com_dados_bpo
+
     company_manager.close()
 
-    return render_template('admin/empresas.html', empresas=empresas, uploads=uploads)
+    return render_template('admin/empresas.html', empresas=empresas, uploads=uploads, uploads_bpo=uploads_bpo)
 
 
 @admin_bp.route('/admin/cadastrar_empresa', methods=['POST'])
@@ -223,7 +234,7 @@ def cadastrar_empresa():
     if empresa_id:
         flash(f"Empresa '{nome}' cadastrada com sucesso!", "success")
     else:
-        flash("Erro ao cadastrar empresa. Verifique se o CNPJ já não está cadastrado.", "danger")
+        flash("Erro ao cadastrar empresa. Tente novamente.", "danger")
 
     company_manager.close()
     return redirect(url_for('admin.gerenciar_empresas'))
@@ -284,6 +295,46 @@ def deletar_empresa(empresa_id):
         flash("Empresa excluída com sucesso!", "success")
     else:
         flash("Erro ao excluir empresa.", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/inativar_empresa/<int:empresa_id>', methods=['POST'])
+def inativar_empresa(empresa_id):
+    """Inativa uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    success = company_manager.inativar_empresa(empresa_id)
+    company_manager.close()
+
+    if success:
+        flash("Empresa inativada com sucesso!", "success")
+    else:
+        flash("Erro ao inativar empresa.", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/ativar_empresa/<int:empresa_id>', methods=['POST'])
+def ativar_empresa(empresa_id):
+    """Ativa uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    success = company_manager.ativar_empresa(empresa_id)
+    company_manager.close()
+
+    if success:
+        flash("Empresa ativada com sucesso!", "success")
+    else:
+        flash("Erro ao ativar empresa.", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
 

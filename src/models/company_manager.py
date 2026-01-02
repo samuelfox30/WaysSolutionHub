@@ -345,6 +345,36 @@ class CompanyManager(DatabaseConnection):
             return []
 
 
+    def get_meses_com_dados_bpo(self, empresa_id):
+        """
+        Retorna um dicionário com os anos e meses em que existem dados BPO para a empresa.
+        Formato: {2025: [1, 2, 3, 12], 2024: [10, 11, 12]}
+        Ordenado por ano DESC e meses DESC.
+        """
+        try:
+            sql = """
+                SELECT DISTINCT ano, mes
+                FROM TbBpoDados
+                WHERE empresa_id = %s
+                ORDER BY ano DESC, mes DESC
+            """
+            self.cursor.execute(sql, (empresa_id,))
+            rows = self.cursor.fetchall()
+
+            # Organizar por ano: {2025: [12, 11, 10], 2024: [12, 11]}
+            dados_por_ano = {}
+            for ano, mes in rows:
+                if ano not in dados_por_ano:
+                    dados_por_ano[ano] = []
+                dados_por_ano[ano].append(mes)
+
+            return dados_por_ano
+
+        except mysql.connector.Error as err:
+            logger.error(f"get_meses_com_dados_bpo: {err}")
+            return {}
+
+
     def verificar_dados_existentes(self, empresa_id, ano):
         """
         Verifica se existem dados para uma empresa em um ano específico.
@@ -364,6 +394,100 @@ class CompanyManager(DatabaseConnection):
 
         except mysql.connector.Error as err:
             logger.error(f"verificar_dados_existentes: {err}")
+            return False
+
+
+    # ============================
+    # MIGRAÇÕES DO BANCO DE DADOS
+    # ============================
+
+    def remover_unique_cnpj(self):
+        """
+        Remove a constraint UNIQUE do campo CNPJ para permitir empresas duplicadas (matriz/filiais).
+        """
+        try:
+            # Verificar se o CNPJ tem unique constraint
+            self.cursor.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'empresas'
+                AND COLUMN_NAME = 'cnpj'
+                AND NON_UNIQUE = 0
+            """)
+            tem_unique = self.cursor.fetchone()[0] > 0
+
+            if tem_unique:
+                logger.info("CNPJ tem constraint UNIQUE. Removendo...")
+
+                # Tentar remover pela constraint padrão
+                try:
+                    self.cursor.execute("ALTER TABLE empresas DROP INDEX cnpj")
+                    self.connection.commit()
+                    logger.info("✓ Constraint UNIQUE do CNPJ removida! Agora permite duplicatas (matriz/filiais).")
+                    return True
+                except mysql.connector.Error as err:
+                    logger.error(f"Erro ao remover index 'cnpj': {err}")
+                    # Tentar listar e remover outros indexes
+                    self.cursor.execute("""
+                        SELECT DISTINCT INDEX_NAME
+                        FROM information_schema.STATISTICS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'empresas'
+                        AND COLUMN_NAME = 'cnpj'
+                        AND NON_UNIQUE = 0
+                        AND INDEX_NAME != 'PRIMARY'
+                    """)
+                    indexes = self.cursor.fetchall()
+                    for idx in indexes:
+                        try:
+                            self.cursor.execute(f"ALTER TABLE empresas DROP INDEX {idx[0]}")
+                            self.connection.commit()
+                            logger.info(f"✓ Index '{idx[0]}' removido do CNPJ.")
+                        except:
+                            pass
+                    return True
+            else:
+                logger.info("CNPJ já permite duplicatas.")
+                return False
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao remover UNIQUE do CNPJ: {err}")
+            self.connection.rollback()
+            return False
+
+    def adicionar_coluna_ativo_se_nao_existir(self):
+        """
+        Adiciona a coluna 'ativo' na tabela empresas se ela não existir.
+        Define DEFAULT TRUE para que empresas existentes sejam automaticamente ativas.
+        """
+        try:
+            # Verificar se a coluna já existe
+            self.cursor.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'empresas'
+                AND COLUMN_NAME = 'ativo'
+            """)
+            existe = self.cursor.fetchone()[0] > 0
+
+            if not existe:
+                logger.info("Coluna 'ativo' não existe. Criando...")
+                self.cursor.execute("""
+                    ALTER TABLE empresas
+                    ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE
+                """)
+                self.connection.commit()
+                logger.info("✓ Coluna 'ativo' adicionada com sucesso! Todas as empresas existentes foram marcadas como ativas.")
+                return True
+            else:
+                logger.info("Coluna 'ativo' já existe na tabela empresas.")
+                return False
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao adicionar coluna 'ativo': {err}")
+            self.connection.rollback()
             return False
 
 
@@ -447,9 +571,14 @@ class CompanyManager(DatabaseConnection):
             return None
 
     def listar_todas_empresas(self):
-        """Retorna uma lista com todas as empresas cadastradas."""
+        """
+        Retorna uma lista com todas as empresas cadastradas.
+        Empresas ativas aparecem primeiro, ordenadas por nome.
+        Empresas inativas aparecem depois, também ordenadas por nome.
+        """
         try:
-            sql = "SELECT * FROM empresas ORDER BY nome ASC"
+            # Ordenar: ativo DESC (TRUE primeiro), depois nome ASC
+            sql = "SELECT * FROM empresas ORDER BY ativo DESC, nome ASC"
             self.cursor.execute(sql)
             rows = self.cursor.fetchall()
 
@@ -465,7 +594,8 @@ class CompanyManager(DatabaseConnection):
                     'cep': row[6],
                     'complemento': row[7],
                     'seguimento': row[8],
-                    'created_at': row[9]
+                    'created_at': row[9],
+                    'ativo': row[10] if len(row) > 10 else True  # Compatibilidade se coluna não existir ainda
                 })
 
             return empresas
@@ -510,6 +640,41 @@ class CompanyManager(DatabaseConnection):
 
         except mysql.connector.Error as err:
             logger.error(f"Erro ao deletar empresa: {err}")
+            self.connection.rollback()
+            return False
+
+    def inativar_empresa(self, empresa_id):
+        """
+        Inativa uma empresa (define ativo = FALSE).
+        A empresa continua no banco com todos os dados, mas fica marcada como inativa.
+        """
+        try:
+            sql = "UPDATE empresas SET ativo = FALSE WHERE id = %s"
+            self.cursor.execute(sql, (empresa_id,))
+            self.connection.commit()
+
+            logger.debug(f"Empresa ID {empresa_id} inativada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao inativar empresa: {err}")
+            self.connection.rollback()
+            return False
+
+    def ativar_empresa(self, empresa_id):
+        """
+        Ativa uma empresa (define ativo = TRUE).
+        """
+        try:
+            sql = "UPDATE empresas SET ativo = TRUE WHERE id = %s"
+            self.cursor.execute(sql, (empresa_id,))
+            self.connection.commit()
+
+            logger.debug(f"Empresa ID {empresa_id} ativada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao ativar empresa: {err}")
             self.connection.rollback()
             return False
 
