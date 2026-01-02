@@ -345,6 +345,36 @@ class CompanyManager(DatabaseConnection):
             return []
 
 
+    def get_meses_com_dados_bpo(self, empresa_id):
+        """
+        Retorna um dicionário com os anos e meses em que existem dados BPO para a empresa.
+        Formato: {2025: [1, 2, 3, 12], 2024: [10, 11, 12]}
+        Ordenado por ano DESC e meses DESC.
+        """
+        try:
+            sql = """
+                SELECT DISTINCT ano, mes
+                FROM TbBpoDados
+                WHERE empresa_id = %s
+                ORDER BY ano DESC, mes DESC
+            """
+            self.cursor.execute(sql, (empresa_id,))
+            rows = self.cursor.fetchall()
+
+            # Organizar por ano: {2025: [12, 11, 10], 2024: [12, 11]}
+            dados_por_ano = {}
+            for ano, mes in rows:
+                if ano not in dados_por_ano:
+                    dados_por_ano[ano] = []
+                dados_por_ano[ano].append(mes)
+
+            return dados_por_ano
+
+        except mysql.connector.Error as err:
+            logger.error(f"get_meses_com_dados_bpo: {err}")
+            return {}
+
+
     def verificar_dados_existentes(self, empresa_id, ano):
         """
         Verifica se existem dados para uma empresa em um ano específico.

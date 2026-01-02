@@ -50,6 +50,7 @@
                         <th scope="col" class="fw-semibold"><i class="bi bi-credit-card me-1"></i>CNPJ</th>
                         <th scope="col" class="fw-semibold"><i class="bi bi-tag me-1"></i>Seguimento</th>
                         <th scope="col" class="fw-semibold text-center"><i class="bi bi-calendar-check me-1"></i>Anos com Dados</th>
+                        <th scope="col" class="fw-semibold text-center"><i class="bi bi-calendar2-month me-1"></i>Dados BPO</th>
                         <th scope="col" class="fw-semibold text-center"><i class="bi bi-gear me-1"></i>Ações</th>
                     </tr>
                 </thead>
@@ -70,6 +71,33 @@
                                 <div class="d-flex flex-wrap justify-content-center gap-1">
                                     {% for ano in anos|sort(reverse=True) %}
                                         <span class="badge bg-success">{{ ano }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted small">Nenhum dado</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-center">
+                            {% set dados_bpo = uploads_bpo.get(empresa.id, {}) %}
+                            {% if dados_bpo %}
+                                <div class="d-flex flex-wrap justify-content-center gap-1">
+                                    {% for ano in dados_bpo.keys()|sort(reverse=True) %}
+                                        {% set meses = dados_bpo[ano] %}
+                                        {% set meses_nomes = {1: 'Jan', 2: 'Fev', 3: 'Mar', 4: 'Abr', 5: 'Mai', 6: 'Jun', 7: 'Jul', 8: 'Ago', 9: 'Set', 10: 'Out', 11: 'Nov', 12: 'Dez'} %}
+                                        {% set meses_str = [] %}
+                                        {% for mes in meses|sort %}
+                                            {% set _ = meses_str.append(meses_nomes[mes]) %}
+                                        {% endfor %}
+                                        <span class="badge bg-info text-dark position-relative"
+                                              style="cursor: pointer;"
+                                              data-bs-toggle="popover"
+                                              data-bs-trigger="hover focus"
+                                              data-bs-placement="top"
+                                              data-bs-html="true"
+                                              data-bs-content="<div style='max-height: 150px; overflow-y: auto;'><small>{{ meses_str|join(', ') }}</small></div>"
+                                              title="Meses de {{ ano }}">
+                                            {{ ano }} <span class="badge bg-dark rounded-pill">{{ meses|length }}</span>
+                                        </span>
                                     {% endfor %}
                                 </div>
                             {% else %}
@@ -653,6 +681,12 @@ function atualizarFormsAno() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar popovers do Bootstrap para mostrar meses de BPO
+    const popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+    const popoverList = popoverTriggerList.map(function (popoverTriggerEl) {
+        return new bootstrap.Popover(popoverTriggerEl);
+    });
+
     // Loading overlay para AMBOS os formulários de upload
     const uploadFormViabilidade = document.getElementById('upload-form-viabilidade');
     const uploadFormBpo = document.getElementById('upload-form-bpo');

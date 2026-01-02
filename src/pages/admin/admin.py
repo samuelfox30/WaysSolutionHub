@@ -180,15 +180,21 @@ def gerenciar_empresas():
     company_manager = CompanyManager()
     empresas = company_manager.listar_todas_empresas()
 
-    # Para cada empresa, buscar anos com dados
+    # Para cada empresa, buscar anos com dados de Viabilidade
     uploads = {}
     for empresa in empresas:
         anos_com_dados = company_manager.get_anos_com_dados(empresa['id'])
         uploads[empresa['id']] = anos_com_dados
 
+    # Para cada empresa, buscar meses com dados de BPO
+    uploads_bpo = {}
+    for empresa in empresas:
+        meses_com_dados_bpo = company_manager.get_meses_com_dados_bpo(empresa['id'])
+        uploads_bpo[empresa['id']] = meses_com_dados_bpo
+
     company_manager.close()
 
-    return render_template('admin/empresas.html', empresas=empresas, uploads=uploads)
+    return render_template('admin/empresas.html', empresas=empresas, uploads=uploads, uploads_bpo=uploads_bpo)
 
 
 @admin_bp.route('/admin/cadastrar_empresa', methods=['POST'])
