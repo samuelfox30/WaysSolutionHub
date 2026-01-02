@@ -398,6 +398,45 @@ class CompanyManager(DatabaseConnection):
 
 
     # ============================
+    # MIGRAÇÃO: Adicionar coluna 'ativo' se não existir
+    # ============================
+
+    def adicionar_coluna_ativo_se_nao_existir(self):
+        """
+        Adiciona a coluna 'ativo' na tabela empresas se ela não existir.
+        Define DEFAULT TRUE para que empresas existentes sejam automaticamente ativas.
+        """
+        try:
+            # Verificar se a coluna já existe
+            self.cursor.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'empresas'
+                AND COLUMN_NAME = 'ativo'
+            """)
+            existe = self.cursor.fetchone()[0] > 0
+
+            if not existe:
+                logger.info("Coluna 'ativo' não existe. Criando...")
+                self.cursor.execute("""
+                    ALTER TABLE empresas
+                    ADD COLUMN ativo BOOLEAN NOT NULL DEFAULT TRUE
+                """)
+                self.connection.commit()
+                logger.info("✓ Coluna 'ativo' adicionada com sucesso! Todas as empresas existentes foram marcadas como ativas.")
+                return True
+            else:
+                logger.info("Coluna 'ativo' já existe na tabela empresas.")
+                return False
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao adicionar coluna 'ativo': {err}")
+            self.connection.rollback()
+            return False
+
+
+    # ============================
     # MÉTODOS PARA GERENCIAR EMPRESAS (CRUD)
     # ============================
 
@@ -477,9 +516,14 @@ class CompanyManager(DatabaseConnection):
             return None
 
     def listar_todas_empresas(self):
-        """Retorna uma lista com todas as empresas cadastradas."""
+        """
+        Retorna uma lista com todas as empresas cadastradas.
+        Empresas ativas aparecem primeiro, ordenadas por nome.
+        Empresas inativas aparecem depois, também ordenadas por nome.
+        """
         try:
-            sql = "SELECT * FROM empresas ORDER BY nome ASC"
+            # Ordenar: ativo DESC (TRUE primeiro), depois nome ASC
+            sql = "SELECT * FROM empresas ORDER BY ativo DESC, nome ASC"
             self.cursor.execute(sql)
             rows = self.cursor.fetchall()
 
@@ -495,7 +539,8 @@ class CompanyManager(DatabaseConnection):
                     'cep': row[6],
                     'complemento': row[7],
                     'seguimento': row[8],
-                    'created_at': row[9]
+                    'created_at': row[9],
+                    'ativo': row[10] if len(row) > 10 else True  # Compatibilidade se coluna não existir ainda
                 })
 
             return empresas
@@ -540,6 +585,41 @@ class CompanyManager(DatabaseConnection):
 
         except mysql.connector.Error as err:
             logger.error(f"Erro ao deletar empresa: {err}")
+            self.connection.rollback()
+            return False
+
+    def inativar_empresa(self, empresa_id):
+        """
+        Inativa uma empresa (define ativo = FALSE).
+        A empresa continua no banco com todos os dados, mas fica marcada como inativa.
+        """
+        try:
+            sql = "UPDATE empresas SET ativo = FALSE WHERE id = %s"
+            self.cursor.execute(sql, (empresa_id,))
+            self.connection.commit()
+
+            logger.debug(f"Empresa ID {empresa_id} inativada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao inativar empresa: {err}")
+            self.connection.rollback()
+            return False
+
+    def ativar_empresa(self, empresa_id):
+        """
+        Ativa uma empresa (define ativo = TRUE).
+        """
+        try:
+            sql = "UPDATE empresas SET ativo = TRUE WHERE id = %s"
+            self.cursor.execute(sql, (empresa_id,))
+            self.connection.commit()
+
+            logger.debug(f"Empresa ID {empresa_id} ativada com sucesso.")
+            return True
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao ativar empresa: {err}")
             self.connection.rollback()
             return False
 

@@ -178,6 +178,10 @@ def gerenciar_empresas():
 
     from models.company_manager import CompanyManager
     company_manager = CompanyManager()
+
+    # Executar migração para adicionar coluna 'ativo' se não existir
+    company_manager.adicionar_coluna_ativo_se_nao_existir()
+
     empresas = company_manager.listar_todas_empresas()
 
     # Para cada empresa, buscar anos com dados de Viabilidade
@@ -290,6 +294,46 @@ def deletar_empresa(empresa_id):
         flash("Empresa excluída com sucesso!", "success")
     else:
         flash("Erro ao excluir empresa.", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/inativar_empresa/<int:empresa_id>', methods=['POST'])
+def inativar_empresa(empresa_id):
+    """Inativa uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    success = company_manager.inativar_empresa(empresa_id)
+    company_manager.close()
+
+    if success:
+        flash("Empresa inativada com sucesso!", "success")
+    else:
+        flash("Erro ao inativar empresa.", "danger")
+
+    return redirect(url_for('admin.gerenciar_empresas'))
+
+
+@admin_bp.route('/admin/ativar_empresa/<int:empresa_id>', methods=['POST'])
+def ativar_empresa(empresa_id):
+    """Ativa uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        flash("Acesso negado. Você precisa ser um administrador.", "danger")
+        return redirect(url_for('index.login'))
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+    success = company_manager.ativar_empresa(empresa_id)
+    company_manager.close()
+
+    if success:
+        flash("Empresa ativada com sucesso!", "success")
+    else:
+        flash("Erro ao ativar empresa.", "danger")
 
     return redirect(url_for('admin.gerenciar_empresas'))
 

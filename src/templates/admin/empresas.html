@@ -56,8 +56,13 @@
                 </thead>
                 <tbody>
                     {% for empresa in empresas %}
-                    <tr>
-                        <td class="fw-medium">{{ empresa.nome }}</td>
+                    <tr class="{% if not empresa.ativo %}table-secondary opacity-75{% endif %}">
+                        <td class="fw-medium">
+                            {{ empresa.nome }}
+                            {% if not empresa.ativo %}
+                                <span class="badge bg-danger ms-2">INATIVO</span>
+                            {% endif %}
+                        </td>
                         <td class="text-muted">{{ empresa.cnpj }}</td>
                         <td>
                             <span class="badge bg-light text-dark border">
@@ -107,27 +112,29 @@
                         <td class="text-center">
                             <div class="btn-group" role="group">
                                 <a href="{{ url_for('admin.dashboard_empresa', empresa_id=empresa.id) }}"
-                                   class="btn btn-sm btn-outline-success"
+                                   class="btn btn-sm btn-outline-success {% if not empresa.ativo %}disabled{% endif %}"
                                    title="Dashboard Viabilidade">
                                     <i class="bi bi-graph-up-arrow"></i>
                                 </a>
                                 <a href="{{ url_for('admin.dashboard_bpo', empresa_id=empresa.id) }}"
-                                   class="btn btn-sm btn-outline-primary"
+                                   class="btn btn-sm btn-outline-primary {% if not empresa.ativo %}disabled{% endif %}"
                                    title="Dashboard BPO">
                                     <i class="bi bi-bar-chart-line"></i>
                                 </a>
                                 <button class="btn btn-sm btn-outline-info"
                                         onclick="abrirUploadModal({{ empresa.id }}, '{{ empresa.nome }}')"
-                                        title="Upload de dados">
+                                        title="Upload de dados"
+                                        {% if not empresa.ativo %}disabled{% endif %}>
                                     <i class="bi bi-upload"></i>
                                 </button>
                                 <button class="btn btn-sm btn-outline-warning"
                                         onclick="abrirGerenciarDados({{ empresa.id }}, '{{ empresa.nome }}', {{ anos|tojson }})"
-                                        title="Gerenciar dados">
+                                        title="Gerenciar dados"
+                                        {% if not empresa.ativo %}disabled{% endif %}>
                                     <i class="bi bi-database"></i>
                                 </button>
                                 <a href="{{ url_for('admin.consultar_dados_bpo') }}?empresa_id={{ empresa.id }}"
-                                   class="btn btn-sm btn-outline-secondary"
+                                   class="btn btn-sm btn-outline-secondary {% if not empresa.ativo %}disabled{% endif %}"
                                    title="Ver dados BPO">
                                     <i class="bi bi-calendar-check"></i>
                                 </a>
@@ -141,9 +148,23 @@
                                         data-seguimento="{{ empresa.seguimento }}"
                                         data-website="{{ empresa.website or '' }}"
                                         data-complemento="{{ empresa.complemento or '' }}"
-                                        title="Editar empresa">
+                                        title="Editar empresa"
+                                        {% if not empresa.ativo %}disabled{% endif %}>
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
+                                {% if empresa.ativo %}
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="confirmarInativar({{ empresa.id }}, '{{ empresa.nome }}')"
+                                        title="Inativar empresa">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                                {% else %}
+                                <button class="btn btn-sm btn-outline-success"
+                                        onclick="confirmarAtivar({{ empresa.id }}, '{{ empresa.nome }}')"
+                                        title="Ativar empresa">
+                                    <i class="bi bi-check-circle"></i>
+                                </button>
+                                {% endif %}
                                 <button class="btn btn-sm btn-outline-danger"
                                         onclick="showDeleteEmpresaModal({{ empresa.id }}, '{{ empresa.nome }}')"
                                         title="Excluir empresa">
@@ -617,6 +638,26 @@ function showDeleteEmpresaModal(id, nome) {
     document.getElementById('deleteEmpresaNome').textContent = nome;
     document.getElementById('confirmDeleteEmpresaButton').href = `/admin/deletar_empresa/${id}`;
     modal.show();
+}
+
+function confirmarInativar(id, nome) {
+    if (confirm(`Tem certeza que deseja INATIVAR a empresa "${nome}"?\n\nA empresa ficará desabilitada mas todos os dados serão preservados.`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/inativar_empresa/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+function confirmarAtivar(id, nome) {
+    if (confirm(`Tem certeza que deseja ATIVAR a empresa "${nome}"?`)) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/ativar_empresa/${id}`;
+        document.body.appendChild(form);
+        form.submit();
+    }
 }
 
 function abrirUploadModal(empresaId, empresaNome) {
