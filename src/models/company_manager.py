@@ -398,8 +398,63 @@ class CompanyManager(DatabaseConnection):
 
 
     # ============================
-    # MIGRAÇÃO: Adicionar coluna 'ativo' se não existir
+    # MIGRAÇÕES DO BANCO DE DADOS
     # ============================
+
+    def remover_unique_cnpj(self):
+        """
+        Remove a constraint UNIQUE do campo CNPJ para permitir empresas duplicadas (matriz/filiais).
+        """
+        try:
+            # Verificar se o CNPJ tem unique constraint
+            self.cursor.execute("""
+                SELECT COUNT(*)
+                FROM information_schema.STATISTICS
+                WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = 'empresas'
+                AND COLUMN_NAME = 'cnpj'
+                AND NON_UNIQUE = 0
+            """)
+            tem_unique = self.cursor.fetchone()[0] > 0
+
+            if tem_unique:
+                logger.info("CNPJ tem constraint UNIQUE. Removendo...")
+
+                # Tentar remover pela constraint padrão
+                try:
+                    self.cursor.execute("ALTER TABLE empresas DROP INDEX cnpj")
+                    self.connection.commit()
+                    logger.info("✓ Constraint UNIQUE do CNPJ removida! Agora permite duplicatas (matriz/filiais).")
+                    return True
+                except mysql.connector.Error as err:
+                    logger.error(f"Erro ao remover index 'cnpj': {err}")
+                    # Tentar listar e remover outros indexes
+                    self.cursor.execute("""
+                        SELECT DISTINCT INDEX_NAME
+                        FROM information_schema.STATISTICS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = 'empresas'
+                        AND COLUMN_NAME = 'cnpj'
+                        AND NON_UNIQUE = 0
+                        AND INDEX_NAME != 'PRIMARY'
+                    """)
+                    indexes = self.cursor.fetchall()
+                    for idx in indexes:
+                        try:
+                            self.cursor.execute(f"ALTER TABLE empresas DROP INDEX {idx[0]}")
+                            self.connection.commit()
+                            logger.info(f"✓ Index '{idx[0]}' removido do CNPJ.")
+                        except:
+                            pass
+                    return True
+            else:
+                logger.info("CNPJ já permite duplicatas.")
+                return False
+
+        except mysql.connector.Error as err:
+            logger.error(f"Erro ao remover UNIQUE do CNPJ: {err}")
+            self.connection.rollback()
+            return False
 
     def adicionar_coluna_ativo_se_nao_existir(self):
         """

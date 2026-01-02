@@ -179,8 +179,9 @@ def gerenciar_empresas():
     from models.company_manager import CompanyManager
     company_manager = CompanyManager()
 
-    # Executar migração para adicionar coluna 'ativo' se não existir
-    company_manager.adicionar_coluna_ativo_se_nao_existir()
+    # Executar migrações do banco de dados
+    company_manager.remover_unique_cnpj()  # Permitir CNPJ duplicado (matriz/filiais)
+    company_manager.adicionar_coluna_ativo_se_nao_existir()  # Adicionar coluna ativo
 
     empresas = company_manager.listar_todas_empresas()
 
@@ -233,7 +234,7 @@ def cadastrar_empresa():
     if empresa_id:
         flash(f"Empresa '{nome}' cadastrada com sucesso!", "success")
     else:
-        flash("Erro ao cadastrar empresa. Verifique se o CNPJ já não está cadastrado.", "danger")
+        flash("Erro ao cadastrar empresa. Tente novamente.", "danger")
 
     company_manager.close()
     return redirect(url_for('admin.gerenciar_empresas'))
