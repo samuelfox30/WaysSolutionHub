@@ -769,10 +769,10 @@ function atualizarDados() {
             const tab_real_perc_desp = media_real_rec !== 0 ? (Math.abs(media_real_desp) / media_real_rec * 100).toFixed(2) : '0.00';
             const tab_real_perc_res = media_real_rec !== 0 ? (media_real_res / media_real_rec * 100).toFixed(2) : '0.00';
 
-            // Calcular porcentagens para Diferença (prevista / realizada)
-            const tab_dif_perc_rec = media_real_rec !== 0 ? (media_prev_rec / media_real_rec * 100).toFixed(2) : '0.00';
-            const tab_dif_perc_desp = media_real_desp !== 0 ? (media_prev_desp / media_real_desp * 100).toFixed(2) : '0.00';
-            const tab_dif_perc_res = media_real_res !== 0 ? (media_prev_res / media_real_res * 100).toFixed(2) : '0.00';
+            // Calcular porcentagens para Diferença (diferença / prevista * 100)
+            const tab_dif_perc_rec = media_prev_rec !== 0 ? (dif_rec / media_prev_rec * 100).toFixed(2) : '0.00';
+            const tab_dif_perc_desp = media_prev_desp !== 0 ? (dif_desp / media_prev_desp * 100).toFixed(2) : '0.00';
+            const tab_dif_perc_res = media_prev_res !== 0 ? (dif_res / media_prev_res * 100).toFixed(2) : '0.00';
 
             // Atualizar tabela com porcentagens
             // Média Prevista
