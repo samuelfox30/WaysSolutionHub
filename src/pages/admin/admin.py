@@ -1376,8 +1376,8 @@ def api_dados_bpo(empresa_id):
             cat = categorias_despesa[codigo]
             # Dividir realizado pela quantidade de meses para ter a MÉDIA
             cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
-            # Diferença entre média prevista e média realizada (orçado - realizado)
-            cat['diferenca'] = cat['orcado'] - cat['realizado']
+            # Diferença entre média realizada e média prevista (realizado - orçado)
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
 
         logger.debug(f"Total de categorias de despesa: {len(categorias_despesa)}, Total receita orçado: R$ {total_receita_orcado:,.2f}, Meses processados: {num_meses}")
     except Exception as e:
@@ -1438,8 +1438,8 @@ def api_dados_bpo(empresa_id):
             cat = categorias_receita[codigo]
             # Dividir realizado pela quantidade de meses para ter a MÉDIA
             cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
-            # Diferença entre média prevista e média realizada (orçado - realizado)
-            cat['diferenca'] = cat['orcado'] - cat['realizado']
+            # Diferença entre média realizada e média prevista (realizado - orçado)
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
 
         logger.debug(f"Total de categorias de receita: {len(categorias_receita)}")
     except Exception as e:
