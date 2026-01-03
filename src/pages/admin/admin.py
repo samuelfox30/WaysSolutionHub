@@ -339,6 +339,65 @@ def ativar_empresa(empresa_id):
     return redirect(url_for('admin.gerenciar_empresas'))
 
 
+@admin_bp.route('/admin/salvar_percentual_mp', methods=['POST'])
+def salvar_percentual_mp():
+    """Salva percentual MP manual para mês(es) de BPO"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({"error": "Não autorizado"}), 403
+
+    try:
+        data = request.get_json()
+        empresa_id = data.get('empresa_id')
+        meses_percentuais = data.get('meses_percentuais', [])  # Lista de {ano, mes, percentual}
+
+        if not empresa_id or not meses_percentuais:
+            return jsonify({"error": "Dados incompletos"}), 400
+
+        from models.company_manager import CompanyManager
+        company_manager = CompanyManager()
+
+        sucesso_total = True
+        erros = []
+
+        for item in meses_percentuais:
+            ano = item.get('ano')
+            mes = item.get('mes')
+            percentual = item.get('percentual')
+
+            if ano is None or mes is None or percentual is None:
+                erros.append(f"Dados incompletos para mês {mes}/{ano}")
+                continue
+
+            # Converter percentual para float
+            try:
+                percentual_float = float(percentual)
+            except ValueError:
+                erros.append(f"Percentual inválido para {mes}/{ano}: {percentual}")
+                continue
+
+            # Salvar no banco
+            success = company_manager.atualizar_percentual_mp_manual(
+                empresa_id, ano, mes, percentual_float
+            )
+
+            if not success:
+                sucesso_total = False
+                erros.append(f"Erro ao salvar {mes}/{ano}")
+
+        company_manager.close()
+
+        if sucesso_total and len(erros) == 0:
+            return jsonify({"success": True, "message": "Percentuais salvos com sucesso!"})
+        elif len(erros) > 0:
+            return jsonify({"success": False, "errors": erros}), 400
+        else:
+            return jsonify({"success": False, "message": "Erro ao salvar percentuais"}), 500
+
+    except Exception as e:
+        logger.error(f"Erro em salvar_percentual_mp: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @admin_bp.route('/admin/dashboard-empresa/<int:empresa_id>')
 def dashboard_empresa(empresa_id):
     """Dashboard de uma empresa específica (acesso admin)"""
@@ -1268,6 +1327,16 @@ def api_dados_bpo(empresa_id):
                     despesa = realizado.get('despesa', 0) or 0
                     geral = realizado.get('geral', 0) or 0
 
+                    # RECALCULAR DESPESA DO REAL_MP SE EXISTIR PERCENTUAL MANUAL
+                    if cenario_key == 'real_mp':
+                        percentual_mp_manual = dados.get('percentual_mp_manual')
+                        if percentual_mp_manual is not None:
+                            # Usar percentual manual: (percentual / 100) * receita
+                            despesa_recalculada = (percentual_mp_manual / 100) * receita
+                            logger.debug(f"REAL_MP {mes_num}/{ano}: Usando percentual manual {percentual_mp_manual}% → Despesa recalculada: R$ {despesa_recalculada:,.2f} (original: R$ {despesa:,.2f})")
+                            despesa = despesa_recalculada
+                            geral = receita - despesa  # Recalcular geral também
+
                     # Acumular totais
                     totais[cenario_key]['receita'] += receita
                     totais[cenario_key]['despesa'] += despesa
@@ -1453,6 +1522,7 @@ def api_dados_bpo(empresa_id):
         'totais_orcamento': totais_orcamento,
         'num_meses': len(meses_data),
         'meses': labels_meses,
+        'meses_data': meses_data,  # Incluir dados completos para modal de percentual MP
         'receitas': receitas_mensais,
         'despesas': despesas_mensais,
         'gerais': gerais_mensais,

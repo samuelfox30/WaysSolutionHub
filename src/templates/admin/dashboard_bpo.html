@@ -104,8 +104,15 @@
 .dre-card-header {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     margin-bottom: 1rem;
+}
+
+.dre-card-header > div {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }
 
 .dre-icon {
@@ -415,10 +422,15 @@
         <div class="col-md-4">
             <div class="dre-card real-mp">
                 <div class="dre-card-header">
-                    <div class="dre-icon">
-                        <i class="bi bi-box-seam"></i>
+                    <div>
+                        <div class="dre-icon">
+                            <i class="bi bi-box-seam"></i>
+                        </div>
+                        <h6>Resultado Real + Custo MP</h6>
                     </div>
-                    <h6>Resultado Real + Custo MP</h6>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalPercentualMP()" title="Configurar % MP">
+                        <i class="bi bi-gear"></i>
+                    </button>
                 </div>
                 <div class="dre-metric">
                     <span><i class="bi bi-arrow-up-circle me-1"></i>Receita:</span>
@@ -600,6 +612,66 @@
                         </table>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CONFIGURAR PERCENTUAL MP -->
+<div class="modal fade" id="modalPercentualMP" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="bi bi-gear me-2"></i>Configurar Percentual MP
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Configure o percentual de Matéria Prima para cada mês do período selecionado.
+                    Este percentual será aplicado sobre a Receita para calcular a Despesa no card "Resultado Real + Custo MP".
+                </p>
+
+                <!-- Botão aplicar para todos -->
+                <div class="mb-4 p-3 bg-light border rounded">
+                    <div class="row align-items-end">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Aplicar mesmo percentual para todos os meses:</label>
+                            <input type="number" class="form-control" id="percentualGlobal" step="0.01" min="0" max="100" placeholder="Ex: 15.5">
+                            <small class="text-muted">Digite o percentual (0-100%)</small>
+                        </div>
+                        <div class="col-md-6">
+                            <button class="btn btn-secondary w-100" onclick="aplicarPercentualParaTodos()">
+                                <i class="bi bi-arrow-down-circle me-1"></i>Aplicar para Todos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de meses -->
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered">
+                        <thead class="table-light">
+                            <tr>
+                                <th width="40%">Mês/Ano</th>
+                                <th width="60%">Percentual MP (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaMesesPercentual">
+                            <tr>
+                                <td colspan="2" class="text-center text-muted">Carregando meses...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarPercentuaisMP()">
+                    <i class="bi bi-save me-1"></i>Salvar Percentuais
+                </button>
             </div>
         </div>
     </div>
@@ -1075,6 +1147,159 @@ function atualizarCategoriasReceita(categorias, numMeses) {
 
 // Carregar ao iniciar
 atualizarDados();
+
+// ========== MODAL PERCENTUAL MP ==========
+let mesesAtuais = [];  // Armazena meses do filtro atual
+let dadosBPOAtuais = null;  // Armazena dados atuais para ler percentuais existentes
+
+function abrirModalPercentualMP() {
+    const empresaId = {{ empresa.id }};
+    const anoInicio = parseInt(document.getElementById('ano_inicio').value);
+    const mesInicio = parseInt(document.getElementById('mes_inicio').value);
+    const anoFim = parseInt(document.getElementById('ano_fim').value);
+    const mesFim = parseInt(document.getElementById('mes_fim').value);
+
+    // Gerar lista de meses do filtro
+    mesesAtuais = gerarListaMeses(anoInicio, mesInicio, anoFim, mesFim);
+
+    // Buscar dados atuais para carregar percentuais existentes
+    const params = new URLSearchParams({
+        ano_inicio: anoInicio,
+        mes_inicio: mesInicio,
+        ano_fim: anoFim,
+        mes_fim: mesFim,
+        tipo_dre: document.getElementById('tipo_dre').value
+    });
+
+    fetch(`/admin/api/dados-bpo/${empresaId}?${params}`)
+        .then(res => res.json())
+        .then(data => {
+            dadosBPOAtuais = data;
+            preencherListaMeses();
+            const modal = new bootstrap.Modal(document.getElementById('modalPercentualMP'));
+            modal.show();
+        })
+        .catch(err => {
+            console.error('Erro ao buscar dados BPO:', err);
+            alert('Erro ao carregar dados. Tente novamente.');
+        });
+}
+
+function gerarListaMeses(anoInicio, mesInicio, anoFim, mesFim) {
+    const meses = [];
+    let anoAtual = anoInicio;
+    let mesAtual = mesInicio;
+
+    const nomesMeses = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    while (anoAtual < anoFim || (anoAtual === anoFim && mesAtual <= mesFim)) {
+        meses.push({
+            ano: anoAtual,
+            mes: mesAtual,
+            label: `${nomesMeses[mesAtual]}/${anoAtual}`
+        });
+        mesAtual++;
+        if (mesAtual > 12) {
+            mesAtual = 1;
+            anoAtual++;
+        }
+    }
+
+    return meses;
+}
+
+function preencherListaMeses() {
+    let html = '';
+
+    mesesAtuais.forEach(mesInfo => {
+        // Buscar percentual existente nos dados (se houver)
+        let percentualExistente = 0;
+        if (dadosBPOAtuais && dadosBPOAtuais.meses_data) {
+            const mesData = dadosBPOAtuais.meses_data.find(m => m.ano === mesInfo.ano && m.mes === mesInfo.mes);
+            if (mesData && mesData.dados && mesData.dados.percentual_mp_manual !== undefined) {
+                percentualExistente = mesData.dados.percentual_mp_manual;
+            }
+        }
+
+        html += `
+            <tr>
+                <td><strong>${mesInfo.label}</strong></td>
+                <td>
+                    <input type="number"
+                           class="form-control form-control-sm percentual-input"
+                           data-ano="${mesInfo.ano}"
+                           data-mes="${mesInfo.mes}"
+                           value="${percentualExistente}"
+                           step="0.01"
+                           min="0"
+                           max="100"
+                           placeholder="0.00">
+                </td>
+            </tr>
+        `;
+    });
+
+    document.getElementById('listaMesesPercentual').innerHTML = html;
+}
+
+function aplicarPercentualParaTodos() {
+    const percentual = document.getElementById('percentualGlobal').value;
+
+    if (!percentual || percentual === '') {
+        alert('Digite um percentual válido!');
+        return;
+    }
+
+    // Aplicar para todos os inputs
+    document.querySelectorAll('.percentual-input').forEach(input => {
+        input.value = percentual;
+    });
+
+    document.getElementById('percentualGlobal').value = '';  // Limpar campo global
+}
+
+function salvarPercentuaisMP() {
+    const empresaId = {{ empresa.id }};
+    const mesesPercentuais = [];
+
+    // Coletar todos os percentuais
+    document.querySelectorAll('.percentual-input').forEach(input => {
+        const ano = parseInt(input.dataset.ano);
+        const mes = parseInt(input.dataset.mes);
+        const percentual = parseFloat(input.value) || 0;
+
+        mesesPercentuais.push({ ano, mes, percentual });
+    });
+
+    // Enviar para o backend
+    fetch('/admin/salvar_percentual_mp', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            empresa_id: empresaId,
+            meses_percentuais: mesesPercentuais
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert('Percentuais salvos com sucesso!');
+            // Fechar modal
+            bootstrap.Modal.getInstance(document.getElementById('modalPercentualMP')).hide();
+            // Recarregar dados do dashboard
+            atualizarDados();
+        } else {
+            alert('Erro ao salvar: ' + (data.message || data.errors.join(', ')));
+        }
+    })
+    .catch(err => {
+        console.error('Erro ao salvar percentuais:', err);
+        alert('Erro ao salvar percentuais. Tente novamente.');
+    });
+}
 </script>
 
 {% endblock %}

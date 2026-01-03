@@ -742,6 +742,47 @@ class CompanyManager(DatabaseConnection):
             logger.error(f"Erro ao buscar dados BPO: {err}")
             return None
 
+    def atualizar_percentual_mp_manual(self, empresa_id, ano, mes, percentual):
+        """
+        Atualiza o percentual MP manual para um mês específico.
+        Adiciona/atualiza o campo 'percentual_mp_manual' no JSON existente.
+        """
+        try:
+            import json
+
+            # Buscar dados atuais
+            sql = "SELECT dados_json FROM TbBpoDados WHERE empresa_id = %s AND ano = %s AND mes = %s"
+            self.cursor.execute(sql, (empresa_id, ano, mes))
+            row = self.cursor.fetchone()
+
+            if not row:
+                logger.error(f"Dados BPO não encontrados para empresa {empresa_id}, {mes}/{ano}")
+                return False
+
+            # Carregar JSON
+            dados_json = json.loads(row[0])
+
+            # Adicionar/atualizar percentual manual
+            dados_json['percentual_mp_manual'] = percentual
+
+            # Salvar de volta
+            dados_json_str = json.dumps(dados_json, ensure_ascii=False)
+            sql_update = """
+                UPDATE TbBpoDados
+                SET dados_json = %s
+                WHERE empresa_id = %s AND ano = %s AND mes = %s
+            """
+            self.cursor.execute(sql_update, (dados_json_str, empresa_id, ano, mes))
+            self.connection.commit()
+
+            logger.debug(f"Percentual MP manual atualizado: Empresa {empresa_id}, {mes}/{ano} = {percentual}%")
+            return True
+
+        except Exception as err:
+            logger.error(f"Erro ao atualizar percentual MP manual: {err}")
+            self.connection.rollback()
+            return False
+
     def excluir_dados_bpo_empresa(self, empresa_id, ano, mes):
         """Exclui dados BPO de empresa/ano/mês específico"""
         try:
