@@ -683,7 +683,10 @@ class CompanyManager(DatabaseConnection):
     # ====================================================================
 
     def salvar_dados_bpo_empresa(self, empresa_id, ano, mes, dados_processados):
-        """Salva dados BPO processados para empresa/ano/mês específico"""
+        """
+        Salva dados BPO processados para empresa/ano/mês específico.
+        IMPORTANTE: Preserva o percentual_mp_manual se já existir!
+        """
         try:
             import json
 
@@ -691,6 +694,25 @@ class CompanyManager(DatabaseConnection):
             self.cursor.execute("SELECT id FROM empresas WHERE id = %s", (empresa_id,))
             if not self.cursor.fetchone():
                 raise Exception(f"Empresa ID {empresa_id} não encontrada")
+
+            # IMPORTANTE: Buscar percentual_mp_manual existente antes de deletar
+            percentual_mp_existente = None
+            sql_buscar = "SELECT dados_json FROM TbBpoDados WHERE empresa_id = %s AND ano = %s AND mes = %s"
+            self.cursor.execute(sql_buscar, (empresa_id, ano, mes))
+            row_existente = self.cursor.fetchone()
+
+            if row_existente:
+                try:
+                    dados_antigos = json.loads(row_existente[0])
+                    percentual_mp_existente = dados_antigos.get('percentual_mp_manual')
+                    if percentual_mp_existente is not None:
+                        logger.debug(f"Preservando percentual_mp_manual existente: {percentual_mp_existente}% para {mes}/{ano}")
+                except:
+                    pass
+
+            # Preservar percentual_mp_manual nos novos dados
+            if percentual_mp_existente is not None:
+                dados_processados['percentual_mp_manual'] = percentual_mp_existente
 
             # Converter dados para JSON
             dados_json = json.dumps(dados_processados, ensure_ascii=False)
@@ -701,7 +723,7 @@ class CompanyManager(DatabaseConnection):
                 (empresa_id, ano, mes)
             )
 
-            # Inserir novos dados
+            # Inserir novos dados (com percentual preservado)
             sql = """
                 INSERT INTO TbBpoDados (empresa_id, ano, mes, dados_json)
                 VALUES (%s, %s, %s, %s)
@@ -741,6 +763,47 @@ class CompanyManager(DatabaseConnection):
         except Exception as err:
             logger.error(f"Erro ao buscar dados BPO: {err}")
             return None
+
+    def atualizar_percentual_mp_manual(self, empresa_id, ano, mes, percentual):
+        """
+        Atualiza o percentual MP manual para um mês específico.
+        Adiciona/atualiza o campo 'percentual_mp_manual' no JSON existente.
+        """
+        try:
+            import json
+
+            # Buscar dados atuais
+            sql = "SELECT dados_json FROM TbBpoDados WHERE empresa_id = %s AND ano = %s AND mes = %s"
+            self.cursor.execute(sql, (empresa_id, ano, mes))
+            row = self.cursor.fetchone()
+
+            if not row:
+                logger.error(f"Dados BPO não encontrados para empresa {empresa_id}, {mes}/{ano}")
+                return False
+
+            # Carregar JSON
+            dados_json = json.loads(row[0])
+
+            # Adicionar/atualizar percentual manual
+            dados_json['percentual_mp_manual'] = percentual
+
+            # Salvar de volta
+            dados_json_str = json.dumps(dados_json, ensure_ascii=False)
+            sql_update = """
+                UPDATE TbBpoDados
+                SET dados_json = %s
+                WHERE empresa_id = %s AND ano = %s AND mes = %s
+            """
+            self.cursor.execute(sql_update, (dados_json_str, empresa_id, ano, mes))
+            self.connection.commit()
+
+            logger.debug(f"Percentual MP manual atualizado: Empresa {empresa_id}, {mes}/{ano} = {percentual}%")
+            return True
+
+        except Exception as err:
+            logger.error(f"Erro ao atualizar percentual MP manual: {err}")
+            self.connection.rollback()
+            return False
 
     def excluir_dados_bpo_empresa(self, empresa_id, ano, mes):
         """Exclui dados BPO de empresa/ano/mês específico"""
