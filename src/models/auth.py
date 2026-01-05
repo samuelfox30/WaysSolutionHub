@@ -2,13 +2,27 @@ import mysql.connector
 from mysql.connector import errorcode
 from utils.logger import get_logger
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+# Buscar o arquivo .env na raiz do projeto (fora da pasta src/)
+# Este código funciona tanto localmente quanto no servidor
+# Estrutura: raiz/.env e raiz/src/models/auth.py
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+env_path = BASE_DIR / '.env'
+
 # Carregar variáveis de ambiente do arquivo .env
-load_dotenv()
+load_dotenv(dotenv_path=env_path)
 
 # Inicializar logger
 logger = get_logger('database')
+
+# Log para debug: verificar se encontrou o .env
+if env_path.exists():
+    logger.info(f"✓ Arquivo .env encontrado em: {env_path}")
+else:
+    logger.warning(f"⚠ Arquivo .env NÃO encontrado em: {env_path}")
+    logger.warning("Usando valores padrão de desenvolvimento")
 
 # Credenciais do banco de dados - Carregadas do arquivo .env
 # IMPORTANTE: O arquivo .env não é commitado no Git por segurança
