@@ -1,24 +1,26 @@
 import mysql.connector
 from mysql.connector import errorcode
 from utils.logger import get_logger
+import os
+from dotenv import load_dotenv
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv()
 
 # Inicializar logger
 logger = get_logger('database')
 
-# Credenciais do banco de dados centralizadas
+# Credenciais do banco de dados - Carregadas do arquivo .env
+# IMPORTANTE: O arquivo .env não é commitado no Git por segurança
+# Localmente use .env, no servidor de produção crie .env com as credenciais do KingHost
 DB_CONFIG = {
-    'host': "localhost",
-    'user': "samuel",
-    'password': "root",
-    'database': "WaysDb"
+    'host': os.getenv('DB_HOST', 'localhost'),
+    'user': os.getenv('DB_USER', 'root'),
+    'password': os.getenv('DB_PASSWORD', ''),
+    'database': os.getenv('DB_NAME', 'WaysDb')
 }
 
-# DB_CONFIG = {
-#     'host': "mysql.wayssolution.kinghost.net",
-#     'user': "wayssolution",
-#     'password': "DS6tgb8yaHB67",
-#     'database': "wayssolution"
-# }
+logger.info(f"Conectando ao banco de dados: {DB_CONFIG['host']} / {DB_CONFIG['database']}")
 
 class DatabaseConnection:
     def __init__(self):
