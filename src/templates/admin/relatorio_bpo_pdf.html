@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório BPO - {{ empresa.nome }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 3px solid #ff6b35;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #ff6b35;
+            font-size: 24pt;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 10pt;
+            margin: 3px 0;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+
+        .info-box strong {
+            color: #ff6b35;
+        }
+
+        .cards-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+
+        .card {
+            flex: 1;
+            background: linear-gradient(135deg, #ff6b35 0%, #ff8c42 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .card h3 {
+            font-size: 12pt;
+            margin-bottom: 10px;
+        }
+
+        .card .value {
+            font-size: 18pt;
+            font-weight: bold;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .section h2 {
+            color: #ff6b35;
+            font-size: 14pt;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #ff6b35;
+            padding-bottom: 5px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table th {
+            background: #ff6b35;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-size: 9pt;
+        }
+
+        table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #ddd;
+            font-size: 9pt;
+        }
+
+        table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        .chart-placeholder {
+            background: #f0f0f0;
+            border: 2px dashed #999;
+            padding: 40px;
+            text-align: center;
+            color: #666;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- CABEÇALHO -->
+    <div class="header">
+        <h1>Ways Solution Hub - Relatório BPO</h1>
+        <p><strong>Empresa:</strong> {{ empresa.nome }}</p>
+        <p><strong>Período:</strong> {{ '%02d'|format(mes_inicio) }}/{{ ano_inicio }} até {{ '%02d'|format(mes_fim) }}/{{ ano_fim }}</p>
+        <p><strong>DRE:</strong> {{ tipo_dre.replace('_', ' ').title() }}</p>
+        <p><strong>Gerado em:</strong> {{ data_geracao }}</p>
+    </div>
+
+    <!-- INFORMAÇÕES DA EMPRESA -->
+    <div class="info-box">
+        <strong>CNPJ:</strong> {{ empresa.cnpj }} |
+        <strong>Seguimento:</strong> {{ empresa.seguimento }}
+    </div>
+
+    <!-- CARDS DE TOTAIS -->
+    <div class="cards-container">
+        <div class="card">
+            <h3>Fluxo de Caixa</h3>
+            <p class="value">R$ {{ '{:,.2f}'.format(totais['fluxo_caixa']['geral']) }}</p>
+            <p style="font-size: 9pt; margin-top: 5px;">Resultado Geral</p>
+        </div>
+        <div class="card">
+            <h3>Resultado Real</h3>
+            <p class="value">R$ {{ '{:,.2f}'.format(totais['real']['geral']) }}</p>
+            <p style="font-size: 9pt; margin-top: 5px;">Resultado Geral</p>
+        </div>
+        <div class="card">
+            <h3>Real + Custo MP</h3>
+            <p class="value">R$ {{ '{:,.2f}'.format(totais['real_mp']['geral']) }}</p>
+            <p style="font-size: 9pt; margin-top: 5px;">Resultado Geral</p>
+        </div>
+    </div>
+
+    <!-- EVOLUÇÃO MENSAL -->
+    <div class="section">
+        <h2>Evolução Mensal - {{ tipo_dre.replace('_', ' ').title() }}</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Mês</th>
+                    <th>Receita</th>
+                    <th>Despesa</th>
+                    <th>Resultado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in range(labels_meses|length) %}
+                <tr>
+                    <td>{{ labels_meses[i] }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(receitas_mensais[i]) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(despesas_mensais[i]) }}</td>
+                    <td style="{% if gerais_mensais[i] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(gerais_mensais[i]) }}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr style="background: #ff6b35; color: white; font-weight: bold;">
+                    <td>TOTAL</td>
+                    <td>R$ {{ '{:,.2f}'.format(receitas_mensais|sum) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(despesas_mensais|sum) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(gerais_mensais|sum) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CATEGORIAS DE RECEITA -->
+    <div class="section" style="page-break-before: always;">
+        <h2>Categorias de Receita - Média Mensal</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Previsto</th>
+                    <th>Realizado</th>
+                    <th>Diferença</th>
+                    <th>% Receita</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for codigo, cat in categorias_receita.items()|sort %}
+                <tr>
+                    <td>{{ codigo }}</td>
+                    <td>{{ cat.nome }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(cat.orcado) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(cat.realizado) }}</td>
+                    <td style="{% if cat.diferenca >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(cat.diferenca) }}
+                    </td>
+                    <td>{{ '{:.1f}%'.format((cat.realizado / (totais[tipo_dre]['receita'] / num_meses) * 100) if totais[tipo_dre]['receita'] > 0 else 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CATEGORIAS DE DESPESA -->
+    <div class="section">
+        <h2>Categorias de Despesa - Média Mensal</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Nome</th>
+                    <th>Previsto</th>
+                    <th>Realizado</th>
+                    <th>Diferença</th>
+                    <th>% Receita</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for codigo, cat in categorias_despesa.items()|sort %}
+                <tr>
+                    <td>{{ codigo }}</td>
+                    <td>{{ cat.nome }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(cat.orcado) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(cat.realizado) }}</td>
+                    <td style="{% if cat.diferenca <= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(cat.diferenca) }}
+                    </td>
+                    <td>{{ '{:.1f}%'.format((cat.realizado / (totais[tipo_dre]['receita'] / num_meses) * 100) if totais[tipo_dre]['receita'] > 0 else 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- RESUMO COMPARATIVO -->
+    <div class="section">
+        <h2>Resumo Comparativo dos 3 DREs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>DRE</th>
+                    <th>Receita Total</th>
+                    <th>Despesa Total</th>
+                    <th>Resultado Total</th>
+                    <th>Média Mensal</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Fluxo de Caixa</strong></td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['fluxo_caixa']['receita']) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['fluxo_caixa']['despesa']) }}</td>
+                    <td style="{% if totais['fluxo_caixa']['geral'] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(totais['fluxo_caixa']['geral']) }}
+                    </td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['fluxo_caixa']['geral'] / num_meses if num_meses > 0 else 0) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Resultado Real</strong></td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['real']['receita']) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['real']['despesa']) }}</td>
+                    <td style="{% if totais['real']['geral'] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(totais['real']['geral']) }}
+                    </td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['real']['geral'] / num_meses if num_meses > 0 else 0) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Real + Custo MP</strong></td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['real_mp']['receita']) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['real_mp']['despesa']) }}</td>
+                    <td style="{% if totais['real_mp']['geral'] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(totais['real_mp']['geral']) }}
+                    </td>
+                    <td>R$ {{ '{:,.2f}'.format(totais['real_mp']['geral'] / num_meses if num_meses > 0 else 0) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="footer">
+        Ways Solution Hub - Relatório gerado automaticamente em {{ data_geracao }}
+    </div>
+</body>
+</html>
