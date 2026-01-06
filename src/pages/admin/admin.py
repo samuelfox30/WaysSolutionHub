@@ -1800,3 +1800,85 @@ def gerar_pdf_bpo(empresa_id):
 
     return response
 
+@admin_bp.route('/admin/gerar_pdf_viabilidade/<int:empresa_id>')
+def gerar_pdf_viabilidade(empresa_id):
+    """Gera relatório PDF comparando os 3 grupos de viabilidade"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return "Acesso negado", 403
+
+    from models.company_manager import CompanyManager
+    from weasyprint import HTML
+    from datetime import datetime
+
+    # Buscar dados da empresa
+    company_manager = CompanyManager()
+    empresa = company_manager.buscar_empresa_por_id(empresa_id)
+
+    if not empresa:
+        company_manager.close()
+        return "Empresa não encontrada", 404
+
+    # Obter ano selecionado
+    ano_selecionado = int(request.args.get('ano_selecionado', datetime.now().year))
+
+    # Buscar dados dos 3 grupos de viabilidade
+    dados_completos = company_manager.buscar_dados_empresa(empresa_id, ano_selecionado)
+
+    if not dados_completos:
+        company_manager.close()
+        return "Sem dados de viabilidade disponíveis para este ano", 404
+
+    # Processar dados dos 3 grupos
+    grupos_info = {
+        'Viabilidade Real': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}},
+        'Viabilidade PE': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}},
+        'Viabilidade Ideal': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}}
+    }
+
+    # Processar cada grupo
+    for grupo_nome, grupo_data in dados_completos.get('dados', {}).items():
+        if grupo_nome not in grupos_info:
+            continue
+
+        for subgrupo_nome, itens in grupo_data.items():
+            total_subgrupo = sum(item.get('valor', 0) for item in itens)
+
+            # Classificar como receita ou despesa baseado no nome do subgrupo
+            if subgrupo_nome in ['Receita', 'Geral']:
+                grupos_info[grupo_nome]['receita'] += total_subgrupo
+            else:
+                grupos_info[grupo_nome]['despesa'] += total_subgrupo
+
+            # Armazenar detalhes do subgrupo
+            if subgrupo_nome not in grupos_info[grupo_nome]['subgrupos']:
+                grupos_info[grupo_nome]['subgrupos'][subgrupo_nome] = []
+            grupos_info[grupo_nome]['subgrupos'][subgrupo_nome].extend(itens)
+
+    # Calcular resultados
+    for grupo in grupos_info.values():
+        grupo['resultado'] = grupo['receita'] - grupo['despesa']
+
+    # Data de geração
+    data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+
+    company_manager.close()
+
+    # Renderizar template
+    html_content = render_template(
+        'admin/relatorio_viabilidade_pdf.html',
+        empresa=empresa,
+        ano_selecionado=ano_selecionado,
+        grupos_info=grupos_info,
+        data_geracao=data_geracao
+    )
+
+    # Gerar PDF
+    pdf = HTML(string=html_content).write_pdf()
+
+    # Retornar PDF
+    response = make_response(pdf)
+    response.headers['Content-Type'] = 'application/pdf'
+    response.headers['Content-Disposition'] = f'inline; filename=Relatorio_Viabilidade_{empresa["nome"]}_{ano_selecionado}.pdf'
+
+    return response
+

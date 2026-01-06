@@ -356,6 +356,12 @@
                         Filtrar
                     </button>
                 </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-danger w-100" onclick="gerarPDF()" title="Gerar Relatório PDF">
+                        <i class="bi bi-file-pdf me-1"></i>
+                        PDF
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1071,6 +1077,19 @@ function atualizarCategoriasReceita(categorias, numMeses) {
     });
 
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
+}
+
+// Gerar PDF
+function gerarPDF() {
+    const params = new URLSearchParams({
+        ano_inicio: document.getElementById('ano_inicio').value,
+        mes_inicio: document.getElementById('mes_inicio').value,
+        ano_fim: document.getElementById('ano_fim').value,
+        mes_fim: document.getElementById('mes_fim').value,
+        tipo_dre: document.getElementById('tipo_dre').value
+    });
+
+    window.open(`/user/gerar_pdf_bpo?${params}`, '_blank');
 }
 
 // Carregar ao iniciar

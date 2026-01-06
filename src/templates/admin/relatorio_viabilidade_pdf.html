@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório Viabilidade - {{ empresa.nome }}</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 1cm;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            padding: 15px 0;
+            border-bottom: 3px solid #2c3e50;
+            margin-bottom: 12px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 22pt;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 9pt;
+            margin: 2px 0;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 5px;
+            margin-bottom: 12px;
+        }
+
+        .info-box strong {
+            color: #2c3e50;
+        }
+
+        .cards-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            gap: 10px;
+        }
+
+        .card {
+            flex: 1;
+            background: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .card h3 {
+            font-size: 11pt;
+            margin-bottom: 8px;
+        }
+
+        .card .value {
+            font-size: 16pt;
+            font-weight: bold;
+        }
+
+        .section {
+            margin-bottom: 15px;
+        }
+
+        .section h2 {
+            color: #2c3e50;
+            font-size: 13pt;
+            margin-bottom: 8px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 4px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table th {
+            background: #34495e;
+            color: white;
+            padding: 8px;
+            text-align: left;
+            font-size: 9pt;
+        }
+
+        table td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #ddd;
+            font-size: 9pt;
+        }
+
+        table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 8pt;
+            color: #999;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+
+        /* Gráficos de barras em CSS */
+        .chart-container {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+        }
+
+        .chart-title {
+            font-size: 11pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin: 10px 0;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .bar-label {
+            width: 120px;
+            font-size: 8pt;
+            text-align: right;
+            flex-shrink: 0;
+        }
+
+        .bar-container {
+            flex: 1;
+            height: 16px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .bar {
+            height: 100%;
+            border-radius: 3px;
+        }
+
+        .bar.receita {
+            background: linear-gradient(90deg, #27ae60, #229954);
+        }
+
+        .bar.despesa {
+            background: linear-gradient(90deg, #e74c3c, #c0392b);
+        }
+
+        .bar.resultado-positivo {
+            background: linear-gradient(90deg, #3498db, #2980b9);
+        }
+
+        .bar.resultado-negativo {
+            background: linear-gradient(90deg, #e67e22, #d35400);
+        }
+
+        .bar-value {
+            width: 100px;
+            font-size: 8pt;
+            text-align: left;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <!-- CABEÇALHO -->
+    <div class="header">
+        <h1>Ways Solution Hub - Relatório Viabilidade</h1>
+        <p><strong>Empresa:</strong> {{ empresa.nome }}</p>
+        <p><strong>Ano:</strong> {{ ano_selecionado }}</p>
+        <p><strong>Gerado em:</strong> {{ data_geracao }}</p>
+    </div>
+
+    <!-- INFORMAÇÕES DA EMPRESA -->
+    <div class="info-box">
+        <strong>CNPJ:</strong> {{ empresa.cnpj }} |
+        <strong>Seguimento:</strong> {{ empresa.seguimento }}
+    </div>
+
+    <!-- CARDS DOS 3 GRUPOS -->
+    <div class="cards-container">
+        <div class="card">
+            <h3>Viabilidade Real</h3>
+            <p class="value">R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Real']['resultado']) }}</p>
+            <p style="font-size: 9pt; margin-top: 5px;">Resultado</p>
+        </div>
+        <div class="card">
+            <h3>Viabilidade PE</h3>
+            <p class="value">R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade PE']['resultado']) }}</p>
+            <p style="font-size: 9pt; margin-top: 5px;">Resultado</p>
+        </div>
+        <div class="card">
+            <h3>Viabilidade Ideal</h3>
+            <p class="value">R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Ideal']['resultado']) }}</p>
+            <p style="font-size: 9pt; margin-top: 5px;">Resultado</p>
+        </div>
+    </div>
+
+    <!-- GRÁFICO: COMPARATIVO DOS 3 GRUPOS -->
+    <div class="chart-container" style="padding: 10px; margin: 8px 0;">
+        <div class="chart-title" style="margin-bottom: 8px;">Comparativo dos 3 Cenários de Viabilidade</div>
+
+        {% set max_val = ([grupos_info['Viabilidade Real']['receita'], grupos_info['Viabilidade Real']['despesa'], grupos_info['Viabilidade Real']['resultado']|abs,
+                           grupos_info['Viabilidade PE']['receita'], grupos_info['Viabilidade PE']['despesa'], grupos_info['Viabilidade PE']['resultado']|abs,
+                           grupos_info['Viabilidade Ideal']['receita'], grupos_info['Viabilidade Ideal']['despesa'], grupos_info['Viabilidade Ideal']['resultado']|abs]|max) %}
+
+        <div class="bar-chart" style="gap: 4px; margin: 8px 0;">
+            <!-- Viabilidade Real -->
+            <div style="margin-bottom: 6px;">
+                <div style="font-weight: bold; font-size: 9pt; color: #333; margin-bottom: 3px;">Viabilidade Real</div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Receita</div>
+                    <div class="bar-container">
+                        <div class="bar receita" style="width: {{ (grupos_info['Viabilidade Real']['receita'] / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: #27ae60;">R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade Real']['receita']) }}</div>
+                </div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Despesa</div>
+                    <div class="bar-container">
+                        <div class="bar despesa" style="width: {{ (grupos_info['Viabilidade Real']['despesa'] / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: #e74c3c;">R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade Real']['despesa']) }}</div>
+                </div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Resultado</div>
+                    <div class="bar-container">
+                        <div class="bar {% if grupos_info['Viabilidade Real']['resultado'] >= 0 %}resultado-positivo{% else %}resultado-negativo{% endif %}"
+                             style="width: {{ (grupos_info['Viabilidade Real']['resultado']|abs / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: {% if grupos_info['Viabilidade Real']['resultado'] >= 0 %}#3498db{% else %}#e67e22{% endif %};">
+                        R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade Real']['resultado']) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viabilidade PE -->
+            <div style="margin-bottom: 6px;">
+                <div style="font-weight: bold; font-size: 9pt; color: #333; margin-bottom: 3px;">Viabilidade PE (Ponto de Equilíbrio)</div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Receita</div>
+                    <div class="bar-container">
+                        <div class="bar receita" style="width: {{ (grupos_info['Viabilidade PE']['receita'] / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: #27ae60;">R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade PE']['receita']) }}</div>
+                </div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Despesa</div>
+                    <div class="bar-container">
+                        <div class="bar despesa" style="width: {{ (grupos_info['Viabilidade PE']['despesa'] / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: #e74c3c;">R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade PE']['despesa']) }}</div>
+                </div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Resultado</div>
+                    <div class="bar-container">
+                        <div class="bar {% if grupos_info['Viabilidade PE']['resultado'] >= 0 %}resultado-positivo{% else %}resultado-negativo{% endif %}"
+                             style="width: {{ (grupos_info['Viabilidade PE']['resultado']|abs / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: {% if grupos_info['Viabilidade PE']['resultado'] >= 0 %}#3498db{% else %}#e67e22{% endif %};">
+                        R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade PE']['resultado']) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Viabilidade Ideal -->
+            <div style="margin-bottom: 6px;">
+                <div style="font-weight: bold; font-size: 9pt; color: #333; margin-bottom: 3px;">Viabilidade Ideal</div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Receita</div>
+                    <div class="bar-container">
+                        <div class="bar receita" style="width: {{ (grupos_info['Viabilidade Ideal']['receita'] / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: #27ae60;">R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade Ideal']['receita']) }}</div>
+                </div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Despesa</div>
+                    <div class="bar-container">
+                        <div class="bar despesa" style="width: {{ (grupos_info['Viabilidade Ideal']['despesa'] / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: #e74c3c;">R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade Ideal']['despesa']) }}</div>
+                </div>
+
+                <div class="bar-row">
+                    <div class="bar-label">Resultado</div>
+                    <div class="bar-container">
+                        <div class="bar {% if grupos_info['Viabilidade Ideal']['resultado'] >= 0 %}resultado-positivo{% else %}resultado-negativo{% endif %}"
+                             style="width: {{ (grupos_info['Viabilidade Ideal']['resultado']|abs / max_val * 100) if max_val > 0 else 0 }}%;"></div>
+                    </div>
+                    <div class="bar-value" style="color: {% if grupos_info['Viabilidade Ideal']['resultado'] >= 0 %}#3498db{% else %}#e67e22{% endif %};">
+                        R$ {{ '{:,.0f}'.format(grupos_info['Viabilidade Ideal']['resultado']) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TABELA: RESUMO COMPARATIVO -->
+    <div class="section">
+        <h2>Resumo Comparativo dos 3 Cenários de Viabilidade</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cenário</th>
+                    <th>Receita</th>
+                    <th>Despesa</th>
+                    <th>Resultado</th>
+                    <th>Margem (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Viabilidade Real</strong></td>
+                    <td>R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Real']['receita']) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Real']['despesa']) }}</td>
+                    <td style="{% if grupos_info['Viabilidade Real']['resultado'] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Real']['resultado']) }}
+                    </td>
+                    <td>{{ '{:.2f}%'.format((grupos_info['Viabilidade Real']['resultado'] / grupos_info['Viabilidade Real']['receita'] * 100) if grupos_info['Viabilidade Real']['receita'] > 0 else 0) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Viabilidade PE</strong></td>
+                    <td>R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade PE']['receita']) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade PE']['despesa']) }}</td>
+                    <td style="{% if grupos_info['Viabilidade PE']['resultado'] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade PE']['resultado']) }}
+                    </td>
+                    <td>{{ '{:.2f}%'.format((grupos_info['Viabilidade PE']['resultado'] / grupos_info['Viabilidade PE']['receita'] * 100) if grupos_info['Viabilidade PE']['receita'] > 0 else 0) }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Viabilidade Ideal</strong></td>
+                    <td>R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Ideal']['receita']) }}</td>
+                    <td>R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Ideal']['despesa']) }}</td>
+                    <td style="{% if grupos_info['Viabilidade Ideal']['resultado'] >= 0 %}color: green;{% else %}color: red;{% endif %} font-weight: bold;">
+                        R$ {{ '{:,.2f}'.format(grupos_info['Viabilidade Ideal']['resultado']) }}
+                    </td>
+                    <td>{{ '{:.2f}%'.format((grupos_info['Viabilidade Ideal']['resultado'] / grupos_info['Viabilidade Ideal']['receita'] * 100) if grupos_info['Viabilidade Ideal']['receita'] > 0 else 0) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DETALHAMENTO POR SUBGRUPO - VIABILIDADE REAL -->
+    <div class="section" style="page-break-before: always;">
+        <h2>Detalhamento - Viabilidade Real</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subgrupo</th>
+                    <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>% do Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subgrupo_nome, itens in grupos_info['Viabilidade Real']['subgrupos'].items()|sort %}
+                    {% set total_subgrupo = itens|map(attribute='valor')|sum %}
+                    <tr>
+                        <td colspan="4" style="background: #e8f4f8; font-weight: bold; color: #2c3e50;">{{ subgrupo_nome }}</td>
+                    </tr>
+                    {% for item in itens %}
+                    <tr>
+                        <td></td>
+                        <td>{{ item.descricao }}</td>
+                        <td>R$ {{ '{:,.2f}'.format(item.valor) }}</td>
+                        <td>{{ '{:.1f}%'.format((item.valor / (grupos_info['Viabilidade Real']['receita'] + grupos_info['Viabilidade Real']['despesa']) * 100) if (grupos_info['Viabilidade Real']['receita'] + grupos_info['Viabilidade Real']['despesa']) > 0 else 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DETALHAMENTO POR SUBGRUPO - VIABILIDADE PE -->
+    <div class="section" style="page-break-before: always;">
+        <h2>Detalhamento - Viabilidade PE (Ponto de Equilíbrio)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subgrupo</th>
+                    <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>% do Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subgrupo_nome, itens in grupos_info['Viabilidade PE']['subgrupos'].items()|sort %}
+                    {% set total_subgrupo = itens|map(attribute='valor')|sum %}
+                    <tr>
+                        <td colspan="4" style="background: #e8f4f8; font-weight: bold; color: #2c3e50;">{{ subgrupo_nome }}</td>
+                    </tr>
+                    {% for item in itens %}
+                    <tr>
+                        <td></td>
+                        <td>{{ item.descricao }}</td>
+                        <td>R$ {{ '{:,.2f}'.format(item.valor) }}</td>
+                        <td>{{ '{:.1f}%'.format((item.valor / (grupos_info['Viabilidade PE']['receita'] + grupos_info['Viabilidade PE']['despesa']) * 100) if (grupos_info['Viabilidade PE']['receita'] + grupos_info['Viabilidade PE']['despesa']) > 0 else 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- DETALHAMENTO POR SUBGRUPO - VIABILIDADE IDEAL -->
+    <div class="section" style="page-break-before: always;">
+        <h2>Detalhamento - Viabilidade Ideal</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Subgrupo</th>
+                    <th>Descrição</th>
+                    <th>Valor</th>
+                    <th>% do Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subgrupo_nome, itens in grupos_info['Viabilidade Ideal']['subgrupos'].items()|sort %}
+                    {% set total_subgrupo = itens|map(attribute='valor')|sum %}
+                    <tr>
+                        <td colspan="4" style="background: #e8f4f8; font-weight: bold; color: #2c3e50;">{{ subgrupo_nome }}</td>
+                    </tr>
+                    {% for item in itens %}
+                    <tr>
+                        <td></td>
+                        <td>{{ item.descricao }}</td>
+                        <td>R$ {{ '{:,.2f}'.format(item.valor) }}</td>
+                        <td>{{ '{:.1f}%'.format((item.valor / (grupos_info['Viabilidade Ideal']['receita'] + grupos_info['Viabilidade Ideal']['despesa']) * 100) if (grupos_info['Viabilidade Ideal']['receita'] + grupos_info['Viabilidade Ideal']['despesa']) > 0 else 0) }}</td>
+                    </tr>
+                    {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- RODAPÉ -->
+    <div class="footer">
+        Ways Solution Hub - Relatório gerado automaticamente em {{ data_geracao }}
+    </div>
+</body>
+</html>
