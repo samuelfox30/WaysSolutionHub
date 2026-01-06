@@ -1324,8 +1324,33 @@ def gerar_pdf_bpo():
         return response
 
     except Exception as e:
+        import traceback
+        erro_completo = traceback.format_exc()
         logger.error(f"[PDF BPO USER] ERRO ao gerar PDF: {str(e)}", exc_info=True)
-        return f"Erro ao gerar PDF: {str(e)}", 500
+        html_erro = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Erro ao Gerar PDF</title>
+            <style>
+                body {{ font-family: monospace; margin: 20px; background: #f5f5f5; }}
+                .erro {{ background: #fff; padding: 20px; border-left: 4px solid #e74c3c; }}
+                h1 {{ color: #e74c3c; }}
+                pre {{ background: #2c3e50; color: #ecf0f1; padding: 15px; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <div class="erro">
+                <h1>❌ Erro ao Gerar PDF BPO (Usuário)</h1>
+                <p><strong>Erro:</strong> {str(e)}</p>
+                <h2>Stack Trace Completo:</h2>
+                <pre>{erro_completo}</pre>
+                <p><em>Este erro também foi salvo no arquivo de log: logs/admin_pages.log</em></p>
+            </div>
+        </body>
+        </html>
+        """
+        return html_erro, 500
 
 @user_bp.route('/user/gerar_pdf_viabilidade')
 def gerar_pdf_viabilidade():
@@ -1434,8 +1459,33 @@ def gerar_pdf_viabilidade():
         return response
 
     except Exception as e:
+        import traceback
+        erro_completo = traceback.format_exc()
         logger.error(f"[PDF VIAB USER] ERRO ao gerar PDF: {str(e)}", exc_info=True)
-        return f"Erro ao gerar PDF: {str(e)}", 500
+        html_erro = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Erro ao Gerar PDF</title>
+            <style>
+                body {{ font-family: monospace; margin: 20px; background: #f5f5f5; }}
+                .erro {{ background: #fff; padding: 20px; border-left: 4px solid #e74c3c; }}
+                h1 {{ color: #e74c3c; }}
+                pre {{ background: #2c3e50; color: #ecf0f1; padding: 15px; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <div class="erro">
+                <h1>❌ Erro ao Gerar PDF Viabilidade (Usuário)</h1>
+                <p><strong>Erro:</strong> {str(e)}</p>
+                <h2>Stack Trace Completo:</h2>
+                <pre>{erro_completo}</pre>
+                <p><em>Este erro também foi salvo no arquivo de log: logs/admin_pages.log</em></p>
+            </div>
+        </body>
+        </html>
+        """
+        return html_erro, 500
 
 
 @user_bp.route('/user/logout')
