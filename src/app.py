@@ -1,4 +1,5 @@
 from flask import Flask, Blueprint
+import os
 
 # Import Páginas
 from pages.public.index import app_index
@@ -10,6 +11,15 @@ from utils.logger import Logger
 
 app = Flask(__name__)
 app.secret_key = 'minhasecretkeyemuitodificil'
+
+# Garantir que o diretório de logs existe com permissões corretas
+log_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+os.makedirs(log_dir, exist_ok=True)
+# Dar permissão total (desenvolvimento/produção)
+try:
+    os.chmod(log_dir, 0o777)
+except:
+    pass
 
 # Inicializar sistema de logging
 logger = Logger.setup_app_logger(app)
