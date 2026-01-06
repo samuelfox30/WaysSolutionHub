@@ -293,6 +293,10 @@
             </h3>
             <p class="text-muted mb-0 small">Escolha um ano para visualizar os dados financeiros</p>
         </div>
+        <button id="btnGerarPDFViabilidade" class="btn btn-danger" onclick="gerarPDFViabilidade()" title="Gerar Relatório PDF" style="display: none;">
+            <i class="bi bi-file-pdf me-1"></i>
+            PDF
+        </button>
     </div>
 
     {% if anos_disponiveis %}
@@ -384,6 +388,9 @@ function selecionarAno(ano, buttonElement = null) {
     if (targetButton) {
         targetButton.classList.add('active');
     }
+
+    // Mostrar botão de PDF
+    document.getElementById('btnGerarPDFViabilidade').style.display = 'block';
 
     // Mostrar seletor de grupo de viabilidade
     document.getElementById('viability-selector-container').style.display = 'block';
@@ -1565,6 +1572,15 @@ function formatarMoeda(valor) {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     });
+}
+
+function gerarPDFViabilidade() {
+    if (!anoSelecionado) {
+        alert('Por favor, selecione um ano primeiro.');
+        return;
+    }
+    const empresaId = {{ empresa_id }};
+    window.open(`/admin/gerar_pdf_viabilidade/${empresaId}?ano_selecionado=${anoSelecionado}`, '_blank');
 }
 
 // Carregar dados do primeiro ano disponível

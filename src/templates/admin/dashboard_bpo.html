@@ -363,6 +363,12 @@
                         Filtrar
                     </button>
                 </div>
+                <div class="col-md-1 d-flex align-items-end">
+                    <button class="btn btn-danger w-100" onclick="gerarPDF()" title="Gerar Relatório PDF">
+                        <i class="bi bi-file-pdf me-1"></i>
+                        PDF
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1147,6 +1153,20 @@ function atualizarCategoriasReceita(categorias, numMeses) {
 
 // Carregar ao iniciar
 atualizarDados();
+
+// Gerar PDF
+function gerarPDF() {
+    const empresaId = {{ empresa.id }};
+    const params = new URLSearchParams({
+        ano_inicio: document.getElementById('ano_inicio').value,
+        mes_inicio: document.getElementById('mes_inicio').value,
+        ano_fim: document.getElementById('ano_fim').value,
+        mes_fim: document.getElementById('mes_fim').value,
+        tipo_dre: document.getElementById('tipo_dre').value
+    });
+
+    window.open(`/admin/gerar_pdf_bpo/${empresaId}?${params}`, '_blank');
+}
 
 // ========== MODAL PERCENTUAL MP ==========
 let mesesAtuais = [];  // Armazena meses do filtro atual
