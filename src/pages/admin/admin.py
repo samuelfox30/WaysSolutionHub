@@ -1900,7 +1900,7 @@ def gerar_pdf_viabilidade(empresa_id):
 
         # Renderizar template
         logger.info(f"[PDF VIAB ADMIN] Renderizando template HTML...")
-            html_content = render_template(
+        html_content = render_template(
             'admin/relatorio_viabilidade_pdf.html',
             empresa=empresa,
             ano_selecionado=ano_selecionado,
