@@ -1580,7 +1580,7 @@ function gerarPDFViabilidade() {
         return;
     }
     const empresaId = {{ empresa_id }};
-    window.open(`/admin/gerar_pdf_viabilidade/${empresaId}?ano_selecionado=${anoSelecionado}`, '_blank');
+    window.open(`/admin/gerar_relatorio_viabilidade/${empresaId}?ano_selecionado=${anoSelecionado}`, '_blank');
 }
 
 // Carregar dados do primeiro ano disponível

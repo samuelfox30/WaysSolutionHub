@@ -1559,16 +1559,18 @@ def api_dados_bpo(empresa_id):
     })
 
 
-@admin_bp.route('/admin/gerar_pdf_bpo/<int:empresa_id>')
-def gerar_pdf_bpo(empresa_id):
-    """Gera relatório PDF do dashboard BPO"""
+@admin_bp.route('/admin/gerar_relatorio_bpo/<int:empresa_id>')
+def gerar_relatorio_bpo(empresa_id):
+    """Gera relatório Excel do dashboard BPO"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         return "Acesso negado", 403
 
     from models.company_manager import CompanyManager
-    from weasyprint import HTML, CSS
     from datetime import datetime
-    import io
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.chart import BarChart, Reference
 
     # Buscar dados da empresa
     company_manager = CompanyManager()
@@ -1797,45 +1799,190 @@ def gerar_pdf_bpo(empresa_id):
 
     company_manager.close()
 
-    # Renderizar template HTML para PDF
-    html_content = render_template('admin/relatorio_bpo_pdf.html',
-        empresa=empresa,
-        ano_inicio=ano_inicio,
-        mes_inicio=mes_inicio,
-        ano_fim=ano_fim,
-        mes_fim=mes_fim,
-        tipo_dre=tipo_dre,
-        data_geracao=datetime.now().strftime('%d/%m/%Y %H:%M'),
-        totais=totais,
-        totais_orcamento=totais_orcamento,
-        num_meses=num_meses,
-        labels_meses=labels_meses,
-        receitas_mensais=receitas_mensais,
-        despesas_mensais=despesas_mensais,
-        gerais_mensais=gerais_mensais,
-        categorias_despesa=categorias_despesa,
-        categorias_receita=categorias_receita
-    )
+    # ========== CRIAR EXCEL COM GRÁFICOS ==========
+    from openpyxl.chart import LineChart, PieChart
 
-    # Gerar PDF
-    pdf = HTML(string=html_content).write_pdf()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gráficos BPO"
 
-    # Retornar PDF como resposta
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=Relatorio_BPO_{empresa["nome"]}_{datetime.now().strftime("%Y%m%d")}.pdf'
+    # Estilos
+    header_fill = PatternFill(start_color="2C3E50", end_color="2C3E50", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=16)
+
+    # Cabeçalho
+    ws['A1'] = 'Relatório BPO - Análise Gráfica'
+    ws['A1'].font = header_font
+    ws['A1'].fill = header_fill
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('A1:H1')
+    ws.row_dimensions[1].height = 30
+
+    ws['A2'] = f"Empresa: {empresa['nome']}"
+    ws['A2'].font = Font(bold=True, size=11)
+    ws['A3'] = f"Período: {nomes_meses[mes_inicio]}/{ano_inicio} - {nomes_meses[mes_fim]}/{ano_fim}"
+    ws['A3'].font = Font(size=10)
+    ws['A4'] = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws['A4'].font = Font(size=9, italic=True)
+
+    # Dados ocultos para os gráficos (coluna A-D, começando linha 6)
+    row = 6
+
+    # ==== GRÁFICO 1: COMPARATIVO DOS 3 DREs ====
+    ws.cell(row, 1, "DRE")
+    ws.cell(row, 2, "Resultado")
+    row += 1
+    for dre_nome, dre_key in [('Fluxo Caixa', 'fluxo_caixa'), ('Real', 'real'), ('Real+MP', 'real_mp')]:
+        ws.cell(row, 1, dre_nome)
+        ws.cell(row, 2, totais[dre_key]['geral'])
+        row += 1
+
+    chart1 = BarChart()
+    chart1.title = "Comparativo de Resultado - 3 DREs"
+    chart1.y_axis.title = 'Resultado (R$)'
+    chart1.style = 11
+    data = Reference(ws, min_col=2, min_row=6, max_row=9)
+    cats = Reference(ws, min_col=1, min_row=7, max_row=9)
+    chart1.add_data(data, titles_from_data=True)
+    chart1.set_categories(cats)
+    chart1.height = 10
+    chart1.width = 18
+    ws.add_chart(chart1, 'A7')
+
+    # ==== GRÁFICO 2: EVOLUÇÃO MENSAL (Receita x Despesa x Resultado) ====
+    row = 6
+    col_offset = 5  # Coluna E
+    ws.cell(row, col_offset, "Mês")
+    ws.cell(row, col_offset+1, "Receita")
+    ws.cell(row, col_offset+2, "Despesa")
+    ws.cell(row, col_offset+3, "Resultado")
+    row += 1
+
+    for i, label in enumerate(labels_meses):
+        ws.cell(row, col_offset, label)
+        ws.cell(row, col_offset+1, receitas_mensais[i])
+        ws.cell(row, col_offset+2, despesas_mensais[i])
+        ws.cell(row, col_offset+3, gerais_mensais[i])
+        row += 1
+
+    chart2 = LineChart()
+    chart2.title = f"Evolução Mensal - {tipo_dre.replace('_', ' ').title()}"
+    chart2.y_axis.title = 'Valor (R$)'
+    chart2.x_axis.title = 'Mês'
+    chart2.style = 12
+    data = Reference(ws, min_col=col_offset+1, min_row=6, max_row=6+len(labels_meses), max_col=col_offset+3)
+    cats = Reference(ws, min_col=col_offset, min_row=7, max_row=6+len(labels_meses))
+    chart2.add_data(data, titles_from_data=True)
+    chart2.set_categories(cats)
+    chart2.height = 12
+    chart2.width = 22
+    ws.add_chart(chart2, 'A22')
+
+    # ==== GRÁFICO 3: PIZZA CATEGORIAS DE RECEITA ====
+    row_start_receita = 6 + len(labels_meses) + 3
+    row = row_start_receita
+    ws.cell(row, 1, "Categoria Receita")
+    ws.cell(row, 2, "Valor")
+    row += 1
+
+    for codigo in sorted(categorias_receita.keys()):
+        cat = categorias_receita[codigo]
+        ws.cell(row, 1, cat['nome'])
+        ws.cell(row, 2, cat['realizado'])
+        row += 1
+
+    chart3 = PieChart()
+    chart3.title = "Distribuição de Receitas por Categoria"
+    chart3.style = 10
+    data = Reference(ws, min_col=2, min_row=row_start_receita, max_row=row-1)
+    cats = Reference(ws, min_col=1, min_row=row_start_receita+1, max_row=row-1)
+    chart3.add_data(data, titles_from_data=True)
+    chart3.set_categories(cats)
+    chart3.height = 12
+    chart3.width = 16
+    ws.add_chart(chart3, 'J7')
+
+    # ==== GRÁFICO 4: PIZZA CATEGORIAS DE DESPESA ====
+    row_start_despesa = row + 2
+    row = row_start_despesa
+    ws.cell(row, 1, "Categoria Despesa")
+    ws.cell(row, 2, "Valor")
+    row += 1
+
+    for codigo in sorted(categorias_despesa.keys()):
+        cat = categorias_despesa[codigo]
+        ws.cell(row, 1, cat['nome'])
+        ws.cell(row, 2, cat['realizado'])
+        row += 1
+
+    chart4 = PieChart()
+    chart4.title = "Distribuição de Despesas por Categoria"
+    chart4.style = 10
+    data = Reference(ws, min_col=2, min_row=row_start_despesa, max_row=row-1)
+    cats = Reference(ws, min_col=1, min_row=row_start_despesa+1, max_row=row-1)
+    chart4.add_data(data, titles_from_data=True)
+    chart4.set_categories(cats)
+    chart4.height = 12
+    chart4.width = 16
+    ws.add_chart(chart4, 'J22')
+
+    # ==== GRÁFICO 5: BARRAS HORIZONTAIS - RECEITA vs DESPESA POR MÊS ====
+    row_start_bar = row + 2
+    row = row_start_bar
+    ws.cell(row, 5, "Mês")
+    ws.cell(row, 6, "Receita")
+    ws.cell(row, 7, "Despesa")
+    row += 1
+
+    for i, label in enumerate(labels_meses):
+        ws.cell(row, 5, label)
+        ws.cell(row, 6, receitas_mensais[i])
+        ws.cell(row, 7, despesas_mensais[i])
+        row += 1
+
+    from openpyxl.chart import BarChart as HorizontalBarChart
+    chart5 = HorizontalBarChart()
+    chart5.type = "bar"
+    chart5.title = "Receita vs Despesa Mensal"
+    chart5.y_axis.title = 'Mês'
+    chart5.x_axis.title = 'Valor (R$)'
+    chart5.style = 13
+    data = Reference(ws, min_col=6, min_row=row_start_bar, max_row=row-1, max_col=7)
+    cats = Reference(ws, min_col=5, min_row=row_start_bar+1, max_row=row-1)
+    chart5.add_data(data, titles_from_data=True)
+    chart5.set_categories(cats)
+    chart5.height = 14
+    chart5.width = 20
+    ws.add_chart(chart5, 'J37')
+
+    # Ocultar dados (deixar apenas gráficos visíveis)
+    for col_letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:
+        ws.column_dimensions[col_letter].hidden = True
+
+    # Salvar em memória
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+
+    # Retornar Excel
+    response = make_response(excel_buffer.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename=Relatorio_BPO_{empresa["nome"]}_{datetime.now().strftime("%Y%m%d")}.xlsx'
 
     return response
 
-@admin_bp.route('/admin/gerar_pdf_viabilidade/<int:empresa_id>')
-def gerar_pdf_viabilidade(empresa_id):
-    """Gera relatório PDF comparando os 3 grupos de viabilidade"""
+@admin_bp.route('/admin/gerar_relatorio_viabilidade/<int:empresa_id>')
+def gerar_relatorio_viabilidade(empresa_id):
+    """Gera relatório Excel comparando os 3 grupos de viabilidade"""
     if not ('user_email' in session and session.get('user_role') == 'admin'):
         return "Acesso negado", 403
 
     from models.company_manager import CompanyManager
-    from weasyprint import HTML
     from datetime import datetime
+    from io import BytesIO
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.chart import BarChart, Reference
 
     # Buscar dados da empresa
     company_manager = CompanyManager()
@@ -1885,27 +2032,216 @@ def gerar_pdf_viabilidade(empresa_id):
     for grupo in grupos_info.values():
         grupo['resultado'] = grupo['receita'] - grupo['despesa']
 
-    # Data de geração
-    data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
-
     company_manager.close()
 
-    # Renderizar template
-    html_content = render_template(
-        'admin/relatorio_viabilidade_pdf.html',
-        empresa=empresa,
-        ano_selecionado=ano_selecionado,
-        grupos_info=grupos_info,
-        data_geracao=data_geracao
-    )
+    # ========== CRIAR EXCEL COM GRÁFICOS ==========
+    from openpyxl.chart import PieChart
 
-    # Gerar PDF
-    pdf = HTML(string=html_content).write_pdf()
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Gráficos Viabilidade"
 
-    # Retornar PDF
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=Relatorio_Viabilidade_{empresa["nome"]}_{ano_selecionado}.pdf'
+    # Estilos
+    header_fill = PatternFill(start_color="2C3E50", end_color="2C3E50", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=16)
+
+    # Cabeçalho
+    ws['A1'] = 'Relatório de Viabilidade - Análise Gráfica'
+    ws['A1'].font = header_font
+    ws['A1'].fill = header_fill
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.merge_cells('A1:H1')
+    ws.row_dimensions[1].height = 30
+
+    ws['A2'] = f"Empresa: {empresa['nome']}"
+    ws['A2'].font = Font(bold=True, size=11)
+    ws['A3'] = f"Ano: {ano_selecionado}"
+    ws['A3'].font = Font(size=10)
+    ws['A4'] = f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
+    ws['A4'].font = Font(size=9, italic=True)
+
+    # Dados ocultos para os gráficos
+    row = 6
+
+    # ==== GRÁFICO 1: COMPARATIVO DE RESULTADOS DOS 3 GRUPOS ====
+    ws.cell(row, 1, "Grupo")
+    ws.cell(row, 2, "Resultado")
+    row += 1
+    for grupo_nome in ['Viabilidade Real', 'Viabilidade PE', 'Viabilidade Ideal']:
+        grupo = grupos_info[grupo_nome]
+        ws.cell(row, 1, grupo_nome.replace('Viabilidade ', ''))
+        ws.cell(row, 2, grupo['resultado'])
+        row += 1
+
+    chart1 = BarChart()
+    chart1.title = "Comparativo de Resultados"
+    chart1.y_axis.title = 'Resultado (R$)'
+    chart1.style = 11
+    data = Reference(ws, min_col=2, min_row=6, max_row=9)
+    cats = Reference(ws, min_col=1, min_row=7, max_row=9)
+    chart1.add_data(data, titles_from_data=True)
+    chart1.set_categories(cats)
+    chart1.height = 12
+    chart1.width = 18
+    ws.add_chart(chart1, 'A7')
+
+    # ==== GRÁFICO 2: RECEITA vs DESPESA POR GRUPO ====
+    row = 6
+    col_offset = 4  # Coluna D
+    ws.cell(row, col_offset, "Grupo")
+    ws.cell(row, col_offset+1, "Receita")
+    ws.cell(row, col_offset+2, "Despesa")
+    row += 1
+
+    for grupo_nome in ['Viabilidade Real', 'Viabilidade PE', 'Viabilidade Ideal']:
+        grupo = grupos_info[grupo_nome]
+        ws.cell(row, col_offset, grupo_nome.replace('Viabilidade ', ''))
+        ws.cell(row, col_offset+1, grupo['receita'])
+        ws.cell(row, col_offset+2, grupo['despesa'])
+        row += 1
+
+    chart2 = BarChart()
+    chart2.title = "Receita vs Despesa por Grupo"
+    chart2.y_axis.title = 'Valor (R$)'
+    chart2.style = 12
+    data = Reference(ws, min_col=col_offset+1, min_row=6, max_row=9, max_col=col_offset+2)
+    cats = Reference(ws, min_col=col_offset, min_row=7, max_row=9)
+    chart2.add_data(data, titles_from_data=True)
+    chart2.set_categories(cats)
+    chart2.height = 12
+    chart2.width = 20
+    ws.add_chart(chart2, 'J7')
+
+    # ==== GRÁFICO 3: PIZZA - DISTRIBUIÇÃO DE RECEITAS ====
+    row_start_pizza = 12
+    row = row_start_pizza
+    ws.cell(row, 1, "Grupo")
+    ws.cell(row, 2, "Receita")
+    row += 1
+
+    for grupo_nome in ['Viabilidade Real', 'Viabilidade PE', 'Viabilidade Ideal']:
+        grupo = grupos_info[grupo_nome]
+        ws.cell(row, 1, grupo_nome.replace('Viabilidade ', ''))
+        ws.cell(row, 2, grupo['receita'])
+        row += 1
+
+    chart3 = PieChart()
+    chart3.title = "Distribuição de Receitas"
+    chart3.style = 10
+    data = Reference(ws, min_col=2, min_row=row_start_pizza, max_row=row-1)
+    cats = Reference(ws, min_col=1, min_row=row_start_pizza+1, max_row=row-1)
+    chart3.add_data(data, titles_from_data=True)
+    chart3.set_categories(cats)
+    chart3.height = 12
+    chart3.width = 16
+    ws.add_chart(chart3, 'A24')
+
+    # ==== GRÁFICO 4: PIZZA - DISTRIBUIÇÃO DE DESPESAS ====
+    row_start_desp = row + 2
+    row = row_start_desp
+    ws.cell(row, 1, "Grupo")
+    ws.cell(row, 2, "Despesa")
+    row += 1
+
+    for grupo_nome in ['Viabilidade Real', 'Viabilidade PE', 'Viabilidade Ideal']:
+        grupo = grupos_info[grupo_nome]
+        ws.cell(row, 1, grupo_nome.replace('Viabilidade ', ''))
+        ws.cell(row, 2, grupo['despesa'])
+        row += 1
+
+    chart4 = PieChart()
+    chart4.title = "Distribuição de Despesas"
+    chart4.style = 10
+    data = Reference(ws, min_col=2, min_row=row_start_desp, max_row=row-1)
+    cats = Reference(ws, min_col=1, min_row=row_start_desp+1, max_row=row-1)
+    chart4.add_data(data, titles_from_data=True)
+    chart4.set_categories(cats)
+    chart4.height = 12
+    chart4.width = 16
+    ws.add_chart(chart4, 'J24')
+
+    # Ocultar dados (deixar apenas gráficos visíveis)
+    for col_letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G']:
+        ws.column_dimensions[col_letter].hidden = True
+
+    # Salvar Excel em buffer
+    excel_buffer = BytesIO()
+    wb.save(excel_buffer)
+    excel_buffer.seek(0)
+
+    # Retornar Excel
+    response = make_response(excel_buffer.read())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename=Relatorio_Viabilidade_{empresa["nome"]}_{ano_selecionado}.xlsx'
 
     return response
+
+
+# ========== API: GERENCIAMENTO DE MESES BPO ==========
+
+@admin_bp.route('/admin/api/listar-meses-bpo/<int:empresa_id>')
+def listar_meses_bpo(empresa_id):
+    """Lista todos os meses de BPO disponíveis para uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({'sucesso': False, 'mensagem': 'Acesso negado'}), 403
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    try:
+        # Buscar todos os meses disponíveis
+        meses = company_manager.listar_meses_bpo_empresa(empresa_id)
+        company_manager.close()
+
+        return jsonify({
+            'sucesso': True,
+            'meses': meses
+        })
+
+    except Exception as e:
+        company_manager.close()
+        return jsonify({
+            'sucesso': False,
+            'mensagem': f'Erro ao listar meses: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/admin/api/excluir-meses-bpo', methods=['POST'])
+def excluir_meses_bpo():
+    """Exclui múltiplos meses de BPO de uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({'sucesso': False, 'mensagem': 'Acesso negado'}), 403
+
+    data = request.get_json()
+    empresa_id = data.get('empresa_id')
+    meses = data.get('meses', [])  # Lista de strings no formato "ano-mes"
+
+    if not empresa_id or not meses:
+        return jsonify({'sucesso': False, 'mensagem': 'Parâmetros inválidos'}), 400
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    try:
+        excluidos = 0
+        for mes_str in meses:
+            ano, mes = mes_str.split('-')
+            sucesso = company_manager.excluir_dados_bpo_empresa(int(empresa_id), int(ano), int(mes))
+            if sucesso:
+                excluidos += 1
+
+        company_manager.close()
+
+        return jsonify({
+            'sucesso': True,
+            'excluidos': excluidos,
+            'total': len(meses)
+        })
+
+    except Exception as e:
+        company_manager.close()
+        return jsonify({
+            'sucesso': False,
+            'mensagem': f'Erro ao excluir meses: {str(e)}'
+        }), 500
 

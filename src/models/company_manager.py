@@ -820,6 +820,32 @@ class CompanyManager(DatabaseConnection):
             self.connection.rollback()
             return False
 
+    def listar_meses_bpo_empresa(self, empresa_id):
+        """Lista todos os meses de BPO disponíveis para uma empresa"""
+        try:
+            sql = """
+                SELECT DISTINCT ano, mes
+                FROM TbBpoDados
+                WHERE empresa_id = %s
+                ORDER BY ano DESC, mes DESC
+            """
+            self.cursor.execute(sql, (empresa_id,))
+            resultados = self.cursor.fetchall()
+
+            meses = []
+            for row in resultados:
+                meses.append({
+                    'ano': row[0],
+                    'mes': row[1]
+                })
+
+            logger.debug(f"Meses BPO listados: empresa_id={empresa_id}, total={len(meses)}")
+            return meses
+
+        except Exception as err:
+            logger.error(f"Erro ao listar meses BPO: {err}")
+            return []
+
     def close(self):
         """Fecha a conexão com o banco de dados."""
         self.close_connection()

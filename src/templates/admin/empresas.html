@@ -464,7 +464,7 @@
 
 <!-- MODAL GERENCIAR DADOS -->
 <div class="modal fade" id="gerenciarDadosModal" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-warning text-dark">
                 <h5 class="modal-title"><i class="bi bi-folder-open me-2"></i>Gerenciar Dados</h5>
@@ -472,28 +472,63 @@
             </div>
             <div class="modal-body">
                 <p>Empresa: <strong id="gerenciarEmpresaNome"></strong></p>
-                <div class="mb-3">
-                    <label for="anoSelectGerenciar" class="form-label">Selecione o Ano:</label>
-                    <select class="form-select" id="anoSelectGerenciar" onchange="atualizarFormsAno()">
-                        <option value="">-- Selecione um ano --</option>
-                    </select>
-                </div>
-                <div class="d-grid gap-2">
-                    <form method="POST" action="{{ url_for('admin.consultar_dados') }}">
-                        <input type="hidden" name="empresa_id" id="formVerEmpresaId">
-                        <input type="hidden" name="ano" id="formVerAno">
-                        <button type="submit" class="btn btn-primary w-100" id="btnVerDados" disabled>
-                            <i class="bi bi-eye me-2"></i>Ver Dados
+
+                <!-- TABS -->
+                <ul class="nav nav-tabs mb-3" id="gerenciarTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="viabilidade-tab" data-bs-toggle="tab" data-bs-target="#viabilidade-panel" type="button" role="tab">
+                            <i class="bi bi-clipboard-data me-1"></i>Viabilidade
                         </button>
-                    </form>
-                    <form method="POST" action="{{ url_for('admin.deletar_dados_empresa') }}"
-                          onsubmit="return confirm('Tem certeza que deseja excluir estes dados? Esta ação não pode ser desfeita.');">
-                        <input type="hidden" name="empresa_id" id="formExcluirEmpresaId">
-                        <input type="hidden" name="ano" id="formExcluirAno">
-                        <button type="submit" class="btn btn-danger w-100" id="btnExcluirDados" disabled>
-                            <i class="bi bi-trash me-2"></i>Excluir Dados
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="bpo-tab" data-bs-toggle="tab" data-bs-target="#bpo-panel" type="button" role="tab" onclick="if(empresaIdAtual) { carregarMesesBpo(empresaIdAtual); }">
+                            <i class="bi bi-calendar-month me-1"></i>BPO
                         </button>
-                    </form>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="gerenciarTabsContent">
+                    <!-- ABA VIABILIDADE -->
+                    <div class="tab-pane fade show active" id="viabilidade-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label for="anoSelectGerenciar" class="form-label">Selecione o Ano:</label>
+                            <select class="form-select" id="anoSelectGerenciar" onchange="atualizarFormsAno()">
+                                <option value="">-- Selecione um ano --</option>
+                            </select>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <form method="POST" action="{{ url_for('admin.consultar_dados') }}">
+                                <input type="hidden" name="empresa_id" id="formVerEmpresaId">
+                                <input type="hidden" name="ano" id="formVerAno">
+                                <button type="submit" class="btn btn-primary w-100" id="btnVerDados" disabled>
+                                    <i class="bi bi-eye me-2"></i>Ver Dados
+                                </button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.deletar_dados_empresa') }}"
+                                  onsubmit="return confirm('Tem certeza que deseja excluir estes dados de VIABILIDADE? Esta ação não pode ser desfeita.');">
+                                <input type="hidden" name="empresa_id" id="formExcluirEmpresaId">
+                                <input type="hidden" name="ano" id="formExcluirAno">
+                                <button type="submit" class="btn btn-danger w-100" id="btnExcluirDados" disabled>
+                                    <i class="bi bi-trash me-2"></i>Excluir Dados
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- ABA BPO -->
+                    <div class="tab-pane fade" id="bpo-panel" role="tabpanel">
+                        <div class="mb-3">
+                            <label class="form-label">Selecione os meses para excluir:</label>
+                            <div id="mesesBpoContainer" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;">
+                                <p class="text-muted">Carregando meses disponíveis...</p>
+                            </div>
+                        </div>
+                        <div class="d-grid">
+                            <button type="button" class="btn btn-danger" id="btnExcluirMesesBpo" onclick="excluirMesesBpo()" disabled>
+                                <i class="bi bi-trash me-2"></i>Excluir Meses Selecionados
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -653,7 +688,10 @@ function abrirUploadModal(empresaId, empresaNome) {
     modal.show();
 }
 
+let empresaIdAtual = null;
+
 function abrirGerenciarDados(empresaId, empresaNome, anos) {
+    empresaIdAtual = empresaId;
     const modal = new bootstrap.Modal(document.getElementById('gerenciarDadosModal'));
     document.getElementById('gerenciarEmpresaNome').textContent = empresaNome;
 
@@ -675,6 +713,16 @@ function abrirGerenciarDados(empresaId, empresaNome, anos) {
     document.getElementById('btnVerDados').disabled = true;
     document.getElementById('btnExcluirDados').disabled = true;
 
+    // Garantir que voltamos para a aba Viabilidade
+    const viabilidadeTab = document.getElementById('viabilidade-tab');
+    const viabilidadePanel = document.getElementById('viabilidade-panel');
+    const bpoPanel = document.getElementById('bpo-panel');
+
+    // Ativar aba de Viabilidade
+    viabilidadeTab.classList.add('active');
+    viabilidadePanel.classList.add('show', 'active');
+    bpoPanel.classList.remove('show', 'active');
+
     modal.show();
 }
 
@@ -689,6 +737,123 @@ function atualizarFormsAno() {
     } else {
         document.getElementById('btnVerDados').disabled = true;
         document.getElementById('btnExcluirDados').disabled = true;
+    }
+}
+
+// ========== FUNÇÕES BPO ==========
+
+async function carregarMesesBpo(empresaId) {
+    const container = document.getElementById('mesesBpoContainer');
+    container.innerHTML = '<p class="text-muted"><i class="bi bi-hourglass-split me-2"></i>Carregando meses...</p>';
+
+    try {
+        const response = await fetch(`/admin/api/listar-meses-bpo/${empresaId}`);
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.sucesso) {
+            container.innerHTML = `<p class="text-danger"><i class="bi bi-exclamation-triangle me-2"></i>${data.mensagem}</p>`;
+            return;
+        }
+
+        if (data.meses.length === 0) {
+            container.innerHTML = '<p class="text-muted"><i class="bi bi-inbox me-2"></i>Nenhum mês de BPO encontrado.</p>';
+            return;
+        }
+
+        // Agrupar por ano
+        const mesesPorAno = {};
+        data.meses.forEach(item => {
+            if (!mesesPorAno[item.ano]) {
+                mesesPorAno[item.ano] = [];
+            }
+            mesesPorAno[item.ano].push(item.mes);
+        });
+
+        // Nomes dos meses
+        const nomesMeses = {
+            1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+            5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+            9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+        };
+
+        // Renderizar checkboxes
+        let html = '';
+        Object.keys(mesesPorAno).sort((a, b) => b - a).forEach(ano => {
+            html += `<div class="mb-3">
+                <h6 class="fw-bold text-primary">${ano}</h6>`;
+
+            mesesPorAno[ano].sort((a, b) => a - b).forEach(mes => {
+                html += `
+                <div class="form-check">
+                    <input class="form-check-input mes-bpo-checkbox" type="checkbox" value="${ano}-${mes}" id="mes-${ano}-${mes}">
+                    <label class="form-check-label" for="mes-${ano}-${mes}">
+                        ${nomesMeses[mes]}/${ano}
+                    </label>
+                </div>`;
+            });
+
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+
+        // Adicionar listener para habilitar/desabilitar botão
+        document.querySelectorAll('.mes-bpo-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', atualizarBotaoExcluirBpo);
+        });
+
+    } catch (error) {
+        console.error('Erro ao carregar meses BPO:', error);
+        container.innerHTML = '<p class="text-danger"><i class="bi bi-x-circle me-2"></i>Erro ao carregar meses.</p>';
+    }
+}
+
+function atualizarBotaoExcluirBpo() {
+    const checkboxes = document.querySelectorAll('.mes-bpo-checkbox:checked');
+    document.getElementById('btnExcluirMesesBpo').disabled = checkboxes.length === 0;
+}
+
+async function excluirMesesBpo() {
+    const checkboxes = document.querySelectorAll('.mes-bpo-checkbox:checked');
+    const mesesSelecionados = Array.from(checkboxes).map(cb => cb.value);
+
+    if (mesesSelecionados.length === 0) {
+        alert('Selecione pelo menos um mês para excluir.');
+        return;
+    }
+
+    const confirmar = confirm(`Tem certeza que deseja excluir ${mesesSelecionados.length} mês(es) de BPO? Esta ação não pode ser desfeita.`);
+    if (!confirmar) return;
+
+    try {
+        const response = await fetch('/admin/api/excluir-meses-bpo', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                empresa_id: empresaIdAtual,
+                meses: mesesSelecionados
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.sucesso) {
+            alert(`${data.excluidos} mês(es) excluído(s) com sucesso!`);
+            carregarMesesBpo(empresaIdAtual);  // Recarregar lista
+            location.reload();  // Recarregar página para atualizar contadores
+        } else {
+            alert(`Erro: ${data.mensagem}`);
+        }
+    } catch (error) {
+        console.error('Erro ao excluir meses:', error);
+        alert('Erro ao excluir meses. Tente novamente.');
     }
 }
 
