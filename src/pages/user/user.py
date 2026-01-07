@@ -1036,122 +1036,173 @@ def consultar_dados_bpo():
 @user_bp.route('/user/gerar_pdf_bpo')
 def gerar_pdf_bpo():
     """Gera relatório PDF do dashboard BPO para usuário"""
+    logger.info(f"[PDF BPO USER] Iniciando geração de PDF BPO")
+
     if not ('user_email' in session and session.get('user_role') == 'user'):
+        logger.warning(f"[PDF BPO USER] Acesso negado")
         return "Acesso negado", 403
 
     # Pega empresa_id da sessão do usuário
     empresa_id = session.get('empresa_id')
     if not empresa_id:
+        logger.error(f"[PDF BPO USER] Empresa não selecionada na sessão")
         return "Empresa não selecionada", 400
 
-    from models.company_manager import CompanyManager
-    from weasyprint import HTML
-    from datetime import datetime
-    from flask import make_response
+    try:
+        logger.info(f"[PDF BPO USER] Importando dependências...")
+        from models.company_manager import CompanyManager
+        from weasyprint import HTML
+        from datetime import datetime
+        from flask import make_response
+        logger.info(f"[PDF BPO USER] Dependências importadas com sucesso")
 
-    # Buscar dados da empresa
-    company_manager = CompanyManager()
-    empresa = company_manager.buscar_empresa_por_id(empresa_id)
+        # Buscar dados da empresa
+        logger.info(f"[PDF BPO USER] Buscando dados da empresa {empresa_id}...")
+        company_manager = CompanyManager()
+        empresa = company_manager.buscar_empresa_por_id(empresa_id)
+        logger.info(f"[PDF BPO USER] Empresa encontrada: {empresa['nome'] if empresa else 'Não encontrada'}")
 
-    if not empresa:
-        company_manager.close()
-        return "Empresa não encontrada", 404
+        if not empresa:
+            company_manager.close()
+            logger.error(f"[PDF BPO USER] Empresa {empresa_id} não encontrada")
+            return "Empresa não encontrada", 404
 
-    # Pegar parâmetros do filtro
-    ano_inicio = int(request.args.get('ano_inicio', 2025))
-    mes_inicio = int(request.args.get('mes_inicio', 1))
-    ano_fim = int(request.args.get('ano_fim', 2025))
-    mes_fim = int(request.args.get('mes_fim', 12))
-    tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
+        # Pegar parâmetros do filtro
+        ano_inicio = int(request.args.get('ano_inicio', 2025))
+        mes_inicio = int(request.args.get('mes_inicio', 1))
+        ano_fim = int(request.args.get('ano_fim', 2025))
+        mes_fim = int(request.args.get('mes_fim', 12))
+        tipo_dre = request.args.get('tipo_dre', 'fluxo_caixa')
+        logger.info(f"[PDF BPO USER] Parâmetros: {ano_inicio}/{mes_inicio} a {ano_fim}/{mes_fim}, DRE: {tipo_dre}")
 
-    # ========== PROCESSAR DADOS BPO (mesma lógica da API) ==========
+        # ========== PROCESSAR DADOS BPO (mesma lógica da API) ==========
 
-    # Buscar todos os meses
-    meses_data = []
-    ano_atual = ano_inicio
-    mes_atual = mes_inicio
+        # Buscar todos os meses
+        logger.info(f"[PDF BPO USER] Buscando dados BPO dos meses...")
+        meses_data = []
+        ano_atual = ano_inicio
+        mes_atual = mes_inicio
 
-    while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
-        dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
-        if dados:
-            meses_data.append({
-                'ano': ano_atual,
-                'mes': mes_atual,
-                'dados': dados['dados']
-            })
-        mes_atual += 1
-        if mes_atual > 12:
-            mes_atual = 1
-            ano_atual += 1
+        while (ano_atual < ano_fim) or (ano_atual == ano_fim and mes_atual <= mes_fim):
+            dados = company_manager.buscar_dados_bpo_empresa(empresa_id, ano_atual, mes_atual)
+            if dados:
+                meses_data.append({
+                    'ano': ano_atual,
+                    'mes': mes_atual,
+                    'dados': dados['dados']
+                })
+            mes_atual += 1
+            if mes_atual > 12:
+                mes_atual = 1
+                ano_atual += 1
 
-    # Inicializar totais acumulados
-    totais = {
-        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
-        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
-        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
-    }
+        # Inicializar totais acumulados
+        totais = {
+            'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+            'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+            'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+        }
 
-    # Totais de orçamento (para média prevista)
-    totais_orcamento = {
-        'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
-        'real': {'receita': 0, 'despesa': 0, 'geral': 0},
-        'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
-    }
+        # Totais de orçamento (para média prevista)
+        totais_orcamento = {
+            'fluxo_caixa': {'receita': 0, 'despesa': 0, 'geral': 0},
+            'real': {'receita': 0, 'despesa': 0, 'geral': 0},
+            'real_mp': {'receita': 0, 'despesa': 0, 'geral': 0}
+        }
 
-    # Arrays para gráficos (por mês, do DRE selecionado)
-    labels_meses = []
-    receitas_mensais = []
-    despesas_mensais = []
-    gerais_mensais = []
+        # Arrays para gráficos (por mês, do DRE selecionado)
+        labels_meses = []
+        receitas_mensais = []
+        despesas_mensais = []
+        gerais_mensais = []
 
-    # Nomes dos meses
-    nomes_meses = {
-        1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
-        5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
-        9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
-    }
+        # Nomes dos meses
+        nomes_meses = {
+            1: 'Janeiro', 2: 'Fevereiro', 3: 'Março', 4: 'Abril',
+            5: 'Maio', 6: 'Junho', 7: 'Julho', 8: 'Agosto',
+            9: 'Setembro', 10: 'Outubro', 11: 'Novembro', 12: 'Dezembro'
+        }
 
-    for mes_data in meses_data:
-        mes_num = mes_data['mes']
-        ano = mes_data['ano']
-        dados = mes_data['dados']
+        for mes_data in meses_data:
+            mes_num = mes_data['mes']
+            ano = mes_data['ano']
+            dados = mes_data['dados']
 
-        # Label para gráfico (formato: Janeiro/25)
-        nome_mes = nomes_meses.get(mes_num, str(mes_num))
-        ano_curto = str(ano)[-2:]
-        labels_meses.append(f"{nome_mes}/{ano_curto}")
+            # Label para gráfico (formato: Janeiro/25)
+            nome_mes = nomes_meses.get(mes_num, str(mes_num))
+            ano_curto = str(ano)[-2:]
+            labels_meses.append(f"{nome_mes}/{ano_curto}")
 
-        # Extrair totais_calculados
-        totais_calculados = dados.get('totais_calculados', {})
+            # Extrair totais_calculados
+            totais_calculados = dados.get('totais_calculados', {})
 
-        if not totais_calculados or totais_calculados == {}:
-            receitas_mensais.append(0)
-            despesas_mensais.append(0)
-            gerais_mensais.append(0)
-            continue
-
-        # Variáveis para gráfico deste mês
-        receita_grafico = 0
-        despesa_grafico = 0
-        geral_grafico = 0
-
-        # Processar cada cenário (fluxo_caixa, real, real_mp)
-        for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
-            cenario_data = totais_calculados.get(cenario_key, {})
-
-            if not cenario_data or not isinstance(cenario_data, dict):
+            if not totais_calculados or totais_calculados == {}:
+                receitas_mensais.append(0)
+                despesas_mensais.append(0)
+                gerais_mensais.append(0)
                 continue
 
-            # Pegar dados do mês
-            mes_dados = cenario_data.get(mes_num, cenario_data.get(str(mes_num), {}))
+            # Variáveis para gráfico deste mês
+            receita_grafico = 0
+            despesa_grafico = 0
+            geral_grafico = 0
 
-            if mes_dados and isinstance(mes_dados, dict):
-                # Extrair valores realizados
-                realizado = mes_dados.get('realizado', {})
-                if isinstance(realizado, dict):
-                    receita = realizado.get('receita', 0) or 0
-                    despesa = realizado.get('despesa', 0) or 0
-                    geral = realizado.get('geral', 0) or 0
+            # Processar cada cenário (fluxo_caixa, real, real_mp)
+            for cenario_key in ['fluxo_caixa', 'real', 'real_mp']:
+                cenario_data = totais_calculados.get(cenario_key, {})
+
+                if not cenario_data or not isinstance(cenario_data, dict):
+                    continue
+
+                # Pegar dados do mês
+                mes_dados = cenario_data.get(mes_num, cenario_data.get(str(mes_num), {}))
+
+                if mes_dados and isinstance(mes_dados, dict):
+                    # Extrair valores realizados
+                    realizado = mes_dados.get('realizado', {})
+                    if isinstance(realizado, dict):
+                        receita = realizado.get('receita', 0) or 0
+                        despesa = realizado.get('despesa', 0) or 0
+                        geral = realizado.get('geral', 0) or 0
+
+                        # RECALCULAR DESPESA DO REAL_MP SE EXISTIR PERCENTUAL MANUAL
+                        if cenario_key == 'real_mp':
+                            percentual_mp_manual = dados.get('percentual_mp_manual')
+                            if percentual_mp_manual is not None:
+                                despesa_recalculada = (percentual_mp_manual / 100) * receita
+                                despesa = despesa_recalculada
+                                geral = receita - despesa
+
+                        # Acumular totais
+                        totais[cenario_key]['receita'] += receita
+                        totais[cenario_key]['despesa'] += despesa
+                        totais[cenario_key]['geral'] += geral
+
+                        # Se é o DRE selecionado, guardar para gráfico
+                        if cenario_key == tipo_dre:
+                            receita_grafico = receita
+                            despesa_grafico = despesa
+                            geral_grafico = geral
+
+                    # Extrair valores de orçamento
+                    orcamento = mes_dados.get('orcamento', {})
+                    if isinstance(orcamento, dict):
+                        receita_orc = orcamento.get('receita', 0) or 0
+                        despesa_orc = orcamento.get('despesa', 0) or 0
+                        geral_orc = orcamento.get('geral', 0) or 0
+
+                        # Acumular orçamento
+                        totais_orcamento[cenario_key]['receita'] += receita_orc
+                        totais_orcamento[cenario_key]['despesa'] += despesa_orc
+                        totais_orcamento[cenario_key]['geral'] += geral_orc
+
+            # Adicionar aos arrays do gráfico
+            receitas_mensais.append(receita_grafico)
+            despesas_mensais.append(despesa_grafico)
+            gerais_mensais.append(geral_grafico)
+
+        # Processar categorias de despesa (itens 2.0X)
+        categorias_despesa = {}
 
                     # RECALCULAR DESPESA DO REAL_MP SE EXISTIR PERCENTUAL MANUAL
                     if cenario_key == 'real_mp':
@@ -1187,236 +1238,284 @@ def gerar_pdf_bpo():
                             despesa = despesa_recalculada
                             geral = receita - despesa
 
-                    # Acumular totais
-                    totais[cenario_key]['receita'] += receita
-                    totais[cenario_key]['despesa'] += despesa
-                    totais[cenario_key]['geral'] += geral
+            items_to_process = itens if isinstance(itens, list) else itens.items()
 
-                    # Se é o DRE selecionado, guardar para gráfico
-                    if cenario_key == tipo_dre:
-                        receita_grafico = receita
-                        despesa_grafico = despesa
-                        geral_grafico = geral
+            for item in items_to_process:
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
 
-                # Extrair valores de orçamento
-                orcamento = mes_dados.get('orcamento', {})
-                if isinstance(orcamento, dict):
-                    receita_orc = orcamento.get('receita', 0) or 0
-                    despesa_orc = orcamento.get('despesa', 0) or 0
-                    geral_orc = orcamento.get('geral', 0) or 0
+                # Filtrar apenas itens 2.0X
+                if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
+                    if codigo not in categorias_despesa:
+                        categorias_despesa[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
 
-                    # Acumular orçamento
-                    totais_orcamento[cenario_key]['receita'] += receita_orc
-                    totais_orcamento[cenario_key]['despesa'] += despesa_orc
-                    totais_orcamento[cenario_key]['geral'] += geral_orc
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
 
-        # Adicionar aos arrays do gráfico
-        receitas_mensais.append(receita_grafico)
-        despesas_mensais.append(despesa_grafico)
-        gerais_mensais.append(geral_grafico)
+                        if categorias_despesa[codigo]['orcado'] == 0:
+                            categorias_despesa[codigo]['orcado'] = orcado_val
 
-    # Processar categorias de despesa (itens 2.0X)
-    categorias_despesa = {}
+                        categorias_despesa[codigo]['realizado'] += realizado_val
 
-    for mes_data in meses_data:
-        dados = mes_data['dados']
-        itens = dados.get('itens_hierarquicos', [])
+        # Calcular médias de categorias de despesa
+        num_meses = len(meses_data)
+        for codigo in categorias_despesa:
+            cat = categorias_despesa[codigo]
+            cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
 
-        items_to_process = itens if isinstance(itens, list) else itens.items()
+        # Processar categorias de receita (itens 1.0X)
+        categorias_receita = {}
 
-        for item in items_to_process:
-            if isinstance(itens, list):
-                codigo = item.get('codigo', '')
-                item_data = item
-            else:
-                codigo, item_data = item
+        for mes_data in meses_data:
+            dados = mes_data['dados']
+            itens = dados.get('itens_hierarquicos', [])
 
-            # Filtrar apenas itens 2.0X
-            if codigo.startswith('2.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '2' and codigo.split('.')[1].startswith('0'):
-                if codigo not in categorias_despesa:
-                    categorias_despesa[codigo] = {
-                        'nome': item_data.get('nome', codigo),
-                        'orcado': 0,
-                        'realizado': 0
-                    }
+            items_to_process = itens if isinstance(itens, list) else itens.items()
 
-                dados_mensais = item_data.get('dados_mensais', [])
-                if dados_mensais and len(dados_mensais) > 0:
-                    mes_atual_dados = dados_mensais[0]
-                    orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
-                    realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+            for item in items_to_process:
+                if isinstance(itens, list):
+                    codigo = item.get('codigo', '')
+                    item_data = item
+                else:
+                    codigo, item_data = item
 
-                    if categorias_despesa[codigo]['orcado'] == 0:
-                        categorias_despesa[codigo]['orcado'] = orcado_val
+                # Filtrar apenas itens 1.0X
+                if codigo.startswith('1.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '1' and codigo.split('.')[1].startswith('0'):
+                    if codigo not in categorias_receita:
+                        categorias_receita[codigo] = {
+                            'nome': item_data.get('nome', codigo),
+                            'orcado': 0,
+                            'realizado': 0
+                        }
 
-                    categorias_despesa[codigo]['realizado'] += realizado_val
+                    dados_mensais = item_data.get('dados_mensais', [])
+                    if dados_mensais and len(dados_mensais) > 0:
+                        mes_atual_dados = dados_mensais[0]
+                        orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
+                        realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
 
-    # Calcular médias de categorias de despesa
-    num_meses = len(meses_data)
-    for codigo in categorias_despesa:
-        cat = categorias_despesa[codigo]
-        cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
-        cat['diferenca'] = cat['realizado'] - cat['orcado']
+                        if categorias_receita[codigo]['orcado'] == 0:
+                            categorias_receita[codigo]['orcado'] = orcado_val
 
-    # Processar categorias de receita (itens 1.0X)
-    categorias_receita = {}
+                        categorias_receita[codigo]['realizado'] += realizado_val
 
-    for mes_data in meses_data:
-        dados = mes_data['dados']
-        itens = dados.get('itens_hierarquicos', [])
+        # Calcular médias de categorias de receita
+        for codigo in categorias_receita:
+            cat = categorias_receita[codigo]
+            cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
+            cat['diferenca'] = cat['realizado'] - cat['orcado']
 
-        items_to_process = itens if isinstance(itens, list) else itens.items()
+        company_manager.close()
 
-        for item in items_to_process:
-            if isinstance(itens, list):
-                codigo = item.get('codigo', '')
-                item_data = item
-            else:
-                codigo, item_data = item
+        # Renderizar template HTML para PDF
+        html_content = render_template('admin/relatorio_bpo_pdf.html',
+            empresa=empresa,
+            ano_inicio=ano_inicio,
+            mes_inicio=mes_inicio,
+            ano_fim=ano_fim,
+            mes_fim=mes_fim,
+            tipo_dre=tipo_dre,
+            data_geracao=datetime.now().strftime('%d/%m/%Y %H:%M'),
+            totais=totais,
+            totais_orcamento=totais_orcamento,
+            num_meses=num_meses,
+            labels_meses=labels_meses,
+            receitas_mensais=receitas_mensais,
+            despesas_mensais=despesas_mensais,
+            gerais_mensais=gerais_mensais,
+            categorias_despesa=categorias_despesa,
+            categorias_receita=categorias_receita
+        )
+        logger.info(f"[PDF BPO USER] Template renderizado com sucesso")
 
-            # Filtrar apenas itens 1.0X
-            if codigo.startswith('1.') and len(codigo.split('.')) == 2 and codigo.split('.')[0] == '1' and codigo.split('.')[1].startswith('0'):
-                if codigo not in categorias_receita:
-                    categorias_receita[codigo] = {
-                        'nome': item_data.get('nome', codigo),
-                        'orcado': 0,
-                        'realizado': 0
-                    }
+        # Gerar PDF
+        logger.info(f"[PDF BPO USER] Iniciando conversão HTML para PDF com WeasyPrint...")
+        pdf = HTML(string=html_content).write_pdf()
+        logger.info(f"[PDF BPO USER] PDF gerado com sucesso, tamanho: {len(pdf)} bytes")
 
-                dados_mensais = item_data.get('dados_mensais', [])
-                if dados_mensais and len(dados_mensais) > 0:
-                    mes_atual_dados = dados_mensais[0]
-                    orcado_val = mes_atual_dados.get('valor_orcado', 0) or 0
-                    realizado_val = mes_atual_dados.get('valor_realizado', 0) or 0
+        # Retornar PDF como resposta
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=Relatorio_BPO_{empresa["nome"]}_{datetime.now().strftime("%Y%m%d")}.pdf'
 
-                    if categorias_receita[codigo]['orcado'] == 0:
-                        categorias_receita[codigo]['orcado'] = orcado_val
+        company_manager.close()
+        logger.info(f"[PDF BPO USER] PDF enviado com sucesso para empresa {empresa['nome']}")
+        return response
 
-                    categorias_receita[codigo]['realizado'] += realizado_val
-
-    # Calcular médias de categorias de receita
-    for codigo in categorias_receita:
-        cat = categorias_receita[codigo]
-        cat['realizado'] = cat['realizado'] / num_meses if num_meses > 0 else 0
-        cat['diferenca'] = cat['realizado'] - cat['orcado']
-
-    company_manager.close()
-
-    # Renderizar template HTML para PDF
-    html_content = render_template('admin/relatorio_bpo_pdf.html',
-        empresa=empresa,
-        ano_inicio=ano_inicio,
-        mes_inicio=mes_inicio,
-        ano_fim=ano_fim,
-        mes_fim=mes_fim,
-        tipo_dre=tipo_dre,
-        data_geracao=datetime.now().strftime('%d/%m/%Y %H:%M'),
-        totais=totais,
-        totais_orcamento=totais_orcamento,
-        num_meses=num_meses,
-        labels_meses=labels_meses,
-        receitas_mensais=receitas_mensais,
-        despesas_mensais=despesas_mensais,
-        gerais_mensais=gerais_mensais,
-        categorias_despesa=categorias_despesa,
-        categorias_receita=categorias_receita
-    )
-
-    # Gerar PDF
-    pdf = HTML(string=html_content).write_pdf()
-
-    # Retornar PDF como resposta
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=Relatorio_BPO_{empresa["nome"]}_{datetime.now().strftime("%Y%m%d")}.pdf'
-
-    return response
+    except Exception as e:
+        import traceback
+        erro_completo = traceback.format_exc()
+        logger.error(f"[PDF BPO USER] ERRO ao gerar PDF: {str(e)}", exc_info=True)
+        html_erro = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Erro ao Gerar PDF</title>
+            <style>
+                body {{ font-family: monospace; margin: 20px; background: #f5f5f5; }}
+                .erro {{ background: #fff; padding: 20px; border-left: 4px solid #e74c3c; }}
+                h1 {{ color: #e74c3c; }}
+                pre {{ background: #2c3e50; color: #ecf0f1; padding: 15px; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <div class="erro">
+                <h1>❌ Erro ao Gerar PDF BPO (Usuário)</h1>
+                <p><strong>Erro:</strong> {str(e)}</p>
+                <h2>Stack Trace Completo:</h2>
+                <pre>{erro_completo}</pre>
+                <p><em>Este erro também foi salvo no arquivo de log: logs/admin_pages.log</em></p>
+            </div>
+        </body>
+        </html>
+        """
+        return html_erro, 500
 
 @user_bp.route('/user/gerar_pdf_viabilidade')
 def gerar_pdf_viabilidade():
     """Gera relatório PDF comparando os 3 grupos de viabilidade para usuário"""
+    logger.info(f"[PDF VIAB USER] Iniciando geração de PDF Viabilidade")
+
     if not ('user_email' in session and session.get('user_role') == 'user'):
+        logger.warning(f"[PDF VIAB USER] Acesso negado")
         return "Acesso negado", 403
 
     empresa_id = session.get('empresa_id')
     if not empresa_id:
+        logger.error(f"[PDF VIAB USER] Empresa não selecionada na sessão")
         return "Empresa não selecionada", 400
 
-    from models.company_manager import CompanyManager
-    from weasyprint import HTML
-    from datetime import datetime
+    try:
+        logger.info(f"[PDF VIAB USER] Importando dependências...")
+        from models.company_manager import CompanyManager
+        from weasyprint import HTML
+        from datetime import datetime
+        logger.info(f"[PDF VIAB USER] Dependências importadas com sucesso")
 
-    # Buscar dados da empresa
-    company_manager = CompanyManager()
-    empresa = company_manager.buscar_empresa_por_id(empresa_id)
+        # Buscar dados da empresa
+        logger.info(f"[PDF VIAB USER] Buscando dados da empresa {empresa_id}...")
+        company_manager = CompanyManager()
+        empresa = company_manager.buscar_empresa_por_id(empresa_id)
+        logger.info(f"[PDF VIAB USER] Empresa encontrada: {empresa['nome'] if empresa else 'Não encontrada'}")
 
-    if not empresa:
+        if not empresa:
+            company_manager.close()
+            logger.error(f"[PDF VIAB USER] Empresa {empresa_id} não encontrada")
+            return "Empresa não encontrada", 404
+
+        # Obter ano selecionado
+        ano_selecionado = int(request.args.get('ano_selecionado', datetime.now().year))
+        logger.info(f"[PDF VIAB USER] Ano selecionado: {ano_selecionado}")
+
+        # Buscar dados dos 3 grupos de viabilidade
+        logger.info(f"[PDF VIAB USER] Buscando dados de viabilidade...")
+        dados_completos = company_manager.buscar_dados_empresa(empresa_id, ano_selecionado)
+
+        if not dados_completos:
+            company_manager.close()
+            logger.error(f"[PDF VIAB USER] Sem dados de viabilidade para empresa {empresa_id}, ano {ano_selecionado}")
+            return "Sem dados de viabilidade disponíveis para este ano", 404
+
+        # Processar dados dos 3 grupos
+        logger.info(f"[PDF VIAB USER] Processando dados dos 3 grupos de viabilidade...")
+        grupos_info = {
+            'Viabilidade Real': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}},
+            'Viabilidade PE': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}},
+            'Viabilidade Ideal': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}}
+        }
+
+        # Processar cada grupo
+        for grupo_nome, grupo_data in dados_completos.get('dados', {}).items():
+            if grupo_nome not in grupos_info:
+                continue
+
+            for subgrupo_nome, itens in grupo_data.items():
+                total_subgrupo = sum(item.get('valor', 0) for item in itens)
+
+                # Classificar como receita ou despesa baseado no nome do subgrupo
+                if subgrupo_nome in ['Receita', 'Geral']:
+                    grupos_info[grupo_nome]['receita'] += total_subgrupo
+                else:
+                    grupos_info[grupo_nome]['despesa'] += total_subgrupo
+
+                # Armazenar detalhes do subgrupo
+                if subgrupo_nome not in grupos_info[grupo_nome]['subgrupos']:
+                    grupos_info[grupo_nome]['subgrupos'][subgrupo_nome] = []
+                grupos_info[grupo_nome]['subgrupos'][subgrupo_nome].extend(itens)
+
+        # Calcular resultados
+        for grupo in grupos_info.values():
+            grupo['resultado'] = grupo['receita'] - grupo['despesa']
+
+        logger.info(f"[PDF VIAB USER] Dados processados com sucesso")
+
+        # Data de geração
+        data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
+
+        # Renderizar template
+        logger.info(f"[PDF VIAB USER] Renderizando template HTML...")
+        html_content = render_template(
+            'admin/relatorio_viabilidade_pdf.html',
+            empresa=empresa,
+            ano_selecionado=ano_selecionado,
+            grupos_info=grupos_info,
+            data_geracao=data_geracao
+        )
+        logger.info(f"[PDF VIAB USER] Template renderizado com sucesso")
+
+        # Gerar PDF
+        logger.info(f"[PDF VIAB USER] Iniciando conversão HTML para PDF com WeasyPrint...")
+        pdf = HTML(string=html_content).write_pdf()
+        logger.info(f"[PDF VIAB USER] PDF gerado com sucesso, tamanho: {len(pdf)} bytes")
+
+        # Retornar PDF
+        response = make_response(pdf)
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = f'inline; filename=Relatorio_Viabilidade_{empresa["nome"]}_{ano_selecionado}.pdf'
+
         company_manager.close()
-        return "Empresa não encontrada", 404
+        logger.info(f"[PDF VIAB USER] PDF enviado com sucesso para empresa {empresa['nome']}")
+        return response
 
-    # Obter ano selecionado
-    ano_selecionado = int(request.args.get('ano_selecionado', datetime.now().year))
-
-    # Buscar dados dos 3 grupos de viabilidade
-    dados_completos = company_manager.buscar_dados_empresa(empresa_id, ano_selecionado)
-
-    if not dados_completos:
-        company_manager.close()
-        return "Sem dados de viabilidade disponíveis para este ano", 404
-
-    # Processar dados dos 3 grupos
-    grupos_info = {
-        'Viabilidade Real': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}},
-        'Viabilidade PE': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}},
-        'Viabilidade Ideal': {'receita': 0, 'despesa': 0, 'resultado': 0, 'subgrupos': {}}
-    }
-
-    # Processar cada grupo
-    for grupo_nome, grupo_data in dados_completos.get('dados', {}).items():
-        if grupo_nome not in grupos_info:
-            continue
-
-        for subgrupo_nome, itens in grupo_data.items():
-            total_subgrupo = sum(item.get('valor', 0) for item in itens)
-
-            # Classificar como receita ou despesa baseado no nome do subgrupo
-            if subgrupo_nome in ['Receita', 'Geral']:
-                grupos_info[grupo_nome]['receita'] += total_subgrupo
-            else:
-                grupos_info[grupo_nome]['despesa'] += total_subgrupo
-
-            # Armazenar detalhes do subgrupo
-            if subgrupo_nome not in grupos_info[grupo_nome]['subgrupos']:
-                grupos_info[grupo_nome]['subgrupos'][subgrupo_nome] = []
-            grupos_info[grupo_nome]['subgrupos'][subgrupo_nome].extend(itens)
-
-    # Calcular resultados
-    for grupo in grupos_info.values():
-        grupo['resultado'] = grupo['receita'] - grupo['despesa']
-
-    # Data de geração
-    data_geracao = datetime.now().strftime('%d/%m/%Y às %H:%M')
-
-    company_manager.close()
-
-    # Renderizar template
-    html_content = render_template(
-        'admin/relatorio_viabilidade_pdf.html',
-        empresa=empresa,
-        ano_selecionado=ano_selecionado,
-        grupos_info=grupos_info,
-        data_geracao=data_geracao
-    )
-
-    # Gerar PDF
-    pdf = HTML(string=html_content).write_pdf()
-
-    # Retornar PDF
-    response = make_response(pdf)
-    response.headers['Content-Type'] = 'application/pdf'
-    response.headers['Content-Disposition'] = f'inline; filename=Relatorio_Viabilidade_{empresa["nome"]}_{ano_selecionado}.pdf'
-
-    return response
+    except Exception as e:
+        import traceback
+        erro_completo = traceback.format_exc()
+        logger.error(f"[PDF VIAB USER] ERRO ao gerar PDF: {str(e)}", exc_info=True)
+        html_erro = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Erro ao Gerar PDF</title>
+            <style>
+                body {{ font-family: monospace; margin: 20px; background: #f5f5f5; }}
+                .erro {{ background: #fff; padding: 20px; border-left: 4px solid #e74c3c; }}
+                h1 {{ color: #e74c3c; }}
+                pre {{ background: #2c3e50; color: #ecf0f1; padding: 15px; overflow-x: auto; }}
+            </style>
+        </head>
+        <body>
+            <div class="erro">
+                <h1>❌ Erro ao Gerar PDF Viabilidade (Usuário)</h1>
+                <p><strong>Erro:</strong> {str(e)}</p>
+                <h2>Stack Trace Completo:</h2>
+                <pre>{erro_completo}</pre>
+                <p><em>Este erro também foi salvo no arquivo de log: logs/admin_pages.log</em></p>
+            </div>
+        </body>
+        </html>
+        """
+        return html_erro, 500
 
 
 @user_bp.route('/user/logout')
