@@ -831,6 +831,37 @@ def api_dados_bpo_user(empresa_id):
                     despesa = realizado.get('despesa', 0) or 0
                     geral = realizado.get('geral', 0) or 0
 
+                    # RECALCULAR DESPESA DO REAL_MP SE EXISTIR PERCENTUAL MANUAL
+                    if cenario_key == 'real_mp':
+                        percentual_mp_manual = dados.get('percentual_mp_manual')
+                        if percentual_mp_manual is not None:
+                            # Pegar a despesa do "Resultado Real"
+                            despesa_real = totais_calculados.get('real', {}).get(mes_num, totais_calculados.get('real', {}).get(str(mes_num), {})).get('realizado', {}).get('despesa', 0) or 0
+
+                            # Buscar o valor do item 2.08 (Matéria Prima)
+                            valor_materia_prima = 0
+                            itens = dados.get('itens_hierarquicos', [])
+                            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+                            for item in items_to_process:
+                                if isinstance(itens, list):
+                                    codigo = item.get('codigo', '')
+                                    item_data = item
+                                else:
+                                    codigo, item_data = item
+
+                                if codigo == '2.08':
+                                    dados_mensais = item_data.get('dados_mensais', [])
+                                    if dados_mensais and len(dados_mensais) > 0:
+                                        mes_atual_dados = dados_mensais[0]
+                                        valor_materia_prima = mes_atual_dados.get('valor_realizado', 0) or 0
+                                    break
+
+                            # Nova fórmula: Despesa_Real - Matéria_Prima + (Receita × Percentual)
+                            despesa_recalculada = despesa_real - valor_materia_prima + ((percentual_mp_manual / 100) * receita)
+                            despesa = despesa_recalculada
+                            geral = receita - despesa
+
                     totais[cenario_key]['receita'] += receita
                     totais[cenario_key]['despesa'] += despesa
                     totais[cenario_key]['geral'] += geral
