@@ -1331,9 +1331,36 @@ def api_dados_bpo(empresa_id):
                     if cenario_key == 'real_mp':
                         percentual_mp_manual = dados.get('percentual_mp_manual')
                         if percentual_mp_manual is not None:
-                            # Usar percentual manual: (percentual / 100) * receita
-                            despesa_recalculada = (percentual_mp_manual / 100) * receita
-                            logger.debug(f"REAL_MP {mes_num}/{ano}: Usando percentual manual {percentual_mp_manual}% → Despesa recalculada: R$ {despesa_recalculada:,.2f} (original: R$ {despesa:,.2f})")
+                            # Pegar a despesa do "Resultado Real"
+                            despesa_real = totais_calculados.get('real', {}).get(mes_num, totais_calculados.get('real', {}).get(str(mes_num), {})).get('realizado', {}).get('despesa', 0) or 0
+
+                            # Buscar o valor do item 2.08 (Matéria Prima)
+                            valor_materia_prima = 0
+                            itens = dados.get('itens_hierarquicos', [])
+
+                            # Itens pode ser lista ou dict
+                            items_to_process = itens if isinstance(itens, list) else itens.items()
+
+                            for item in items_to_process:
+                                if isinstance(itens, list):
+                                    codigo = item.get('codigo', '')
+                                    item_data = item
+                                else:
+                                    codigo, item_data = item
+
+                                # Verificar se é o item 2.08
+                                if codigo == '2.08':
+                                    dados_mensais = item_data.get('dados_mensais', [])
+                                    if dados_mensais and len(dados_mensais) > 0:
+                                        mes_atual_dados = dados_mensais[0]
+                                        valor_materia_prima = mes_atual_dados.get('valor_realizado', 0) or 0
+                                    break
+
+                            # Nova fórmula: Despesa_Real - Matéria_Prima + (Receita × Percentual)
+                            despesa_recalculada = despesa_real - valor_materia_prima + ((percentual_mp_manual / 100) * receita)
+
+                            logger.debug(f"REAL_MP {mes_num}/{ano}: Despesa Real: R$ {despesa_real:,.2f}, Matéria Prima (2.08): R$ {valor_materia_prima:,.2f}, Percentual {percentual_mp_manual}% × Receita R$ {receita:,.2f} = R$ {(percentual_mp_manual / 100) * receita:,.2f} → Despesa final: R$ {despesa_recalculada:,.2f}")
+
                             despesa = despesa_recalculada
                             geral = receita - despesa  # Recalcular geral também
 
