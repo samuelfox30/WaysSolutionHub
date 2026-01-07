@@ -2176,3 +2176,72 @@ def gerar_relatorio_viabilidade(empresa_id):
 
     return response
 
+
+# ========== API: GERENCIAMENTO DE MESES BPO ==========
+
+@admin_bp.route('/admin/api/listar-meses-bpo/<int:empresa_id>')
+def listar_meses_bpo(empresa_id):
+    """Lista todos os meses de BPO disponíveis para uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({'sucesso': False, 'mensagem': 'Acesso negado'}), 403
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    try:
+        # Buscar todos os meses disponíveis
+        meses = company_manager.listar_meses_bpo_empresa(empresa_id)
+        company_manager.close()
+
+        return jsonify({
+            'sucesso': True,
+            'meses': meses
+        })
+
+    except Exception as e:
+        company_manager.close()
+        return jsonify({
+            'sucesso': False,
+            'mensagem': f'Erro ao listar meses: {str(e)}'
+        }), 500
+
+
+@admin_bp.route('/admin/api/excluir-meses-bpo', methods=['POST'])
+def excluir_meses_bpo():
+    """Exclui múltiplos meses de BPO de uma empresa"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({'sucesso': False, 'mensagem': 'Acesso negado'}), 403
+
+    data = request.get_json()
+    empresa_id = data.get('empresa_id')
+    meses = data.get('meses', [])  # Lista de strings no formato "ano-mes"
+
+    if not empresa_id or not meses:
+        return jsonify({'sucesso': False, 'mensagem': 'Parâmetros inválidos'}), 400
+
+    from models.company_manager import CompanyManager
+    company_manager = CompanyManager()
+
+    try:
+        excluidos = 0
+        for mes_str in meses:
+            ano, mes = mes_str.split('-')
+            sucesso = company_manager.excluir_dados_bpo_empresa(int(empresa_id), int(ano), int(mes))
+            if sucesso:
+                excluidos += 1
+
+        company_manager.close()
+
+        return jsonify({
+            'sucesso': True,
+            'excluidos': excluidos,
+            'total': len(meses)
+        })
+
+    except Exception as e:
+        company_manager.close()
+        return jsonify({
+            'sucesso': False,
+            'mensagem': f'Erro ao excluir meses: {str(e)}'
+        }), 500
+
