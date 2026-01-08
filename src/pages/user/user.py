@@ -696,6 +696,12 @@ def visualizar_bpo():
         # Criar objeto empresa compatível com o template do admin
         empresa = {'nome': empresa_nome}
 
+        # Buscar meses disponíveis para o calendário
+        from models.company_manager import CompanyManager
+        company_manager = CompanyManager()
+        meses_disponiveis = company_manager.listar_meses_bpo_empresa(empresa_id)
+        company_manager.close()
+
         # Renderizar dashboard BPO do usuário
         return render_template(
             'user/dashboard_bpo.html',
@@ -703,6 +709,7 @@ def visualizar_bpo():
             empresa=empresa,
             empresa_nome=empresa_nome,
             empresa_id=empresa_id,
+            meses_disponiveis=meses_disponiveis,
             is_user_view=True  # Flag para o template saber que é visualização de usuário
         )
     else:

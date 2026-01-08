@@ -318,48 +318,44 @@
                 Filtros de Período
             </h5>
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-12 col-md-4 col-lg-3">
                     <label class="form-label">Tipo de DRE</label>
                     <select id="tipo_dre" class="form-select">
-                        <option value="fluxo_caixa">Resultado por Fluxo de Caixa</option>
-                        <option value="real">Resultado Real</option>
-                        <option value="real_mp">Resultado Real + Custo MP</option>
+                        <option value="fluxo_caixa">Fluxo de Caixa</option>
+                        <option value="real">Real</option>
+                        <option value="real_mp">Real + Custo MP</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Mês Início</label>
-                    <select id="mes_inicio" class="form-select">
-                        {% for i in range(1, 13) %}
-                        <option value="{{ i }}" {% if i == 1 %}selected{% endif %}>{{ i }}</option>
-                        {% endfor %}
-                    </select>
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">Período Inicial</label>
+                    <div class="input-group">
+                        <input type="text" id="periodo_inicio_display" class="form-control" placeholder="Selecione..." readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="abrirCalendario('inicio')">
+                            <i class="bi bi-calendar3"></i>
+                        </button>
+                    </div>
+                    <input type="hidden" id="mes_inicio" value="1">
+                    <input type="hidden" id="ano_inicio" value="2025">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Ano Início</label>
-                    <input type="number" id="ano_inicio" class="form-control" value="2025" min="2000" max="2100">
+                <div class="col-12 col-md-4 col-lg-3">
+                    <label class="form-label">Período Final</label>
+                    <div class="input-group">
+                        <input type="text" id="periodo_fim_display" class="form-control" placeholder="Selecione..." readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="abrirCalendario('fim')">
+                            <i class="bi bi-calendar3"></i>
+                        </button>
+                    </div>
+                    <input type="hidden" id="mes_fim" value="12">
+                    <input type="hidden" id="ano_fim" value="2025">
                 </div>
-                <div class="col-md-2">
-                    <label class="form-label">Mês Fim</label>
-                    <select id="mes_fim" class="form-select">
-                        {% for i in range(1, 13) %}
-                        <option value="{{ i }}" {% if i == 12 %}selected{% endif %}>{{ i }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label">Ano Fim</label>
-                    <input type="number" id="ano_fim" class="form-control" value="2025" min="2000" max="2100">
-                </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button class="btn btn-filter w-100" onclick="atualizarDados()">
-                        <i class="bi bi-search me-1"></i>
-                        Filtrar
+                <div class="col-6 col-md-6 col-lg-auto d-flex align-items-end">
+                    <button class="btn btn-filter px-4" onclick="atualizarDados()">
+                        <i class="bi bi-search me-2"></i>Filtrar
                     </button>
                 </div>
-                <div class="col-md-1 d-flex align-items-end">
-                    <button class="btn btn-danger w-100" onclick="gerarPDF()" title="Gerar Relatório PDF">
-                        <i class="bi bi-file-pdf me-1"></i>
-                        PDF
+                <div class="col-6 col-md-6 col-lg-auto d-flex align-items-end">
+                    <button class="btn btn-danger px-4" onclick="gerarPDF()" title="Gerar Relatório PDF">
+                        <i class="bi bi-file-pdf me-2"></i>PDF
                     </button>
                 </div>
             </div>
@@ -1094,6 +1090,189 @@ function gerarPDF() {
 
 // Carregar ao iniciar
 atualizarDados();
+
+// ========== CALENDÁRIO DE MESES ==========
+const mesesDisponiveis = {{ meses_disponiveis|tojson }};
+const nomesMeses = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+let tipoSelecionando = ''; // 'inicio' ou 'fim'
+
+function abrirCalendario(tipo) {
+    tipoSelecionando = tipo;
+    const modal = new bootstrap.Modal(document.getElementById('calendarioModal'));
+
+    // Pegar ano atual do campo hidden
+    const anoAtual = tipo === 'inicio'
+        ? parseInt(document.getElementById('ano_inicio').value)
+        : parseInt(document.getElementById('ano_fim').value);
+
+    document.getElementById('anoCalendario').value = anoAtual;
+    renderizarCalendario(anoAtual);
+    modal.show();
+}
+
+function renderizarCalendario(ano) {
+    const container = document.getElementById('calendarioMeses');
+    container.innerHTML = '';
+
+    // Criar grid de meses
+    for (let mes = 1; mes <= 12; mes++) {
+        const temDados = mesesDisponiveis.some(m => m.ano === ano && m.mes === mes);
+
+        const mesDiv = document.createElement('div');
+        mesDiv.className = `mes-item ${temDados ? 'disponivel' : 'indisponivel'}`;
+        mesDiv.textContent = nomesMeses[mes - 1];
+
+        if (temDados) {
+            mesDiv.onclick = () => selecionarMes(mes, ano);
+        }
+
+        container.appendChild(mesDiv);
+    }
+}
+
+function selecionarMes(mes, ano) {
+    if (tipoSelecionando === 'inicio') {
+        document.getElementById('mes_inicio').value = mes;
+        document.getElementById('ano_inicio').value = ano;
+        document.getElementById('periodo_inicio_display').value = `${nomesMeses[mes-1]}/${ano}`;
+    } else {
+        document.getElementById('mes_fim').value = mes;
+        document.getElementById('ano_fim').value = ano;
+        document.getElementById('periodo_fim_display').value = `${nomesMeses[mes-1]}/${ano}`;
+    }
+
+    bootstrap.Modal.getInstance(document.getElementById('calendarioModal')).hide();
+}
+
+function mudarAnoCalendario(direcao) {
+    const inputAno = document.getElementById('anoCalendario');
+    const anoAtual = parseInt(inputAno.value);
+    const novoAno = anoAtual + direcao;
+
+    inputAno.value = novoAno;
+    renderizarCalendario(novoAno);
+}
+
+// Inicializar valores de display ao carregar
+window.addEventListener('DOMContentLoaded', function() {
+    const mesInicio = parseInt(document.getElementById('mes_inicio').value);
+    const anoInicio = parseInt(document.getElementById('ano_inicio').value);
+    const mesFim = parseInt(document.getElementById('mes_fim').value);
+    const anoFim = parseInt(document.getElementById('ano_fim').value);
+
+    document.getElementById('periodo_inicio_display').value = `${nomesMeses[mesInicio-1]}/${anoInicio}`;
+    document.getElementById('periodo_fim_display').value = `${nomesMeses[mesFim-1]}/${anoFim}`;
+});
 </script>
+
+<!-- MODAL CALENDÁRIO -->
+<div class="modal fade" id="calendarioModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="bi bi-calendar3 me-2"></i>
+                    Selecione o Mês
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="calendario-header">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="mudarAnoCalendario(-1)">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <input type="number" id="anoCalendario" class="form-control form-control-sm text-center"
+                           value="2025" min="2000" max="2100"
+                           onchange="renderizarCalendario(parseInt(this.value))">
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="mudarAnoCalendario(1)">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+                <div id="calendarioMeses" class="calendario-meses"></div>
+                <div class="calendario-legenda">
+                    <div><span class="legenda-box disponivel"></span> Meses com dados</div>
+                    <div><span class="legenda-box indisponivel"></span> Sem dados</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.calendario-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.calendario-header input {
+    max-width: 100px;
+}
+
+.calendario-meses {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.mes-item {
+    padding: 1rem;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+.mes-item.disponivel {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2);
+}
+
+.mes-item.disponivel:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.mes-item.indisponivel {
+    background: #f1f5f9;
+    color: #94a3b8;
+    cursor: not-allowed;
+}
+
+.calendario-legenda {
+    display: flex;
+    gap: 1.5rem;
+    justify-content: center;
+    padding-top: 1rem;
+    border-top: 1px solid #e2e8f0;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.calendario-legenda > div {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legenda-box {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+}
+
+.legenda-box.disponivel {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.legenda-box.indisponivel {
+    background: #f1f5f9;
+}
+</style>
 
 {% endblock %}

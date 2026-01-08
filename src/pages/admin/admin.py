@@ -1197,6 +1197,10 @@ def dashboard_bpo(empresa_id):
     from models.company_manager import CompanyManager
     company_manager = CompanyManager()
     empresa = company_manager.buscar_empresa_por_id(empresa_id)
+
+    # Buscar meses disponíveis para o calendário
+    meses_disponiveis = company_manager.listar_meses_bpo_empresa(empresa_id)
+
     company_manager.close()
 
     if not empresa:
@@ -1206,7 +1210,8 @@ def dashboard_bpo(empresa_id):
     return render_template(
         'admin/dashboard_bpo.html',
         empresa=empresa,
-        empresa_id=empresa_id
+        empresa_id=empresa_id,
+        meses_disponiveis=meses_disponiveis
     )
 
 
