@@ -154,14 +154,14 @@
                 <a href="{{ url_for('user.user_dashboard') }}"
                    class="nav-link {% if request.endpoint == 'user.user_dashboard' %}active{% endif %}">
                     <i class="bi bi-house-fill me-2"></i>
-                    <span>Dashboard</span>
+                    <span>Dashboard Viabilidade</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="{{ url_for('user.visualizar_dados') }}"
                    class="nav-link {% if request.endpoint == 'user.visualizar_dados' %}active{% endif %}">
                     <i class="bi bi-table me-2"></i>
-                    <span>Dados Detalhados</span>
+                    <span>Dados Detalhados Viabilidade</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -175,7 +175,7 @@
                 <a href="{{ url_for('user.consultar_dados_bpo') }}"
                    class="nav-link {% if request.endpoint == 'user.consultar_dados_bpo' %}active{% endif %}">
                     <i class="bi bi-table me-2"></i>
-                    <span>Consultar BPO (Tabela)</span>
+                    <span>Dados Detalhados BPO</span>
                 </a>
             </li>
             {% endif %}
