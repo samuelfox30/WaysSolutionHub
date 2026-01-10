@@ -1385,13 +1385,13 @@ def gerar_relatorio_bpo():
     chart1.title = "Comparativo de Resultado - 3 DREs"
     chart1.y_axis.title = 'Resultado (R$)'
     chart1.style = 11
-    data = Reference(ws, min_col=2, min_row=6, max_row=9)
+    data = Reference(ws, min_col=2, min_row=7, max_row=9)
     cats = Reference(ws, min_col=1, min_row=7, max_row=9)
-    chart1.add_data(data, titles_from_data=True)
+    chart1.add_data(data, titles_from_data=False)
     chart1.set_categories(cats)
     chart1.height = 10
     chart1.width = 18
-    ws.add_chart(chart1, 'A7')
+    ws.add_chart(chart1, 'J7')
 
     # ==== GRÁFICO 2: EVOLUÇÃO MENSAL (Receita x Despesa x Resultado) ====
     row = 6
@@ -1414,13 +1414,14 @@ def gerar_relatorio_bpo():
     chart2.y_axis.title = 'Valor (R$)'
     chart2.x_axis.title = 'Mês'
     chart2.style = 12
-    data = Reference(ws, min_col=col_offset+1, min_row=6, max_row=6+len(labels_meses), max_col=col_offset+3)
-    cats = Reference(ws, min_col=col_offset, min_row=7, max_row=6+len(labels_meses))
+    max_row_chart2 = 6 + len(labels_meses)
+    data = Reference(ws, min_col=col_offset+1, min_row=6, max_row=max_row_chart2, max_col=col_offset+3)
+    cats = Reference(ws, min_col=col_offset, min_row=7, max_row=max_row_chart2)
     chart2.add_data(data, titles_from_data=True)
     chart2.set_categories(cats)
     chart2.height = 12
     chart2.width = 22
-    ws.add_chart(chart2, 'A22')
+    ws.add_chart(chart2, 'A12')
 
     # ==== GRÁFICO 3: PIZZA CATEGORIAS DE RECEITA ====
     row_start_receita = 6 + len(labels_meses) + 3
@@ -1435,16 +1436,17 @@ def gerar_relatorio_bpo():
         ws.cell(row, 2, cat['realizado'])
         row += 1
 
-    chart3 = PieChart()
-    chart3.title = "Distribuição de Receitas por Categoria"
-    chart3.style = 10
-    data = Reference(ws, min_col=2, min_row=row_start_receita, max_row=row-1)
-    cats = Reference(ws, min_col=1, min_row=row_start_receita+1, max_row=row-1)
-    chart3.add_data(data, titles_from_data=True)
-    chart3.set_categories(cats)
-    chart3.height = 12
-    chart3.width = 16
-    ws.add_chart(chart3, 'J7')
+    if len(categorias_receita) > 0:
+        chart3 = PieChart()
+        chart3.title = "Distribuição de Receitas por Categoria"
+        chart3.style = 10
+        data = Reference(ws, min_col=2, min_row=row_start_receita+1, max_row=row-1)
+        cats = Reference(ws, min_col=1, min_row=row_start_receita+1, max_row=row-1)
+        chart3.add_data(data, titles_from_data=False)
+        chart3.set_categories(cats)
+        chart3.height = 12
+        chart3.width = 16
+        ws.add_chart(chart3, 'J22')
 
     # ==== GRÁFICO 4: PIZZA CATEGORIAS DE DESPESA ====
     row_start_despesa = row + 2
@@ -1459,16 +1461,17 @@ def gerar_relatorio_bpo():
         ws.cell(row, 2, cat['realizado'])
         row += 1
 
-    chart4 = PieChart()
-    chart4.title = "Distribuição de Despesas por Categoria"
-    chart4.style = 10
-    data = Reference(ws, min_col=2, min_row=row_start_despesa, max_row=row-1)
-    cats = Reference(ws, min_col=1, min_row=row_start_despesa+1, max_row=row-1)
-    chart4.add_data(data, titles_from_data=True)
-    chart4.set_categories(cats)
-    chart4.height = 12
-    chart4.width = 16
-    ws.add_chart(chart4, 'J22')
+    if len(categorias_despesa) > 0:
+        chart4 = PieChart()
+        chart4.title = "Distribuição de Despesas por Categoria"
+        chart4.style = 10
+        data = Reference(ws, min_col=2, min_row=row_start_despesa+1, max_row=row-1)
+        cats = Reference(ws, min_col=1, min_row=row_start_despesa+1, max_row=row-1)
+        chart4.add_data(data, titles_from_data=False)
+        chart4.set_categories(cats)
+        chart4.height = 12
+        chart4.width = 16
+        ws.add_chart(chart4, 'J37')
 
     # ==== GRÁFICO 5: BARRAS HORIZONTAIS - RECEITA vs DESPESA POR MÊS ====
     row_start_bar = row + 2
@@ -1497,7 +1500,7 @@ def gerar_relatorio_bpo():
     chart5.set_categories(cats)
     chart5.height = 14
     chart5.width = 20
-    ws.add_chart(chart5, 'J37')
+    ws.add_chart(chart5, 'J52')
 
     # Ocultar dados (deixar apenas gráficos visíveis)
     for col_letter in ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']:

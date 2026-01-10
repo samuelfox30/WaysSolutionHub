@@ -555,6 +555,11 @@ function renderizarTabela(data) {
     let bodyHTML = '';
 
     itens.forEach(item => {
+        // Ocultar linhas que não possuem código
+        if (!item.codigo) {
+            return; // Pular este item
+        }
+
         bodyHTML += `<tr>`;
 
         // Coluna de descrição com hierarquia
@@ -599,12 +604,15 @@ function renderizarTabela(data) {
                     percRealizado = (realizado / receitaRealizadaMes) * 100;
                 }
 
+                // Calcular % Atingido: % Realizada - % Orçada
+                const percAtingido = percRealizado - percOrcado;
+
                 bodyHTML += `
                     <td>${formatMoney(orcado)}</td>
                     <td style="color: #6b7280; font-weight: 500;">${formatPercent(percOrcado)}</td>
                     <td>${formatMoney(realizado)}</td>
                     <td style="color: #6b7280; font-weight: 500;">${formatPercent(percRealizado)}</td>
-                    <td>${formatPercentCondicional(perc)}</td>
+                    <td style="font-weight: 600;">${formatPercent(percAtingido)}</td>
                     <td>${formatMoneyCondicional(dif)}</td>
                 `;
             } else {
@@ -678,6 +686,22 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
     console.log('   cenario:', cenario);
     console.log('   cenario keys:', Object.keys(cenario));
 
+    // Coletar dados da Receita para cálculo de percentuais
+    const receitaOrcadoPorMes = {};
+    const receitaRealizadoPorMes = {};
+    meses.forEach(mes => {
+        const chave = `${mes.ano}_${mes.mes_numero}`;
+        const dados = cenario[chave];
+        if (dados) {
+            if (dados.orcamento && dados.orcamento.receita !== undefined) {
+                receitaOrcadoPorMes[chave] = dados.orcamento.receita;
+            }
+            if (dados.realizado && dados.realizado.receita !== undefined) {
+                receitaRealizadoPorMes[chave] = dados.realizado.receita;
+            }
+        }
+    });
+
     // Criar cabeçalho com 2 linhas
     const headerElement = document.getElementById(headerId);
 
@@ -739,8 +763,18 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
             if (dados) {
                 const orcamento = dados.orcamento && dados.orcamento[catKey] !== undefined ? dados.orcamento[catKey] : null;
                 const realizado = dados.realizado && dados.realizado[catKey] !== undefined ? dados.realizado[catKey] : null;
-                const percAtingido = dados.perc_atingido && dados.perc_atingido[catKey] !== undefined ? dados.perc_atingido[catKey] : null;
                 const diferenca = dados.diferenca && dados.diferenca[catKey] !== undefined ? dados.diferenca[catKey] : null;
+
+                // Calcular % Atingido: % Realizada - % Orçada
+                let percAtingido = null;
+                const receitaOrcadoMes = receitaOrcadoPorMes[chave] || 0;
+                const receitaRealizadoMes = receitaRealizadoPorMes[chave] || 0;
+
+                if (orcamento !== null && realizado !== null) {
+                    const percOrcado = receitaOrcadoMes > 0 ? (orcamento / receitaOrcadoMes) * 100 : 0;
+                    const percRealizado = receitaRealizadoMes > 0 ? (realizado / receitaRealizadoMes) * 100 : 0;
+                    percAtingido = percRealizado - percOrcado;
+                }
 
                 // Acumular totais
                 if (orcamento !== null) totalOrcamento += orcamento;
@@ -750,7 +784,7 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
                 bodyHTML += `
                     <td>${orcamento !== null ? formatMoney(orcamento) : '<span class="valor-neutro">-</span>'}</td>
                     <td>${realizado !== null ? formatMoney(realizado) : '<span class="valor-neutro">-</span>'}</td>
-                    <td>${percAtingido !== null ? formatPercentCondicional(percAtingido) : '<span class="valor-neutro">-</span>'}</td>
+                    <td>${percAtingido !== null ? '<span style="font-weight: 600;">' + formatPercent(percAtingido) + '</span>' : '<span class="valor-neutro">-</span>'}</td>
                     <td>${diferenca !== null ? formatMoneyCondicional(diferenca) : '<span class="valor-neutro">-</span>'}</td>
                 `;
             } else {
