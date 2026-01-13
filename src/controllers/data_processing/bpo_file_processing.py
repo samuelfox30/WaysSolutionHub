@@ -22,6 +22,25 @@ logger = get_logger('bpo_processing')
 # FUNÇÕES AUXILIARES
 # ============================================================================
 
+def eh_linha_centro_custo(texto):
+    """
+    Verifica se a linha é um centro de custo que deve ser ignorado.
+
+    Formato: "Plano C.Custo: XXXXX - NOME"
+    Exemplo: "Plano C.Custo: 00004 - ADMINISTRATIVO"
+
+    Returns:
+        bool: True se deve ser ignorada, False caso contrário
+    """
+    texto = str(texto).strip().upper()
+
+    # Verifica se começa com "PLANO C.CUSTO:" ou variações
+    if texto.startswith("PLANO C.CUSTO:") or texto.startswith("PLANO C CUSTO:"):
+        return True
+
+    return False
+
+
 def extrair_codigo_e_nome(texto):
     """
     Extrai código hierárquico e nome de um texto como "1.01.06 - PMW RECEITA VENDA SERVIÇO"
@@ -745,6 +764,12 @@ def process_bpo_file(file):
             # Processar item se coluna A tem conteúdo
             col_a = row_values[0]
             if col_a and str(col_a).strip():
+                # IGNORAR linhas de centro de custo (formato: "Plano C.Custo: XXXXX - NOME")
+                if eh_linha_centro_custo(str(col_a)):
+                    logger.debug(f"Linha {linha_atual}: IGNORADA (Centro de Custo) - '{col_a}'")
+                    linha_atual += 1
+                    continue
+
                 item = processar_item_hierarquico(
                     col_a,
                     row_values,
