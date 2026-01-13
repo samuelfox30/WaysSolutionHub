@@ -1060,11 +1060,11 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
         const diferenca = cat.diferenca;
 
         // Calcular porcentagens
-        // Média Prevista %: (orçado / total receita orçado) * 100
-        const percPrev = totalReceitaOrcado !== 0 ? (Math.abs(orcado) / totalReceitaOrcado * 100).toFixed(2) : '0.00';
+        // Média Prevista %: (orçado / total receitas orçado) * 100
+        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / Math.abs(totalOrcado) * 100).toFixed(2) : '0.00';
 
-        // Média Realizada %: (realizado / total receita realizada) * 100
-        const percReal = totalReceitaRealizada !== 0 ? (Math.abs(realizado) / totalReceitaRealizada * 100).toFixed(2) : '0.00';
+        // Média Realizada %: (realizado / total receitas realizado) * 100
+        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / Math.abs(totalRealizado) * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
