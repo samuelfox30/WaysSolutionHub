@@ -203,6 +203,13 @@
     gap: 0.5rem;
 }
 
+/* Aumentar tamanho dos gráficos de pizza */
+#chartPizzaDespesa,
+#chartPizzaReceita {
+    max-height: 400px !important;
+    height: 400px !important;
+}
+
 /* Tabela estilizada */
 .styled-table {
     background: white;
@@ -283,7 +290,191 @@
     border-color: var(--bpo-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
+
+/* ========== CSS PARA IMPRESSÃO/PDF ========== */
+@media print {
+    /* Esconder sidebar e header */
+    .sidebar,
+    .main-header,
+    .bpo-banner,
+    .filter-card,
+    .btn,
+    button {
+        display: none !important;
+    }
+
+    /* Remover margens e ajustar layout */
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .main-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+    }
+
+    .main-content {
+        padding: 10mm !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+
+    /* Ajustar cards para impressão - COMPACTAR */
+    .card {
+        page-break-inside: avoid !important;
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        margin-bottom: 0.3rem !important;
+        padding: 0 !important;
+    }
+
+    .card-body {
+        padding: 0.5rem !important;
+        page-break-inside: avoid !important;
+    }
+
+    .card-header {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 10pt !important;
+    }
+
+    /* Reduzir tamanho dos gráficos - um pouco maior para legibilidade */
+    canvas {
+        max-width: 100% !important;
+        max-height: 250px !important;
+        height: auto !important;
+        page-break-inside: avoid !important;
+    }
+
+    /* Container de gráficos - compacto */
+    .chart-container {
+        page-break-inside: avoid !important;
+        margin-bottom: 0.3rem !important;
+        padding: 0.3rem !important;
+        max-height: 270px !important;
+    }
+
+    /* Reduzir espaçamento das rows */
+    .row {
+        margin-bottom: 0.3rem !important;
+        page-break-inside: avoid;
+    }
+
+    /* Colunas mais compactas */
+    .col, [class*="col-"] {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+
+    /* Seções mais compactas */
+    .section-header {
+        page-break-after: avoid;
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+        font-size: 11pt !important;
+        padding: 0.2rem 0 !important;
+    }
+
+    /* Ajustar tabelas */
+    table {
+        page-break-inside: auto;
+        font-size: 9pt;
+    }
+
+    table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tfoot {
+        display: table-footer-group;
+    }
+
+    /* Remover scroll das tabelas de detalhamento no PDF */
+    .table-responsive {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    /* Título do relatório - compacto */
+    .print-title {
+        display: block !important;
+        text-align: center;
+        font-size: 14pt;
+        font-weight: bold;
+        margin-bottom: 0.5rem !important;
+        color: #333;
+        page-break-after: avoid;
+    }
+
+    /* Margens da página - reduzidas */
+    @page {
+        margin: 10mm;
+        size: A4 portrait;
+    }
+
+    /* Reduzir fontes gerais */
+    body, p, span, div {
+        font-size: 9pt !important;
+        line-height: 1.2 !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+        line-height: 1.2 !important;
+    }
+
+    h5 {
+        font-size: 11pt !important;
+    }
+
+    /* Títulos de cards menores */
+    .card-title {
+        font-size: 10pt !important;
+        margin-bottom: 0.3rem !important;
+    }
+
+    /* Badges e labels menores */
+    .badge {
+        font-size: 8pt !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+
+    /* Remover padding extra */
+    .container-fluid {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+
+    /* Remover interatividade de gráficos */
+    .chart-container {
+        pointer-events: none;
+    }
+}
+
+/* Título visível apenas na impressão */
+.print-title {
+    display: none;
+}
 </style>
+
+<!-- Título visível apenas na impressão -->
+<div class="print-title">
+    Relatório BPO - {{ empresa.nome }}<br>
+    <small id="print-periodo" style="font-size: 12pt; font-weight: normal;"></small>
+</div>
 
 <!-- Banner BPO -->
 <div class="bpo-banner">
@@ -1082,17 +1273,25 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
 }
 
-// Gerar PDF
+// Gerar PDF usando impressão nativa do navegador
 function gerarPDF() {
-    const params = new URLSearchParams({
-        ano_inicio: document.getElementById('ano_inicio').value,
-        mes_inicio: document.getElementById('mes_inicio').value,
-        ano_fim: document.getElementById('ano_fim').value,
-        mes_fim: document.getElementById('mes_fim').value,
-        tipo_dre: document.getElementById('tipo_dre').value
-    });
+    // Pegar valores dos filtros para mostrar no título da impressão
+    const anoInicio = document.getElementById('ano_inicio').value;
+    const mesInicio = document.getElementById('mes_inicio').value;
+    const anoFim = document.getElementById('ano_fim').value;
+    const mesFim = document.getElementById('mes_fim').value;
+    const tipoDre = document.getElementById('tipo_dre').value;
 
-    window.open(`/user/gerar_relatorio_bpo?${params}`, '_blank');
+    // Nomes dos meses
+    const mesesNomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    // Atualizar período no título de impressão
+    const periodoTexto = `${mesesNomes[parseInt(mesInicio)]}/${anoInicio} até ${mesesNomes[parseInt(mesFim)]}/${anoFim} - ${tipoDre}`;
+    document.getElementById('print-periodo').textContent = periodoTexto;
+
+    // Abrir diálogo de impressão
+    window.print();
 }
 
 // Carregar ao iniciar
