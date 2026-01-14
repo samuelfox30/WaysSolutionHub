@@ -95,12 +95,17 @@
     .excel-table thead tr:first-child th {
         top: 0;
         z-index: 101;
+        border-bottom: none !important;
+        padding-bottom: 15px !important;
     }
 
     /* Segunda linha do cabeçalho (subcolunas) */
     .excel-table thead tr:nth-child(2) th {
-        top: 58px; /* Altura da primeira linha */
+        top: 49px; /* Ajustado para colar na primeira linha */
         z-index: 100;
+        border-top: none !important;
+        padding-top: 15px !important;
+        margin-top: -1px;
     }
 
     .excel-table thead th:first-child {
@@ -295,7 +300,7 @@
     }
 
     .fullscreen-mode .excel-table thead tr:nth-child(2) th {
-        top: 58px;
+        top: 49px;
         z-index: 100;
     }
 
