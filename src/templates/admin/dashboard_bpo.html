@@ -326,36 +326,60 @@
         max-height: none !important;
     }
 
-    /* Ajustar cards para impressão */
+    /* Ajustar cards para impressão - COMPACTAR */
     .card {
         page-break-inside: avoid !important;
         box-shadow: none !important;
         border: 1px solid #ddd !important;
-        margin-bottom: 0.5rem !important;
+        margin-bottom: 0.3rem !important;
+        padding: 0 !important;
     }
 
-    /* Garantir que gráficos fiquem visíveis */
+    .card-body {
+        padding: 0.5rem !important;
+        page-break-inside: avoid !important;
+    }
+
+    .card-header {
+        padding: 0.4rem 0.5rem !important;
+        font-size: 10pt !important;
+    }
+
+    /* Reduzir tamanho dos gráficos - um pouco maior para legibilidade */
     canvas {
         max-width: 100% !important;
+        max-height: 250px !important;
         height: auto !important;
         page-break-inside: avoid !important;
     }
 
-    /* Container de gráficos - NUNCA quebrar */
+    /* Container de gráficos - compacto */
     .chart-container {
         page-break-inside: avoid !important;
-        margin-bottom: 1rem;
+        margin-bottom: 0.3rem !important;
+        padding: 0.3rem !important;
+        max-height: 270px !important;
     }
 
-    /* Card body (conteúdo) - NUNCA quebrar do título */
-    .card-body {
-        page-break-inside: avoid !important;
+    /* Reduzir espaçamento das rows */
+    .row {
+        margin-bottom: 0.3rem !important;
+        page-break-inside: avoid;
     }
 
-    /* Seções inteiras não devem quebrar */
-    .section-header + .row,
-    .section-header + .card {
-        page-break-before: auto;
+    /* Colunas mais compactas */
+    .col, [class*="col-"] {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+
+    /* Seções mais compactas */
+    .section-header {
+        page-break-after: avoid;
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+        font-size: 11pt !important;
+        padding: 0.2rem 0 !important;
     }
 
     /* Ajustar tabelas */
@@ -377,33 +401,55 @@
         display: table-footer-group;
     }
 
-    /* Sections podem quebrar */
-    .section-header {
-        page-break-after: avoid;
-        margin-top: 0.5rem;
-        margin-bottom: 0.5rem;
-    }
-
-    /* Cards de resultado */
-    .row {
-        page-break-inside: avoid;
-    }
-
-    /* Título do relatório */
+    /* Título do relatório - compacto */
     .print-title {
         display: block !important;
         text-align: center;
-        font-size: 16pt;
+        font-size: 14pt;
         font-weight: bold;
-        margin-bottom: 1rem;
+        margin-bottom: 0.5rem !important;
         color: #333;
         page-break-after: avoid;
     }
 
-    /* Margens da página */
+    /* Margens da página - reduzidas */
     @page {
-        margin: 15mm;
+        margin: 10mm;
         size: A4 portrait;
+    }
+
+    /* Reduzir fontes gerais */
+    body, p, span, div {
+        font-size: 9pt !important;
+        line-height: 1.2 !important;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        margin-top: 0.3rem !important;
+        margin-bottom: 0.3rem !important;
+        line-height: 1.2 !important;
+    }
+
+    h5 {
+        font-size: 11pt !important;
+    }
+
+    /* Títulos de cards menores */
+    .card-title {
+        font-size: 10pt !important;
+        margin-bottom: 0.3rem !important;
+    }
+
+    /* Badges e labels menores */
+    .badge {
+        font-size: 8pt !important;
+        padding: 0.2rem 0.4rem !important;
+    }
+
+    /* Remover padding extra */
+    .container-fluid {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
     }
 
     /* Remover interatividade de gráficos */
@@ -1306,7 +1352,7 @@ function gerarPDF() {
     const periodoTexto = `${mesesNomes[parseInt(mesInicio)]}/${anoInicio} até ${mesesNomes[parseInt(mesFim)]}/${anoFim} - ${tipoDre}`;
     document.getElementById('print-periodo').textContent = periodoTexto;
 
-    // Abrir diálogo de impressão (usuário pode salvar como PDF)
+    // Abrir diálogo de impressão
     window.print();
 }
 
