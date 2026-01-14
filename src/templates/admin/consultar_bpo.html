@@ -79,7 +79,6 @@
 
     .excel-table thead th {
         position: sticky;
-        top: 0;
         background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
         color: white;
         font-weight: 700;
@@ -87,18 +86,43 @@
         padding: 15px 12px;
         border: 1px solid rgba(255, 255, 255, 0.2);
         white-space: nowrap;
-        z-index: 10;
         font-size: 0.75rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
+    /* Primeira linha do cabeçalho (meses) */
+    .excel-table thead tr:first-child th {
+        top: 0;
+        z-index: 101;
+        border-bottom: none !important;
+        padding-bottom: 15px !important;
+    }
+
+    /* Segunda linha do cabeçalho (subcolunas) */
+    .excel-table thead tr:nth-child(2) th {
+        top: 49px; /* Ajustado para colar na primeira linha */
+        z-index: 100;
+        border-top: none !important;
+        padding-top: 15px !important;
+        margin-top: -1px;
+    }
+
     .excel-table thead th:first-child {
         position: sticky;
         left: 0;
-        z-index: 11;
+        z-index: 150;
         min-width: 300px;
         text-align: left;
+    }
+
+    /* Garantir que a primeira coluna de ambas as linhas fique fixa */
+    .excel-table thead tr:first-child th:first-child {
+        z-index: 151;
+    }
+
+    .excel-table thead tr:nth-child(2) th:first-child {
+        z-index: 150;
     }
 
     .excel-table tbody tr {
@@ -124,7 +148,7 @@
         background: white;
         font-weight: 600;
         text-align: left;
-        z-index: 9;
+        z-index: 50;
         border-right: 2px solid #dee2e6;
         white-space: normal;
         word-wrap: break-word;
@@ -228,6 +252,69 @@
         height: 3rem;
         border-width: 0.3rem;
     }
+
+    /* Botão maximizar */
+    .btn-maximizar {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        border: none;
+        color: white;
+        padding: 10px 20px;
+        font-weight: 600;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        transition: all 0.3s ease;
+        margin-bottom: 15px;
+    }
+
+    .btn-maximizar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+    }
+
+    /* Modo tela cheia */
+    .fullscreen-mode {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: white;
+        z-index: 9999;
+        padding: 20px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fullscreen-mode .table-scroll {
+        flex: 1;
+        overflow: auto;
+        max-height: calc(100vh - 80px);
+    }
+
+    /* Garantir que o cabeçalho fique fixo em tela cheia */
+    .fullscreen-mode .excel-table thead tr:first-child th {
+        top: 0;
+        z-index: 101;
+    }
+
+    .fullscreen-mode .excel-table thead tr:nth-child(2) th {
+        top: 49px;
+        z-index: 100;
+    }
+
+    .fullscreen-mode .excel-table thead tr:first-child th:first-child {
+        z-index: 151;
+    }
+
+    .fullscreen-mode .excel-table thead tr:nth-child(2) th:first-child {
+        z-index: 150;
+    }
+
+    .fullscreen-mode .excel-table tbody td:first-child {
+        z-index: 50;
+    }
 </style>
 
 <div class="container-fluid px-4">
@@ -321,6 +408,11 @@
 
     <!-- TABELA PRINCIPAL -->
     <div id="table-container" class="table-container" style="display: none;">
+        <div class="d-flex justify-content-end">
+            <button class="btn btn-maximizar" onclick="toggleFullscreen()" id="btn-fullscreen">
+                <i class="bi bi-arrows-fullscreen me-2"></i>Tela Cheia
+            </button>
+        </div>
         <div class="table-scroll">
             <table class="excel-table" id="excel-table">
                 <thead id="table-header">
@@ -848,6 +940,35 @@ function renderizarCenario(tipo, headerId, bodyId, totais_calculados, meses) {
 
     document.getElementById(bodyId).innerHTML = bodyHTML;
 }
+
+// Função para alternar tela cheia
+function toggleFullscreen() {
+    const container = document.getElementById('table-container');
+    const btn = document.getElementById('btn-fullscreen');
+    const icon = btn.querySelector('i');
+
+    if (container.classList.contains('fullscreen-mode')) {
+        // Sair da tela cheia
+        container.classList.remove('fullscreen-mode');
+        icon.className = 'bi bi-arrows-fullscreen me-2';
+        btn.innerHTML = '<i class="bi bi-arrows-fullscreen me-2"></i>Tela Cheia';
+    } else {
+        // Entrar em tela cheia
+        container.classList.add('fullscreen-mode');
+        icon.className = 'bi bi-fullscreen-exit me-2';
+        btn.innerHTML = '<i class="bi bi-fullscreen-exit me-2"></i>Sair da Tela Cheia';
+    }
+}
+
+// Atalho ESC para sair da tela cheia
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const container = document.getElementById('table-container');
+        if (container && container.classList.contains('fullscreen-mode')) {
+            toggleFullscreen();
+        }
+    }
+});
 </script>
 
 {% endblock %}

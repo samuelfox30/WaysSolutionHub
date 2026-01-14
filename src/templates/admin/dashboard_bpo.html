@@ -951,10 +951,12 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
     const valores = [];
     const cores = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'];
     let totalRealizado = 0;
+    let totalOrcado = 0;
 
-    // Calcular total realizado
+    // Calcular total orçado e realizado de todas as despesas
     for (const codigo in categorias) {
-        totalRealizado += categorias[codigo].realizado;
+        totalOrcado += Math.abs(categorias[codigo].orcado);
+        totalRealizado += Math.abs(categorias[codigo].realizado);
     }
 
     // Ordenar por código
@@ -1023,11 +1025,11 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
         const diferenca = cat.diferenca;
 
         // Calcular porcentagens
-        // Média Prevista %: (orçado / total receita orçado) * 100
-        const percPrev = totalReceitaOrcado !== 0 ? (Math.abs(orcado) / totalReceitaOrcado * 100).toFixed(2) : '0.00';
+        // Média Prevista %: (orçado / total despesas orçado) * 100
+        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / totalOrcado * 100).toFixed(2) : '0.00';
 
-        // Média Realizada %: (realizado / total receita realizada) * 100
-        const percReal = totalReceitaRealizada !== 0 ? (Math.abs(realizado) / totalReceitaRealizada * 100).toFixed(2) : '0.00';
+        // Média Realizada %: (realizado / total despesas realizado) * 100
+        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / totalRealizado * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
@@ -1130,11 +1132,11 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
         const diferenca = cat.diferenca;
 
         // Calcular porcentagens
-        // Média Prevista %: (orçado / total receita orçado) * 100
-        const percPrev = totalReceitaOrcado !== 0 ? (Math.abs(orcado) / totalReceitaOrcado * 100).toFixed(2) : '0.00';
+        // Média Prevista %: (orçado / total receitas orçado) * 100
+        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / Math.abs(totalOrcado) * 100).toFixed(2) : '0.00';
 
-        // Média Realizada %: (realizado / total receita realizada) * 100
-        const percReal = totalReceitaRealizada !== 0 ? (Math.abs(realizado) / totalReceitaRealizada * 100).toFixed(2) : '0.00';
+        // Média Realizada %: (realizado / total receitas realizado) * 100
+        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / Math.abs(totalRealizado) * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
