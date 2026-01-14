@@ -321,7 +321,7 @@
 
     /* Ajustar cards para impressão */
     .card {
-        page-break-inside: auto;
+        page-break-inside: avoid !important;
         box-shadow: none !important;
         border: 1px solid #ddd !important;
         margin-bottom: 0.5rem !important;
@@ -331,13 +331,24 @@
     canvas {
         max-width: 100% !important;
         height: auto !important;
-        page-break-inside: avoid;
+        page-break-inside: avoid !important;
     }
 
-    /* Container de gráficos */
+    /* Container de gráficos - NUNCA quebrar */
     .chart-container {
-        page-break-inside: avoid;
+        page-break-inside: avoid !important;
         margin-bottom: 1rem;
+    }
+
+    /* Card body (conteúdo) - NUNCA quebrar do título */
+    .card-body {
+        page-break-inside: avoid !important;
+    }
+
+    /* Seções inteiras não devem quebrar */
+    .section-header + .row,
+    .section-header + .card {
+        page-break-before: auto;
     }
 
     /* Ajustar tabelas */
