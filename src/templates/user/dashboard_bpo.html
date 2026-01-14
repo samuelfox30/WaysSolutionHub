@@ -283,7 +283,128 @@
     border-color: var(--bpo-primary);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
+
+/* ========== CSS PARA IMPRESSÃO/PDF ========== */
+@media print {
+    /* Esconder sidebar e header */
+    .sidebar,
+    .main-header,
+    .bpo-banner,
+    .filter-card,
+    .btn,
+    button {
+        display: none !important;
+    }
+
+    /* Remover margens e ajustar layout */
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: white;
+        height: auto !important;
+        overflow: visible !important;
+    }
+
+    .main-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+    }
+
+    .main-content {
+        padding: 10mm !important;
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+    }
+
+    /* Ajustar cards para impressão */
+    .card {
+        page-break-inside: auto;
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* Garantir que gráficos fiquem visíveis */
+    canvas {
+        max-width: 100% !important;
+        height: auto !important;
+        page-break-inside: avoid;
+    }
+
+    /* Container de gráficos */
+    .chart-container {
+        page-break-inside: avoid;
+        margin-bottom: 1rem;
+    }
+
+    /* Ajustar tabelas */
+    table {
+        page-break-inside: auto;
+        font-size: 9pt;
+    }
+
+    table tr {
+        page-break-inside: avoid;
+        page-break-after: auto;
+    }
+
+    thead {
+        display: table-header-group;
+    }
+
+    tfoot {
+        display: table-footer-group;
+    }
+
+    /* Sections podem quebrar */
+    .section-header {
+        page-break-after: avoid;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Cards de resultado */
+    .row {
+        page-break-inside: avoid;
+    }
+
+    /* Título do relatório */
+    .print-title {
+        display: block !important;
+        text-align: center;
+        font-size: 16pt;
+        font-weight: bold;
+        margin-bottom: 1rem;
+        color: #333;
+        page-break-after: avoid;
+    }
+
+    /* Margens da página */
+    @page {
+        margin: 15mm;
+        size: A4 portrait;
+    }
+
+    /* Remover interatividade de gráficos */
+    .chart-container {
+        pointer-events: none;
+    }
+}
+
+/* Título visível apenas na impressão */
+.print-title {
+    display: none;
+}
 </style>
+
+<!-- Título visível apenas na impressão -->
+<div class="print-title">
+    Relatório BPO - {{ empresa.nome }}<br>
+    <small id="print-periodo" style="font-size: 12pt; font-weight: normal;"></small>
+</div>
 
 <!-- Banner BPO -->
 <div class="bpo-banner">
@@ -1082,17 +1203,25 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
 }
 
-// Gerar PDF
+// Gerar PDF usando impressão nativa do navegador
 function gerarPDF() {
-    const params = new URLSearchParams({
-        ano_inicio: document.getElementById('ano_inicio').value,
-        mes_inicio: document.getElementById('mes_inicio').value,
-        ano_fim: document.getElementById('ano_fim').value,
-        mes_fim: document.getElementById('mes_fim').value,
-        tipo_dre: document.getElementById('tipo_dre').value
-    });
+    // Pegar valores dos filtros para mostrar no título da impressão
+    const anoInicio = document.getElementById('ano_inicio').value;
+    const mesInicio = document.getElementById('mes_inicio').value;
+    const anoFim = document.getElementById('ano_fim').value;
+    const mesFim = document.getElementById('mes_fim').value;
+    const tipoDre = document.getElementById('tipo_dre').value;
 
-    window.open(`/user/gerar_relatorio_bpo?${params}`, '_blank');
+    // Nomes dos meses
+    const mesesNomes = ['', 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    // Atualizar período no título de impressão
+    const periodoTexto = `${mesesNomes[parseInt(mesInicio)]}/${anoInicio} até ${mesesNomes[parseInt(mesFim)]}/${anoFim} - ${tipoDre}`;
+    document.getElementById('print-periodo').textContent = periodoTexto;
+
+    // Abrir diálogo de impressão (usuário pode salvar como PDF)
+    window.print();
 }
 
 // Carregar ao iniciar
