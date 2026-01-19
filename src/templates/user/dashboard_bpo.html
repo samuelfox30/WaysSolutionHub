@@ -991,11 +991,11 @@ function atualizarDados() {
             // Atualizar gráficos
             atualizarGraficos(data.meses, data.receitas, data.despesas, data.gerais);
 
-            // Atualizar categorias de despesa (passar receita realizada total)
-            atualizarCategoriasDespesa(data.categorias_despesa, data.total_receita_orcado, dre_sel.receita, data.num_meses);
+            // Atualizar categorias de despesa (passar média da receita prevista e realizada)
+            atualizarCategoriasDespesa(data.categorias_despesa, media_prev_rec, media_real_rec, data.num_meses);
 
             // Atualizar categorias de receita
-            atualizarCategoriasReceita(data.categorias_receita, data.total_receita_orcado, dre_sel.receita, data.num_meses);
+            atualizarCategoriasReceita(data.categorias_receita, media_prev_rec, media_real_rec, data.num_meses);
         })
         .catch(error => {
             console.error('Erro ao carregar dados:', error);
@@ -1059,7 +1059,7 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
     });
 }
 
-function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceitaRealizada, numMeses) {
+function atualizarCategoriasDespesa(categorias, mediaReceitaPrevista, mediaReceitaRealizada, numMeses) {
     if (!categorias || Object.keys(categorias).length === 0) {
         document.getElementById('tabelaDespesas').innerHTML = '<tr><td colspan="4" class="text-center">Sem dados</td></tr>';
         return;
@@ -1143,12 +1143,17 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
         const realizado = cat.realizado;
         const diferenca = cat.diferenca;
 
-        // Calcular porcentagens
-        // Média Prevista %: (orçado / total despesas orçado) * 100
-        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / totalOrcado * 100).toFixed(2) : '0.00';
+        // Calcular médias por mês
+        const mediaOrcado = orcado / numMeses;
+        const mediaRealizado = realizado / numMeses;
+        const mediaDiferenca = diferenca / numMeses;
 
-        // Média Realizada %: (realizado / total despesas realizado) * 100
-        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / totalRealizado * 100).toFixed(2) : '0.00';
+        // Calcular porcentagens
+        // Média Prevista %: (média orçado da categoria / média receita prevista) * 100
+        const percPrev = mediaReceitaPrevista !== 0 ? (Math.abs(mediaOrcado) / mediaReceitaPrevista * 100).toFixed(2) : '0.00';
+
+        // Média Realizada %: (média realizado da categoria / média receita realizada) * 100
+        const percReal = mediaReceitaRealizada !== 0 ? (Math.abs(mediaRealizado) / mediaReceitaRealizada * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
@@ -1156,9 +1161,9 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
         htmlTabela += `
             <tr>
                 <td><small>${cat.nome}</small></td>
-                <td><small>${formatMoney(orcado)} (${percPrev}%)</small></td>
-                <td><small>${formatMoney(realizado)} (${percReal}%)</small></td>
-                <td><small>${formatMoney(diferenca)} (${percDif}%)</small></td>
+                <td><small>${formatMoney(mediaOrcado)} (${percPrev}%)</small></td>
+                <td><small>${formatMoney(mediaRealizado)} (${percReal}%)</small></td>
+                <td><small>${formatMoney(mediaDiferenca)} (${percDif > 0 ? '+' : ''}${percDif}%)</small></td>
             </tr>
         `;
     });
@@ -1166,7 +1171,7 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
     document.getElementById('tabelaDespesas').innerHTML = htmlTabela;
 }
 
-function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceitaRealizada, numMeses) {
+function atualizarCategoriasReceita(categorias, mediaReceitaPrevista, mediaReceitaRealizada, numMeses) {
     if (!categorias || Object.keys(categorias).length === 0) {
         document.getElementById('tabelaReceitas').innerHTML = '<tr><td colspan="4" class="text-center">Sem dados</td></tr>';
         return;
@@ -1250,12 +1255,17 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
         const realizado = cat.realizado;
         const diferenca = cat.diferenca;
 
-        // Calcular porcentagens
-        // Média Prevista %: (orçado / total receitas orçado) * 100
-        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / Math.abs(totalOrcado) * 100).toFixed(2) : '0.00';
+        // Calcular médias por mês
+        const mediaOrcado = orcado / numMeses;
+        const mediaRealizado = realizado / numMeses;
+        const mediaDiferenca = diferenca / numMeses;
 
-        // Média Realizada %: (realizado / total receitas realizado) * 100
-        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / Math.abs(totalRealizado) * 100).toFixed(2) : '0.00';
+        // Calcular porcentagens
+        // Média Prevista %: (média orçado da categoria / média receita prevista) * 100
+        const percPrev = mediaReceitaPrevista !== 0 ? (Math.abs(mediaOrcado) / mediaReceitaPrevista * 100).toFixed(2) : '0.00';
+
+        // Média Realizada %: (média realizado da categoria / média receita realizada) * 100
+        const percReal = mediaReceitaRealizada !== 0 ? (Math.abs(mediaRealizado) / mediaReceitaRealizada * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
@@ -1263,9 +1273,9 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
         htmlTabela += `
             <tr>
                 <td><small>${cat.nome}</small></td>
-                <td><small>${formatMoney(orcado)} (${percPrev}%)</small></td>
-                <td><small>${formatMoney(realizado)} (${percReal}%)</small></td>
-                <td><small>${formatMoney(diferenca)} (${percDif}%)</small></td>
+                <td><small>${formatMoney(mediaOrcado)} (${percPrev}%)</small></td>
+                <td><small>${formatMoney(mediaRealizado)} (${percReal}%)</small></td>
+                <td><small>${formatMoney(mediaDiferenca)} (${percDif > 0 ? '+' : ''}${percDif}%)</small></td>
             </tr>
         `;
     });
