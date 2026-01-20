@@ -968,7 +968,14 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
+// Registrar o plugin datalabels
+Chart.register(ChartDataLabels);
+
+// Variável para controlar se está em modo de impressão (mostrar valores nas barras)
+let modoImpressao = false;
+
 let chartReceita, chartDespesa, chartGeral, chartPizzaDespesa, chartPizzaReceita;
 
 function formatMoney(val) {
@@ -1102,6 +1109,26 @@ function atualizarDados() {
 }
 
 function atualizarGraficos(labels, receitas, despesas, gerais) {
+    // Salvar dados para uso na impressão
+    dadosGraficos.labels = labels;
+    dadosGraficos.receitas = receitas;
+    dadosGraficos.despesas = despesas;
+    dadosGraficos.gerais = gerais;
+
+    // Configuração comum de datalabels para gráficos de barra
+    const datalabelsConfig = {
+        display: modoImpressao,
+        anchor: 'end',
+        align: 'top',
+        font: {
+            size: 20,
+            weight: 'bold'
+        },
+        formatter: function(value) {
+            return formatMoney(value);
+        }
+    };
+
     // Receita
     if (chartReceita) chartReceita.destroy();
     chartReceita = new Chart(document.getElementById('chartReceita'), {
@@ -1124,7 +1151,8 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
                             size: 13
                         }
                     }
-                }
+                },
+                datalabels: datalabelsConfig
             }
         }
     });
@@ -1151,7 +1179,8 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
                             size: 13
                         }
                     }
-                }
+                },
+                datalabels: datalabelsConfig
             }
         }
     });
@@ -1178,7 +1207,8 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
                             size: 13
                         }
                     }
-                }
+                },
+                datalabels: datalabelsConfig
             }
         }
     });
@@ -1258,12 +1288,15 @@ function atualizarCategoriasDespesa(categorias, mediaReceitaPrevista, mediaRecei
                             return `${formatMoney(value)} (${percent}%)`;
                         }
                     }
+                },
+                datalabels: {
+                    display: false
                 }
             }
         }
     });
 
-    // Atualizar tabela
+    // Atualizar tabela de despesas
     let htmlTabela = '';
     codigosOrdenados.forEach(codigo => {
         const cat = categorias[codigo];
@@ -1373,12 +1406,15 @@ function atualizarCategoriasReceita(categorias, mediaReceitaPrevista, mediaRecei
                             return `${formatMoney(value)} (${percent}%)`;
                         }
                     }
+                },
+                datalabels: {
+                    display: false
                 }
             }
         }
     });
 
-    // Atualizar tabela
+    // Atualizar tabela de receitas
     let htmlTabela = '';
     codigosOrdenados.forEach(codigo => {
         const cat = categorias[codigo];
@@ -1414,6 +1450,14 @@ function atualizarCategoriasReceita(categorias, mediaReceitaPrevista, mediaRecei
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
 }
 
+// Variáveis para armazenar dados dos gráficos (para recriar no modo impressão)
+let dadosGraficos = {
+    labels: [],
+    receitas: [],
+    despesas: [],
+    gerais: []
+};
+
 // Carregar ao iniciar
 atualizarDados();
 
@@ -1434,8 +1478,22 @@ function gerarPDF() {
     const periodoTexto = `${mesesNomes[parseInt(mesInicio)]}/${anoInicio} até ${mesesNomes[parseInt(mesFim)]}/${anoFim} - ${tipoDre}`;
     document.getElementById('print-periodo').textContent = periodoTexto;
 
-    // Abrir diálogo de impressão
-    window.print();
+    // Ativar modo impressão (mostra valores nas barras)
+    modoImpressao = true;
+
+    // Recriar gráficos de barra com valores visíveis
+    atualizarGraficos(dadosGraficos.labels, dadosGraficos.receitas, dadosGraficos.despesas, dadosGraficos.gerais);
+
+    // Aguardar renderização dos gráficos antes de imprimir
+    setTimeout(function() {
+        window.print();
+
+        // Após imprimir, desativar modo impressão e recriar gráficos normais
+        setTimeout(function() {
+            modoImpressao = false;
+            atualizarGraficos(dadosGraficos.labels, dadosGraficos.receitas, dadosGraficos.despesas, dadosGraficos.gerais);
+        }, 500);
+    }, 300);
 }
 
 // ========== MODAL PERCENTUAL MP ==========
