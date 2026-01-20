@@ -360,6 +360,32 @@
         page-break-inside: avoid !important;
     }
 
+    /* Gráficos de pizza menores no PDF */
+    #chartPizzaDespesa,
+    #chartPizzaReceita {
+        max-height: 280px !important;
+        max-width: 400px !important;
+        height: 280px !important;
+        width: 400px !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+
+    /* Container dos gráficos de pizza - centralizar */
+    .chart-card .card-body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+
+    /* Legenda dos gráficos de pizza maior no PDF */
+    .chart-card .card-body canvas + div,
+    .chart-card .card-body ul {
+        font-size: 10pt !important;
+    }
+
     /* Container de gráficos - compacto */
     .chart-container {
         page-break-inside: avoid !important;
@@ -1090,7 +1116,16 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
         },
         options: {
             responsive: true,
-            plugins: {legend: {display: false}}
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: {
+                            size: 13
+                        }
+                    }
+                }
+            }
         }
     });
 
@@ -1108,7 +1143,16 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
         },
         options: {
             responsive: true,
-            plugins: {legend: {display: false}}
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: {
+                            size: 13
+                        }
+                    }
+                }
+            }
         }
     });
 
@@ -1126,7 +1170,16 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
         },
         options: {
             responsive: true,
-            plugins: {legend: {display: false}}
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: {
+                            size: 13
+                        }
+                    }
+                }
+            }
         }
     });
 }
@@ -1177,6 +1230,9 @@ function atualizarCategoriasDespesa(categorias, mediaReceitaPrevista, mediaRecei
                 legend: {
                     position: 'right',
                     labels: {
+                        font: {
+                            size: 13
+                        },
                         generateLabels: function(chart) {
                             const data = chart.data;
                             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
@@ -1289,6 +1345,9 @@ function atualizarCategoriasReceita(categorias, mediaReceitaPrevista, mediaRecei
                 legend: {
                     position: 'right',
                     labels: {
+                        font: {
+                            size: 13
+                        },
                         generateLabels: function(chart) {
                             const data = chart.data;
                             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);

@@ -13,7 +13,6 @@ app.secret_key = 'minhasecretkeyemuitodificil'
 
 # Inicializar sistema de logging
 logger = Logger.setup_app_logger(app)
-
 # Add Páginas
 app.register_blueprint(app_index)
 app.register_blueprint(admin_bp)
