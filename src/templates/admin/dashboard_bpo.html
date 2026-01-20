@@ -360,6 +360,32 @@
         page-break-inside: avoid !important;
     }
 
+    /* Gráficos de pizza menores no PDF */
+    #chartPizzaDespesa,
+    #chartPizzaReceita {
+        max-height: 280px !important;
+        max-width: 400px !important;
+        height: 280px !important;
+        width: 400px !important;
+        margin: 0 auto !important;
+        display: block !important;
+    }
+
+    /* Container dos gráficos de pizza - centralizar */
+    .chart-card .card-body {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-align: center !important;
+    }
+
+    /* Legenda dos gráficos de pizza maior no PDF */
+    .chart-card .card-body canvas + div,
+    .chart-card .card-body ul {
+        font-size: 10pt !important;
+    }
+
     /* Container de gráficos - compacto */
     .chart-container {
         page-break-inside: avoid !important;
@@ -942,7 +968,14 @@
 </style>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
+// Registrar o plugin datalabels
+Chart.register(ChartDataLabels);
+
+// Variável para controlar se está em modo de impressão (mostrar valores nas barras)
+let modoImpressao = false;
+
 let chartReceita, chartDespesa, chartGeral, chartPizzaDespesa, chartPizzaReceita;
 
 function formatMoney(val) {
@@ -1063,11 +1096,11 @@ function atualizarDados() {
             // Atualizar gráficos
             atualizarGraficos(data.meses, data.receitas, data.despesas, data.gerais);
 
-            // Atualizar categorias de despesa (passar receita realizada total)
-            atualizarCategoriasDespesa(data.categorias_despesa, data.total_receita_orcado, dre_sel.receita, data.num_meses);
+            // Atualizar categorias de despesa (passar média da receita prevista e realizada)
+            atualizarCategoriasDespesa(data.categorias_despesa, media_prev_rec, media_real_rec, data.num_meses);
 
             // Atualizar categorias de receita
-            atualizarCategoriasReceita(data.categorias_receita, data.total_receita_orcado, dre_sel.receita, data.num_meses);
+            atualizarCategoriasReceita(data.categorias_receita, media_prev_rec, media_real_rec, data.num_meses);
         })
         .catch(error => {
             console.error('Erro ao carregar dados:', error);
@@ -1076,6 +1109,26 @@ function atualizarDados() {
 }
 
 function atualizarGraficos(labels, receitas, despesas, gerais) {
+    // Salvar dados para uso na impressão
+    dadosGraficos.labels = labels;
+    dadosGraficos.receitas = receitas;
+    dadosGraficos.despesas = despesas;
+    dadosGraficos.gerais = gerais;
+
+    // Configuração comum de datalabels para gráficos de barra
+    const datalabelsConfig = {
+        display: modoImpressao,
+        anchor: 'end',
+        align: 'top',
+        font: {
+            size: 20,
+            weight: 'bold'
+        },
+        formatter: function(value) {
+            return formatMoney(value);
+        }
+    };
+
     // Receita
     if (chartReceita) chartReceita.destroy();
     chartReceita = new Chart(document.getElementById('chartReceita'), {
@@ -1090,7 +1143,17 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
         },
         options: {
             responsive: true,
-            plugins: {legend: {display: false}}
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: {
+                            size: 13
+                        }
+                    }
+                },
+                datalabels: datalabelsConfig
+            }
         }
     });
 
@@ -1108,7 +1171,17 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
         },
         options: {
             responsive: true,
-            plugins: {legend: {display: false}}
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: {
+                            size: 13
+                        }
+                    }
+                },
+                datalabels: datalabelsConfig
+            }
         }
     });
 
@@ -1126,12 +1199,22 @@ function atualizarGraficos(labels, receitas, despesas, gerais) {
         },
         options: {
             responsive: true,
-            plugins: {legend: {display: false}}
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        font: {
+                            size: 13
+                        }
+                    }
+                },
+                datalabels: datalabelsConfig
+            }
         }
     });
 }
 
-function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceitaRealizada, numMeses) {
+function atualizarCategoriasDespesa(categorias, mediaReceitaPrevista, mediaReceitaRealizada, numMeses) {
     if (!categorias || Object.keys(categorias).length === 0) {
         document.getElementById('tabelaDespesas').innerHTML = '<tr><td colspan="4" class="text-center">Sem dados</td></tr>';
         return;
@@ -1177,6 +1260,9 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
                 legend: {
                     position: 'right',
                     labels: {
+                        font: {
+                            size: 13
+                        },
                         generateLabels: function(chart) {
                             const data = chart.data;
                             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
@@ -1202,12 +1288,15 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
                             return `${formatMoney(value)} (${percent}%)`;
                         }
                     }
+                },
+                datalabels: {
+                    display: false
                 }
             }
         }
     });
 
-    // Atualizar tabela
+    // Atualizar tabela de despesas
     let htmlTabela = '';
     codigosOrdenados.forEach(codigo => {
         const cat = categorias[codigo];
@@ -1215,12 +1304,17 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
         const realizado = cat.realizado;
         const diferenca = cat.diferenca;
 
-        // Calcular porcentagens
-        // Média Prevista %: (orçado / total despesas orçado) * 100
-        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / totalOrcado * 100).toFixed(2) : '0.00';
+        // Calcular médias por mês
+        const mediaOrcado = orcado / numMeses;
+        const mediaRealizado = realizado / numMeses;
+        const mediaDiferenca = diferenca / numMeses;
 
-        // Média Realizada %: (realizado / total despesas realizado) * 100
-        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / totalRealizado * 100).toFixed(2) : '0.00';
+        // Calcular porcentagens
+        // Média Prevista %: (média orçado da categoria / média receita prevista) * 100
+        const percPrev = mediaReceitaPrevista !== 0 ? (Math.abs(mediaOrcado) / mediaReceitaPrevista * 100).toFixed(2) : '0.00';
+
+        // Média Realizada %: (média realizado da categoria / média receita realizada) * 100
+        const percReal = mediaReceitaRealizada !== 0 ? (Math.abs(mediaRealizado) / mediaReceitaRealizada * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
@@ -1228,9 +1322,9 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
         htmlTabela += `
             <tr>
                 <td><small>${cat.nome}</small></td>
-                <td><small>${formatMoney(orcado)} (${percPrev}%)</small></td>
-                <td><small>${formatMoney(realizado)} (${percReal}%)</small></td>
-                <td><small>${formatMoney(diferenca)} (${percDif}%)</small></td>
+                <td><small>${formatMoney(mediaOrcado)} (${percPrev}%)</small></td>
+                <td><small>${formatMoney(mediaRealizado)} (${percReal}%)</small></td>
+                <td><small>${formatMoney(mediaDiferenca)} (${percDif > 0 ? '+' : ''}${percDif}%)</small></td>
             </tr>
         `;
     });
@@ -1238,7 +1332,7 @@ function atualizarCategoriasDespesa(categorias, totalReceitaOrcado, totalReceita
     document.getElementById('tabelaDespesas').innerHTML = htmlTabela;
 }
 
-function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceitaRealizada, numMeses) {
+function atualizarCategoriasReceita(categorias, mediaReceitaPrevista, mediaReceitaRealizada, numMeses) {
     if (!categorias || Object.keys(categorias).length === 0) {
         document.getElementById('tabelaReceitas').innerHTML = '<tr><td colspan="4" class="text-center">Sem dados</td></tr>';
         return;
@@ -1284,6 +1378,9 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
                 legend: {
                     position: 'right',
                     labels: {
+                        font: {
+                            size: 13
+                        },
                         generateLabels: function(chart) {
                             const data = chart.data;
                             const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
@@ -1309,12 +1406,15 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
                             return `${formatMoney(value)} (${percent}%)`;
                         }
                     }
+                },
+                datalabels: {
+                    display: false
                 }
             }
         }
     });
 
-    // Atualizar tabela
+    // Atualizar tabela de receitas
     let htmlTabela = '';
     codigosOrdenados.forEach(codigo => {
         const cat = categorias[codigo];
@@ -1322,12 +1422,17 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
         const realizado = cat.realizado;
         const diferenca = cat.diferenca;
 
-        // Calcular porcentagens
-        // Média Prevista %: (orçado / total receitas orçado) * 100
-        const percPrev = totalOrcado !== 0 ? (Math.abs(orcado) / Math.abs(totalOrcado) * 100).toFixed(2) : '0.00';
+        // Calcular médias por mês
+        const mediaOrcado = orcado / numMeses;
+        const mediaRealizado = realizado / numMeses;
+        const mediaDiferenca = diferenca / numMeses;
 
-        // Média Realizada %: (realizado / total receitas realizado) * 100
-        const percReal = totalRealizado !== 0 ? (Math.abs(realizado) / Math.abs(totalRealizado) * 100).toFixed(2) : '0.00';
+        // Calcular porcentagens
+        // Média Prevista %: (média orçado da categoria / média receita prevista) * 100
+        const percPrev = mediaReceitaPrevista !== 0 ? (Math.abs(mediaOrcado) / mediaReceitaPrevista * 100).toFixed(2) : '0.00';
+
+        // Média Realizada %: (média realizado da categoria / média receita realizada) * 100
+        const percReal = mediaReceitaRealizada !== 0 ? (Math.abs(mediaRealizado) / mediaReceitaRealizada * 100).toFixed(2) : '0.00';
 
         // Média Diferença: % Realizada - % Prevista
         const percDif = (parseFloat(percReal) - parseFloat(percPrev)).toFixed(2);
@@ -1335,15 +1440,23 @@ function atualizarCategoriasReceita(categorias, totalReceitaOrcado, totalReceita
         htmlTabela += `
             <tr>
                 <td><small>${cat.nome}</small></td>
-                <td><small>${formatMoney(orcado)} (${percPrev}%)</small></td>
-                <td><small>${formatMoney(realizado)} (${percReal}%)</small></td>
-                <td><small>${formatMoney(diferenca)} (${percDif}%)</small></td>
+                <td><small>${formatMoney(mediaOrcado)} (${percPrev}%)</small></td>
+                <td><small>${formatMoney(mediaRealizado)} (${percReal}%)</small></td>
+                <td><small>${formatMoney(mediaDiferenca)} (${percDif > 0 ? '+' : ''}${percDif}%)</small></td>
             </tr>
         `;
     });
 
     document.getElementById('tabelaReceitas').innerHTML = htmlTabela;
 }
+
+// Variáveis para armazenar dados dos gráficos (para recriar no modo impressão)
+let dadosGraficos = {
+    labels: [],
+    receitas: [],
+    despesas: [],
+    gerais: []
+};
 
 // Carregar ao iniciar
 atualizarDados();
@@ -1365,8 +1478,22 @@ function gerarPDF() {
     const periodoTexto = `${mesesNomes[parseInt(mesInicio)]}/${anoInicio} até ${mesesNomes[parseInt(mesFim)]}/${anoFim} - ${tipoDre}`;
     document.getElementById('print-periodo').textContent = periodoTexto;
 
-    // Abrir diálogo de impressão
-    window.print();
+    // Ativar modo impressão (mostra valores nas barras)
+    modoImpressao = true;
+
+    // Recriar gráficos de barra com valores visíveis
+    atualizarGraficos(dadosGraficos.labels, dadosGraficos.receitas, dadosGraficos.despesas, dadosGraficos.gerais);
+
+    // Aguardar renderização dos gráficos antes de imprimir
+    setTimeout(function() {
+        window.print();
+
+        // Após imprimir, desativar modo impressão e recriar gráficos normais
+        setTimeout(function() {
+            modoImpressao = false;
+            atualizarGraficos(dadosGraficos.labels, dadosGraficos.receitas, dadosGraficos.despesas, dadosGraficos.gerais);
+        }, 500);
+    }, 300);
 }
 
 // ========== MODAL PERCENTUAL MP ==========

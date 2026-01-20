@@ -920,6 +920,23 @@ def desvincular_user_empresa():
 # UPLOAD E GESTÃO DE DADOS
 # ============================
 
+def validar_extensao_arquivo(filename, extensoes_permitidas):
+    """
+    Valida se o arquivo possui uma extensão permitida.
+
+    Args:
+        filename (str): Nome do arquivo
+        extensoes_permitidas (set): Conjunto de extensões permitidas (ex: {'.xlsx', '.xls'})
+
+    Returns:
+        bool: True se a extensão é válida, False caso contrário
+    """
+    if not filename or '.' not in filename:
+        return False
+    extensao = '.' + filename.rsplit('.', 1)[1].lower()
+    return extensao in extensoes_permitidas
+
+
 @admin_bp.route('/admin/upload', methods=['GET', 'POST'])
 def upload_dados():
     """Recebe upload de arquivo Excel com dados anuais da empresa"""
@@ -937,6 +954,12 @@ def upload_dados():
     # Validação básica
     if not empresa_id or not ano or not arquivo:
         flash("Todos os campos são obrigatórios.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # Validação de extensão do arquivo
+    extensoes_permitidas = {'.xlsx', '.xls'}
+    if not validar_extensao_arquivo(arquivo.filename, extensoes_permitidas):
+        flash("Formato de arquivo inválido. Apenas arquivos Excel (.xlsx, .xls) são permitidos.", "danger")
         return redirect(url_for('admin.gerenciar_empresas'))
 
     try:
@@ -972,6 +995,12 @@ def upload_dados_bpo():
     # Validação básica
     if not empresa_id or not arquivo:
         flash("Empresa e arquivo são obrigatórios para upload de BPO.", "danger")
+        return redirect(url_for('admin.gerenciar_empresas'))
+
+    # Validação de extensão do arquivo
+    extensoes_permitidas = {'.xlsx', '.xls'}
+    if not validar_extensao_arquivo(arquivo.filename, extensoes_permitidas):
+        flash("Formato de arquivo inválido. Apenas arquivos Excel (.xlsx, .xls) são permitidos.", "danger")
         return redirect(url_for('admin.gerenciar_empresas'))
 
     try:
