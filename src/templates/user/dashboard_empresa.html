@@ -346,7 +346,11 @@
 
         /* Gráficos de barra - mais altura vertical */
         #receitaChart,
-        #GastosAdmChart,
+        #GastosAdmChart {
+            min-height: 450px !important;
+            height: 450px !important;
+        }
+
         #MateriaPrimaChart,
         #DividasChart {
             min-height: 350px !important;
@@ -1530,7 +1534,10 @@ function criarGraficoBarrasEmpilhadas(canvasId, dados) {
                     labels: { usePointStyle: true, padding: 15 }
                 },
                 datalabels: {
-                    display: modoImpressao,
+                    display: function(context) {
+                        // Só exibe se estiver em modo impressão E o valor for maior que 0
+                        return modoImpressao && context.dataset.data[context.dataIndex] > 0;
+                    },
                     anchor: 'end',
                     align: 'top',
                     font: {
