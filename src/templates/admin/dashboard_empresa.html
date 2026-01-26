@@ -433,10 +433,16 @@
             </h3>
             <p class="text-muted mb-0 small">Escolha um ano para visualizar os dados financeiros</p>
         </div>
-        <button id="btnGerarPDFViabilidade" class="btn btn-danger" onclick="gerarPDFViabilidade()" title="Gerar Relatório PDF" style="display: none;">
-            <i class="bi bi-file-pdf me-1"></i>
-            PDF
-        </button>
+        <div class="d-flex gap-2">
+            <button id="btnGerarPDFViabilidade" class="btn btn-danger" onclick="gerarPDFViabilidade()" title="Gerar Relatório PDF" style="display: none;">
+                <i class="bi bi-file-pdf me-1"></i>
+                PDF
+            </button>
+            <button id="btnRelatorioIA" class="btn btn-primary" onclick="gerarRelatorioIA()" title="Gerar Relatório com IA" style="display: none;">
+                <i class="bi bi-robot me-1"></i>
+                Relatório IA
+            </button>
+        </div>
     </div>
 
     {% if anos_disponiveis %}
@@ -517,6 +523,27 @@ Chart.register(ChartDataLabels);
 // Variável para controlar se está em modo de impressão (mostrar valores nas barras)
 let modoImpressao = false;
 
+// Função para quebrar labels longos em múltiplas linhas (para gráficos horizontais no PDF)
+function quebrarLabel(label, maxCaracteres = 20) {
+    if (!label || label.length <= maxCaracteres) return label;
+
+    const palavras = label.split(' ');
+    const linhas = [];
+    let linhaAtual = '';
+
+    palavras.forEach(palavra => {
+        if ((linhaAtual + ' ' + palavra).trim().length <= maxCaracteres) {
+            linhaAtual = (linhaAtual + ' ' + palavra).trim();
+        } else {
+            if (linhaAtual) linhas.push(linhaAtual);
+            linhaAtual = palavra;
+        }
+    });
+    if (linhaAtual) linhas.push(linhaAtual);
+
+    return linhas.length > 1 ? linhas : label;
+}
+
 let charts = {};
 let dadosAtuais = null;
 let anoSelecionado = null;
@@ -536,8 +563,9 @@ function selecionarAno(ano, buttonElement = null) {
         targetButton.classList.add('active');
     }
 
-    // Mostrar botão de PDF
+    // Mostrar botões de PDF e IA
     document.getElementById('btnGerarPDFViabilidade').style.display = 'block';
+    document.getElementById('btnRelatorioIA').style.display = 'block';
 
     // Mostrar seletor de grupo de viabilidade
     document.getElementById('viability-selector-container').style.display = 'block';
@@ -1041,7 +1069,17 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
     }
 
     // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
-    const labels = dados.map(item => item.descricao);
+    // Quebrar labels longos apenas no gráfico de Matéria Prima no modo impressão
+    const isMateriaPrima = canvasId.toLowerCase().includes('materiaprima');
+    // Tamanho menor para Receitas e Gastos Administrativos
+    const isReceitaOuGastosAdm = canvasId === 'receitaChart' || canvasId === 'GastosAdmChart';
+    const tamanhoFonte = isReceitaOuGastosAdm ? 14 : 20;
+    const labels = dados.map(item => {
+        if (isMateriaPrima && modoImpressao) {
+            return quebrarLabel(item.descricao, 18);
+        }
+        return item.descricao;
+    });
     const valores = dados.map(item => item.valor);
     const percentuais = dados.map(item => (item.percentual || 0) / 1); // Porcentagem
 
@@ -1092,7 +1130,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     anchor: horizontal ? 'end' : 'end',
                     align: horizontal ? 'right' : 'top',
                     font: {
-                        size: 20,
+                        size: tamanhoFonte,
                         weight: 'bold'
                     },
                     formatter: function(value, context) {
@@ -1814,6 +1852,192 @@ function gerarPDFViabilidade() {
             }
         }, 500);
     }, 300);
+}
+
+// Gerar relatório com IA (Gemini)
+function gerarRelatorioIA() {
+    if (!anoSelecionado || !grupoViabilidadeSelecionado) {
+        alert('Por favor, selecione um ano e um grupo de viabilidade primeiro.');
+        return;
+    }
+
+    if (!dadosAtuais || !dadosAtuais.dados || !dadosAtuais.dados[grupoViabilidadeSelecionado]) {
+        alert('Dados não carregados. Por favor, selecione um grupo de viabilidade.');
+        return;
+    }
+
+    // Mostrar loading
+    const btnIA = document.getElementById('btnRelatorioIA');
+    const textoOriginal = btnIA.innerHTML;
+    btnIA.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Gerando...';
+    btnIA.disabled = true;
+
+    // Coletar dados do dashboard
+    const dadosGrupo = dadosAtuais.dados[grupoViabilidadeSelecionado];
+
+    // Montar objeto com os dados para enviar
+    const dadosParaIA = {
+        ano: anoSelecionado,
+        grupo_viabilidade: grupoViabilidadeSelecionado,
+        receitas: dadosGrupo['Receita'] || [],
+        gastos_administrativos: dadosGrupo['GastosAdm'] || [],
+        gastos_operacionais: dadosGrupo['GastosOperacionais'] || dadosGrupo['Gastos Operacionais Veículos'] || [],
+        materia_prima: dadosGrupo['MateriaPrima'] || dadosGrupo['Materia Prima'] || [],
+        obrigacoes: dadosGrupo['Obrigacoes'] || [],
+        pessoal: dadosGrupo['Pessoal'] || [],
+        dividas: dadosGrupo['Dividas'] || [],
+        investimentos: dadosGrupo['Investimentos'] || []
+    };
+
+    // Enviar para a API
+    fetch('/admin/api/relatorio-ia-viabilidade/{{ empresa_id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dadosParaIA)
+    })
+    .then(response => response.json())
+    .then(data => {
+        btnIA.innerHTML = textoOriginal;
+        btnIA.disabled = false;
+
+        if (data.success) {
+            // Abrir modal com o relatório
+            abrirModalRelatorioIA(data.relatorio);
+        } else {
+            alert('Erro ao gerar relatório: ' + (data.error || 'Erro desconhecido'));
+        }
+    })
+    .catch(error => {
+        btnIA.innerHTML = textoOriginal;
+        btnIA.disabled = false;
+        console.error('Erro:', error);
+        alert('Erro ao gerar relatório. Verifique o console para mais detalhes.');
+    });
+}
+
+// Abrir modal com relatório IA
+function abrirModalRelatorioIA(relatorioMarkdown) {
+    // Criar modal se não existir
+    let modal = document.getElementById('modalRelatorioIA');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalRelatorioIA';
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title">
+                            <i class="bi bi-robot me-2"></i>Relatório de Viabilidade (IA)
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="conteudoRelatorioIA" style="font-family: inherit; line-height: 1.6;">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        <button type="button" class="btn btn-primary" onclick="copiarRelatorioIA()">
+                            <i class="bi bi-clipboard me-1"></i>Copiar
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="imprimirRelatorioIA()">
+                            <i class="bi bi-printer me-1"></i>Imprimir
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    // Converter Markdown para HTML básico (ou exibir como está)
+    const conteudo = document.getElementById('conteudoRelatorioIA');
+    conteudo.innerHTML = formatarMarkdown(relatorioMarkdown);
+
+    // Abrir modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
+// Formatar conteúdo (HTML ou Markdown) para exibição
+function formatarMarkdown(conteudo) {
+    // Se o conteúdo já é HTML (detecta tags HTML), retorna como está
+    if (conteudo.trim().startsWith('<') || conteudo.includes('<table') || conteudo.includes('<h1>') || conteudo.includes('<h2>')) {
+        // Remove possíveis blocos de código markdown que envolvem o HTML
+        let html = conteudo
+            .replace(/^```html\s*/i, '')
+            .replace(/```\s*$/i, '')
+            .trim();
+
+        return `<div class="relatorio-ia-content">${html}</div>`;
+    }
+
+    // Fallback: Converter markdown básico para HTML
+    let html = conteudo
+        // Headers
+        .replace(/^### (.*$)/gim, '<h5>$1</h5>')
+        .replace(/^## (.*$)/gim, '<h4 class="mt-4 mb-3 text-primary">$1</h4>')
+        .replace(/^# (.*$)/gim, '<h3 class="mt-4 mb-3">$1</h3>')
+        // Bold
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        // Lists
+        .replace(/^\* (.*$)/gim, '<li>$1</li>')
+        .replace(/^- (.*$)/gim, '<li>$1</li>')
+        // Line breaks
+        .replace(/\n/g, '<br>');
+
+    // Wrap lists
+    html = html.replace(/(<li>.*<\/li>)/g, '<ul>$1</ul>');
+
+    return `<div class="relatorio-ia-content">${html}</div>`;
+}
+
+// Copiar relatório para clipboard
+function copiarRelatorioIA() {
+    const conteudo = document.getElementById('conteudoRelatorioIA').innerText;
+    navigator.clipboard.writeText(conteudo).then(() => {
+        alert('Relatório copiado para a área de transferência!');
+    });
+}
+
+// Imprimir relatório
+function imprimirRelatorioIA() {
+    const conteudo = document.getElementById('conteudoRelatorioIA').innerHTML;
+    const janela = window.open('', '_blank');
+    janela.document.write(`
+        <html>
+        <head>
+            <title>Relatório de Viabilidade - {{ empresa_nome }}</title>
+            <style>
+                body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; max-width: 1000px; margin: 0 auto; }
+                h1 { color: #333; font-size: 24px; margin-bottom: 10px; }
+                h2 { color: #007bff; font-size: 18px; margin-top: 25px; margin-bottom: 15px; border-bottom: 2px solid #007bff; padding-bottom: 8px; }
+                h3 { color: #555; font-size: 16px; margin-top: 20px; margin-bottom: 10px; }
+                h4 { color: #007bff; margin-top: 20px; }
+                hr { border: none; border-top: 1px solid #ddd; margin: 20px 0; }
+                p { margin: 10px 0; }
+                table { border-collapse: collapse; width: 100%; margin: 15px 0; font-size: 14px; }
+                th, td { border: 1px solid #ccc; padding: 10px; text-align: left; }
+                th { background-color: #e0e0e0; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                ul, ol { margin: 10px 0; padding-left: 25px; }
+                li { margin: 5px 0; }
+                strong { color: #333; }
+                em { color: #666; }
+                @media print {
+                    body { padding: 0; }
+                    table { page-break-inside: avoid; }
+                }
+            </style>
+        </head>
+        <body>${conteudo}</body>
+        </html>
+    `);
+    janela.document.close();
+    janela.print();
 }
 
 // Carregar dados do primeiro ano disponível

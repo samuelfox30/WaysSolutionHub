@@ -384,6 +384,48 @@ def gerar_relatorio_pdf(empresa_id, ano, grupo_viabilidade):
         return redirect(url_for('user.user_dashboard'))
 
 
+@user_bp.route('/user/api/relatorio-ia-viabilidade/<int:empresa_id>', methods=['POST'])
+def api_relatorio_ia_viabilidade_user(empresa_id):
+    """Gera relatório de viabilidade usando IA (Gemini) - rota para usuários"""
+    if not ('user_email' in session and session.get('user_role') == 'user'):
+        return jsonify({"error": "Não autorizado"}), 403
+
+    try:
+        from controllers.AI.gemini_utils import gerar_relatorio_viabilidade
+        from models.company_manager import CompanyManager
+
+        # Recebe os dados do frontend
+        dados = request.get_json()
+
+        if not dados:
+            return jsonify({"error": "Dados não fornecidos"}), 400
+
+        # Buscar nome da empresa
+        company_manager = CompanyManager()
+        empresa = company_manager.buscar_empresa_por_id(empresa_id)
+        company_manager.close()
+
+        if not empresa:
+            return jsonify({"error": "Empresa não encontrada"}), 404
+
+        # Adiciona o nome da empresa aos dados
+        dados['empresa_nome'] = empresa['nome']
+
+        # Gera o relatório usando o Gemini
+        relatorio_markdown = gerar_relatorio_viabilidade(dados)
+
+        return jsonify({
+            "success": True,
+            "relatorio": relatorio_markdown
+        })
+
+    except Exception as e:
+        logger.error(f"Erro ao gerar relatório IA: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @user_bp.route('/user/dados')
 def visualizar_dados():
     """Página de visualização detalhada dos dados anuais da empresa selecionada"""
