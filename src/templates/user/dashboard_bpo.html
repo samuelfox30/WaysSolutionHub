@@ -1226,10 +1226,10 @@ function atualizarCategoriasDespesa(categorias, mediaReceitaPrevista, mediaRecei
         const realizado = cat.realizado;
         const diferenca = cat.diferenca;
 
-        // Calcular médias por mês
-        const mediaOrcado = orcado / numMeses;
-        const mediaRealizado = realizado / numMeses;
-        const mediaDiferenca = diferenca / numMeses;
+        // Valores já vêm como média do Python (já dividido por numMeses)
+        const mediaOrcado = orcado;
+        const mediaRealizado = realizado;
+        const mediaDiferenca = diferenca;
 
         // Calcular porcentagens
         // Média Prevista %: (média orçado da categoria / média receita prevista) * 100
@@ -1344,10 +1344,10 @@ function atualizarCategoriasReceita(categorias, mediaReceitaPrevista, mediaRecei
         const realizado = cat.realizado;
         const diferenca = cat.diferenca;
 
-        // Calcular médias por mês
-        const mediaOrcado = orcado / numMeses;
-        const mediaRealizado = realizado / numMeses;
-        const mediaDiferenca = diferenca / numMeses;
+        // Valores já vêm como média do Python (já dividido por numMeses)
+        const mediaOrcado = orcado;
+        const mediaRealizado = realizado;
+        const mediaDiferenca = diferenca;
 
         // Calcular porcentagens
         // Média Prevista %: (média orçado da categoria / média receita prevista) * 100

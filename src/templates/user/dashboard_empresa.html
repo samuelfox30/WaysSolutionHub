@@ -290,34 +290,45 @@
     }
 
     /* CSS para impressão/PDF */
+    /* CSS para impressão/PDF */
     @media print {
         /* Esconder elementos de UI */
         .year-selector,
         .viability-selector,
         button,
-        .btn {
+        .btn,
+        .sidebar,
+        .main-header,
+        .alert {
             display: none !important;
         }
 
         /* Ajustar layout para impressão */
-        body {
+        html, body {
+            margin: 0;
+            padding: 0;
             background: white !important;
+            height: auto !important;
+            overflow: visible !important;
         }
 
         .main-wrapper {
             margin-left: 0 !important;
             width: 100% !important;
+            height: auto !important;
+            display: block !important;
         }
 
         .main-content {
             padding: 10mm !important;
             overflow: visible !important;
+            height: auto !important;
+            max-height: none !important;
         }
 
         /* Ajustar gráficos para impressão */
         canvas {
             max-width: 100% !important;
-            max-height: 350px !important;
             page-break-inside: avoid !important;
         }
 
@@ -325,10 +336,36 @@
             page-break-inside: avoid !important;
             margin-bottom: 1rem !important;
             padding: 1rem !important;
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
         }
 
         .chart-header {
             page-break-after: avoid !important;
+        }
+
+        /* Gráficos de barra - mais altura vertical */
+        #receitaChart,
+        #GastosAdmChart {
+            min-height: 450px !important;
+            height: 450px !important;
+        }
+
+        #MateriaPrimaChart,
+        #DividasChart {
+            min-height: 350px !important;
+            height: 350px !important;
+        }
+
+        /* Gráficos de pizza - menores para caber na página */
+        #controleChart,
+        #obrigacoesPizzaChart,
+        #PessoalChart {
+            max-width: 280px !important;
+            max-height: 280px !important;
+            width: 280px !important;
+            height: 280px !important;
+            margin: 0 auto !important;
         }
 
         /* Cards de métricas */
@@ -344,7 +381,7 @@
 
         /* Margens da página */
         @page {
-            margin: 15mm;
+            margin: 10mm;
             size: A4 portrait;
         }
 
@@ -354,14 +391,23 @@
             text-align: center;
             font-size: 18pt;
             font-weight: bold;
-            margin-bottom: 1rem !important;
+            margin-bottom: 0.5rem !important;
             color: #333;
             page-break-after: avoid;
         }
 
-        /* Esconder alertas e banners */
-        .alert {
-            display: none !important;
+        .print-subtitle {
+            display: block !important;
+            text-align: center;
+            font-size: 12pt;
+            color: #666;
+            margin-bottom: 1rem !important;
+            page-break-after: avoid;
+        }
+
+        /* Container de gráficos */
+        #charts-container {
+            display: block !important;
         }
     }
 
@@ -369,7 +415,15 @@
     .print-title {
         display: none;
     }
+
+    .print-subtitle {
+        display: none;
+    }
 </style>
+
+<!-- Título visível apenas na impressão -->
+<div class="print-title" id="print-title">Relatório Viabilidade</div>
+<div class="print-subtitle" id="print-subtitle"></div>
 
 <!-- Seletor de Ano -->
 <div class="year-selector">
@@ -456,7 +510,14 @@
 <div id="charts-container" style="display: none;"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 <script>
+// Registrar o plugin datalabels
+Chart.register(ChartDataLabels);
+
+// Variável para controlar se está em modo de impressão (mostrar valores nas barras)
+let modoImpressao = false;
+
 let charts = {};
 let dadosAtuais = null;
 let anoSelecionado = null;
@@ -1027,6 +1088,21 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     position: 'top',
                     labels: { usePointStyle: true, padding: 15 }
                 },
+                datalabels: {
+                    display: modoImpressao,
+                    anchor: horizontal ? 'end' : 'end',
+                    align: horizontal ? 'right' : 'top',
+                    font: {
+                        size: 20,
+                        weight: 'bold'
+                    },
+                    formatter: function(value, context) {
+                        if (context.dataset.label && context.dataset.label.includes('Percentual')) {
+                            return value.toFixed(2) + '%';
+                        }
+                        return formatarMoeda(value);
+                    }
+                },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
                     callbacks: {
@@ -1178,6 +1254,18 @@ function criarGraficoBarrasSimples(canvasId, dados) {
                 legend: {
                     display: false
                 },
+                datalabels: {
+                    display: modoImpressao,
+                    anchor: 'end',
+                    align: 'top',
+                    font: {
+                        size: 20,
+                        weight: 'bold'
+                    },
+                    formatter: function(value) {
+                        return formatarMoeda(value);
+                    }
+                },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
                     callbacks: {
@@ -1244,6 +1332,9 @@ function criarGraficoPizza(canvasId, dados, mostrarPercNaLegenda = false, mostra
                             });
                         } : undefined
                     }
+                },
+                datalabels: {
+                    display: false
                 },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -1314,6 +1405,9 @@ function criarGraficoPizzaComValorLegenda(canvasId, dados) {
                         }
                     }
                 },
+                datalabels: {
+                    display: false
+                },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
                     callbacks: {
@@ -1380,6 +1474,9 @@ function criarGraficoPizzaPercentual(canvasId, dados) {
                         }
                     }
                 },
+                datalabels: {
+                    display: false
+                },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
                     callbacks: {
@@ -1435,6 +1532,21 @@ function criarGraficoBarrasEmpilhadas(canvasId, dados) {
                 legend: {
                     position: 'top',
                     labels: { usePointStyle: true, padding: 15 }
+                },
+                datalabels: {
+                    display: function(context) {
+                        // Só exibe se estiver em modo impressão E o valor for maior que 0
+                        return modoImpressao && context.dataset.data[context.dataIndex] > 0;
+                    },
+                    anchor: 'end',
+                    align: 'top',
+                    font: {
+                        size: 20,
+                        weight: 'bold'
+                    },
+                    formatter: function(value) {
+                        return formatarMoeda(value);
+                    }
                 },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -1514,6 +1626,18 @@ function criarGraficoGastosOperacionais(canvasId, dados) {
                 legend: {
                     position: 'top',
                     labels: { usePointStyle: true, padding: 15 }
+                },
+                datalabels: {
+                    display: modoImpressao,
+                    anchor: 'end',
+                    align: 'top',
+                    font: {
+                        size: 20,
+                        weight: 'bold'
+                    },
+                    formatter: function(value) {
+                        return formatarMoeda(value);
+                    }
                 },
                 tooltip: {
                     backgroundColor: 'rgba(15, 23, 42, 0.95)',
@@ -1662,11 +1786,35 @@ function formatarMoeda(valor) {
 }
 
 function gerarPDFViabilidade() {
-    if (!anoSelecionado) {
-        alert('Por favor, selecione um ano primeiro.');
+    if (!anoSelecionado || !grupoViabilidadeSelecionado) {
+        alert('Por favor, selecione um ano e um grupo de viabilidade primeiro.');
         return;
     }
-    window.open(`/user/gerar_relatorio_viabilidade?ano_selecionado=${anoSelecionado}`, '_blank');
+
+    // Atualizar título de impressão
+    document.getElementById('print-title').textContent = `Relatório Viabilidade - {{ empresa_nome }} - ${anoSelecionado}`;
+    document.getElementById('print-subtitle').textContent = `${grupoViabilidadeSelecionado} - Gerado em ${new Date().toLocaleDateString('pt-BR')}`;
+
+    // Ativar modo impressão (mostra valores nas barras)
+    modoImpressao = true;
+
+    // Recriar gráficos com valores visíveis
+    if (dadosAtuais && dadosAtuais.dados && dadosAtuais.dados[grupoViabilidadeSelecionado]) {
+        atualizarGraficos(dadosAtuais.dados[grupoViabilidadeSelecionado]);
+    }
+
+    // Aguardar renderização dos gráficos antes de imprimir
+    setTimeout(function() {
+        window.print();
+
+        // Após imprimir, desativar modo impressão e recriar gráficos normais
+        setTimeout(function() {
+            modoImpressao = false;
+            if (dadosAtuais && dadosAtuais.dados && dadosAtuais.dados[grupoViabilidadeSelecionado]) {
+                atualizarGraficos(dadosAtuais.dados[grupoViabilidadeSelecionado]);
+            }
+        }, 500);
+    }, 300);
 }
 
 // Carregar dados do primeiro ano disponível
