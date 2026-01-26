@@ -518,6 +518,27 @@ Chart.register(ChartDataLabels);
 // Variável para controlar se está em modo de impressão (mostrar valores nas barras)
 let modoImpressao = false;
 
+// Função para quebrar labels longos em múltiplas linhas (para gráficos horizontais no PDF)
+function quebrarLabel(label, maxCaracteres = 20) {
+    if (!label || label.length <= maxCaracteres) return label;
+
+    const palavras = label.split(' ');
+    const linhas = [];
+    let linhaAtual = '';
+
+    palavras.forEach(palavra => {
+        if ((linhaAtual + ' ' + palavra).trim().length <= maxCaracteres) {
+            linhaAtual = (linhaAtual + ' ' + palavra).trim();
+        } else {
+            if (linhaAtual) linhas.push(linhaAtual);
+            linhaAtual = palavra;
+        }
+    });
+    if (linhaAtual) linhas.push(linhaAtual);
+
+    return linhas.length > 1 ? linhas : label;
+}
+
 let charts = {};
 let dadosAtuais = null;
 let anoSelecionado = null;
@@ -1042,7 +1063,17 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
     }
 
     // Dados JÁ VEM CALCULADOS - apenas pegar e exibir
-    const labels = dados.map(item => item.descricao);
+    // Quebrar labels longos apenas no gráfico de Matéria Prima no modo impressão
+    const isMateriaPrima = canvasId.toLowerCase().includes('materiaprima');
+    // Tamanho menor para Receitas e Gastos Administrativos
+    const isReceitaOuGastosAdm = canvasId === 'receitaChart' || canvasId === 'GastosAdmChart';
+    const tamanhoFonte = isReceitaOuGastosAdm ? 14 : 20;
+    const labels = dados.map(item => {
+        if (isMateriaPrima && modoImpressao) {
+            return quebrarLabel(item.descricao, 18);
+        }
+        return item.descricao;
+    });
     const valores = dados.map(item => item.valor);
     const percentuais = dados.map(item => (item.percentual || 0) / 1); // Porcentagem
 
@@ -1093,7 +1124,7 @@ function criarGraficoBarrasDuplas(canvasId, dados, horizontal = false, mostrarPe
                     anchor: horizontal ? 'end' : 'end',
                     align: horizontal ? 'right' : 'top',
                     font: {
-                        size: 20,
+                        size: tamanhoFonte,
                         weight: 'bold'
                     },
                     formatter: function(value, context) {
