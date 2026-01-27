@@ -1855,15 +1855,29 @@ function gerarPDFViabilidade() {
     }, 300);
 }
 
+// Extrair dados de um cenário
+function extrairDadosCenario(dadosGrupo) {
+    return {
+        receitas: dadosGrupo['Receita'] || [],
+        gastos_administrativos: dadosGrupo['GastosAdm'] || [],
+        gastos_operacionais: dadosGrupo['GastosOperacionais'] || dadosGrupo['Gastos Operacionais Veículos'] || [],
+        materia_prima: dadosGrupo['MateriaPrima'] || dadosGrupo['Materia Prima'] || [],
+        obrigacoes: dadosGrupo['Obrigacoes'] || [],
+        pessoal: dadosGrupo['Pessoal'] || [],
+        dividas: dadosGrupo['Dividas'] || [],
+        investimentos: dadosGrupo['Investimentos'] || []
+    };
+}
+
 // Gerar relatório com IA (Gemini)
 function gerarRelatorioIA() {
-    if (!anoSelecionado || !grupoViabilidadeSelecionado) {
-        alert('Por favor, selecione um ano e um grupo de viabilidade primeiro.');
+    if (!anoSelecionado) {
+        alert('Por favor, selecione um ano primeiro.');
         return;
     }
 
-    if (!dadosAtuais || !dadosAtuais.dados || !dadosAtuais.dados[grupoViabilidadeSelecionado]) {
-        alert('Dados não carregados. Por favor, selecione um grupo de viabilidade.');
+    if (!dadosAtuais || !dadosAtuais.dados) {
+        alert('Dados não carregados. Por favor, selecione um ano.');
         return;
     }
 
@@ -1873,21 +1887,17 @@ function gerarRelatorioIA() {
     btnIA.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Gerando...';
     btnIA.disabled = true;
 
-    // Coletar dados do dashboard
-    const dadosGrupo = dadosAtuais.dados[grupoViabilidadeSelecionado];
+    // Coletar dados dos 3 cenários
+    const cenarioReal = dadosAtuais.dados['Viabilidade Real'];
+    const cenarioPE = dadosAtuais.dados['Viabilidade PE'];
+    const cenarioIdeal = dadosAtuais.dados['Viabilidade Ideal'];
 
-    // Montar objeto com os dados para enviar
+    // Montar objeto com os dados dos 3 cenários para enviar
     const dadosParaIA = {
         ano: anoSelecionado,
-        grupo_viabilidade: grupoViabilidadeSelecionado,
-        receitas: dadosGrupo['Receita'] || [],
-        gastos_administrativos: dadosGrupo['GastosAdm'] || [],
-        gastos_operacionais: dadosGrupo['GastosOperacionais'] || dadosGrupo['Gastos Operacionais Veículos'] || [],
-        materia_prima: dadosGrupo['MateriaPrima'] || dadosGrupo['Materia Prima'] || [],
-        obrigacoes: dadosGrupo['Obrigacoes'] || [],
-        pessoal: dadosGrupo['Pessoal'] || [],
-        dividas: dadosGrupo['Dividas'] || [],
-        investimentos: dadosGrupo['Investimentos'] || []
+        cenario_real: cenarioReal ? extrairDadosCenario(cenarioReal) : null,
+        cenario_pe: cenarioPE ? extrairDadosCenario(cenarioPE) : null,
+        cenario_ideal: cenarioIdeal ? extrairDadosCenario(cenarioIdeal) : null
     };
 
     // Enviar para a API (rota user)

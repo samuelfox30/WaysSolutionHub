@@ -733,6 +733,48 @@ def api_relatorio_ia_viabilidade(empresa_id):
         return jsonify({"error": str(e)}), 500
 
 
+@admin_bp.route('/admin/api/relatorio-ia-bpo/<int:empresa_id>', methods=['POST'])
+def api_relatorio_ia_bpo(empresa_id):
+    """Gera relatório executivo de DRE e Performance usando IA (Gemini)"""
+    if not ('user_email' in session and session.get('user_role') == 'admin'):
+        return jsonify({"error": "Não autorizado"}), 403
+
+    try:
+        from controllers.AI.gemini_utils import gerar_relatorio_bpo
+        from models.company_manager import CompanyManager
+
+        # Recebe os dados do frontend
+        dados = request.get_json()
+
+        if not dados:
+            return jsonify({"error": "Dados não fornecidos"}), 400
+
+        # Buscar nome da empresa
+        company_manager = CompanyManager()
+        empresa = company_manager.buscar_empresa_por_id(empresa_id)
+        company_manager.close()
+
+        if not empresa:
+            return jsonify({"error": "Empresa não encontrada"}), 404
+
+        # Adiciona o nome da empresa aos dados
+        dados['empresa_nome'] = empresa['nome']
+
+        # Gera o relatório usando o Gemini
+        relatorio_html = gerar_relatorio_bpo(dados)
+
+        return jsonify({
+            "success": True,
+            "relatorio": relatorio_html
+        })
+
+    except Exception as e:
+        logger.error(f"Erro ao gerar relatório IA BPO: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 @admin_bp.route('/admin/api/dados-empresa/<int:empresa_id>/<int:ano>')
 def api_dados_empresa(empresa_id, ano):
     """API para retornar dados de uma empresa (acesso admin)"""
