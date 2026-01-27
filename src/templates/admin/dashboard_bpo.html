@@ -300,6 +300,27 @@
     transform: none;
 }
 
+.badge-novo {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 8px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.4);
+    animation: pulseBadge 2s ease-in-out infinite;
+}
+
+@keyframes pulseBadge {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+}
+
 /* Form controls */
 .form-label {
     color: #475569;
@@ -600,13 +621,14 @@
                     </button>
                 </div>
                 <div class="col-6 col-md-6 col-lg-auto d-flex align-items-end">
-                    <button class="btn btn-danger px-4" onclick="gerarPDF()" title="Gerar Relatório PDF">
-                        <i class="bi bi-file-pdf me-2"></i>PDF
+                    <button class="btn btn-danger px-4" onclick="gerarPDF()" title="Relatório de Gráficos">
+                        <i class="bi bi-file-pdf me-2"></i>Relatório de Gráficos
                     </button>
                 </div>
                 <div class="col-6 col-md-6 col-lg-auto d-flex align-items-end">
-                    <button id="btnRelatorioIA" class="btn btn-purple px-4" onclick="gerarRelatorioIA_BPO()" title="Gerar Relatório com IA">
-                        <i class="bi bi-robot me-2"></i>IA
+                    <button id="btnRelatorioIA" class="btn btn-purple px-4 position-relative" onclick="gerarRelatorioIA_BPO()" title="Analisar com a IA">
+                        <i class="bi bi-robot me-2"></i>Analisar com a IA
+                        <span class="badge-novo">Novo</span>
                     </button>
                 </div>
             </div>
