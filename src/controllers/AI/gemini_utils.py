@@ -1,15 +1,19 @@
 import os
 import json
+from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 
-# Carrega variáveis do .env
-load_dotenv()
+# Buscar o arquivo .env na raiz do projeto
+# Estrutura: raiz/.env e raiz/src/controllers/AI/gemini_utils.py
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+env_path = BASE_DIR / '.env'
+
+# Carregar variáveis de ambiente do arquivo .env
+load_dotenv(dotenv_path=env_path)
 
 GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
 GEMINI_MODEL = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash-preview-05-20')
-
-client = genai.Client(api_key=GEMINI_API_KEY)
 
 # Prompt para Relatório de Viabilidade
 PROMPT_VIABILIDADE = """
@@ -286,6 +290,9 @@ def gerar_relatorio_viabilidade(dados: dict) -> str:
         ano=dados.get('ano', '2025'),
         grupo_viabilidade=dados.get('grupo_viabilidade', 'Viabilidade Real')
     )
+
+    # Cria o client dentro da função para garantir que a API key está carregada
+    client = genai.Client(api_key=GEMINI_API_KEY)
 
     # Envia para o Gemini
     response = client.models.generate_content(
