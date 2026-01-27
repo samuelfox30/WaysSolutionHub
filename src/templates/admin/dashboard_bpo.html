@@ -1711,15 +1711,36 @@ function mudarAnoCalendario(direcao) {
     renderizarCalendario(novoAno);
 }
 
-// Inicializar valores de display ao carregar
+// Inicializar valores de display ao carregar com base nos meses disponíveis
 window.addEventListener('DOMContentLoaded', function() {
-    const mesInicio = parseInt(document.getElementById('mes_inicio').value);
-    const anoInicio = parseInt(document.getElementById('ano_inicio').value);
-    const mesFim = parseInt(document.getElementById('mes_fim').value);
-    const anoFim = parseInt(document.getElementById('ano_fim').value);
+    if (mesesDisponiveis && mesesDisponiveis.length > 0) {
+        // Ordenar por ano e mês para encontrar o primeiro e último
+        const ordenados = [...mesesDisponiveis].sort((a, b) => {
+            if (a.ano !== b.ano) return a.ano - b.ano;
+            return a.mes - b.mes;
+        });
 
-    document.getElementById('periodo_inicio_display').value = `${nomesMeses[mesInicio-1]}/${anoInicio}`;
-    document.getElementById('periodo_fim_display').value = `${nomesMeses[mesFim-1]}/${anoFim}`;
+        const primeiro = ordenados[0];
+        const ultimo = ordenados[ordenados.length - 1];
+
+        // Atualizar os hidden inputs com o período real dos dados
+        document.getElementById('mes_inicio').value = primeiro.mes;
+        document.getElementById('ano_inicio').value = primeiro.ano;
+        document.getElementById('mes_fim').value = ultimo.mes;
+        document.getElementById('ano_fim').value = ultimo.ano;
+
+        // Atualizar os displays
+        document.getElementById('periodo_inicio_display').value = `${nomesMeses[primeiro.mes-1]}/${primeiro.ano}`;
+        document.getElementById('periodo_fim_display').value = `${nomesMeses[ultimo.mes-1]}/${ultimo.ano}`;
+    } else {
+        const mesInicio = parseInt(document.getElementById('mes_inicio').value);
+        const anoInicio = parseInt(document.getElementById('ano_inicio').value);
+        const mesFim = parseInt(document.getElementById('mes_fim').value);
+        const anoFim = parseInt(document.getElementById('ano_fim').value);
+
+        document.getElementById('periodo_inicio_display').value = `${nomesMeses[mesInicio-1]}/${anoInicio}`;
+        document.getElementById('periodo_fim_display').value = `${nomesMeses[mesFim-1]}/${anoFim}`;
+    }
 });
 </script>
 
